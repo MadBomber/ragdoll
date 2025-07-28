@@ -1,0 +1,40 @@
+# RuboCop configuration file
+
+# Include RuboCop extensions
+require:
+  - rubocop-minitest
+  - rubocop-rake
+
+Layout/LineLength:
+  Max: 132
+
+Metrics/MethodLength:
+  Max: 28
+
+# Allow double quotes even when there are no embedded variables
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+# Allow extra whitespace
+Layout/SpaceAroundOperators:
+  Enabled: false
+Layout/SpaceInsideParens:
+  Enabled: false
+Layout/SpaceInsideArrayLiteralBrackets:
+  Enabled: false
+Layout/SpaceInsideHashLiteralBraces:
+  Enabled: false
+Layout/SpaceBeforeBlockBraces:
+  Enabled: false
+Layout/SpaceAfterColon:
+  Enabled: false
+Layout/SpaceBeforeComma:
+  Enabled: false
+Layout/SpaceAfterComma:
+  Enabled: false
+Layout/SpaceBeforeSemicolon:
+  Enabled: false
+Layout/SpaceAfterSemicolon:
+  Enabled: false
+Layout/SpaceBeforeFirstArg:
+  Enabled: false
