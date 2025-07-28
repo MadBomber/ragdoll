@@ -3,35 +3,6 @@
 require "active_record"
 require_relative "../metadata_schemas"
 
-# == Schema Information
-#
-# Table name: ragdoll_documents
-#
-#  id                                                                                         :bigint           not null, primary key
-#  document_type(Document format type (text, image, audio, pdf, docx, html, markdown, mixed)) :string           default("text"), not null
-#  (no file_data column - file data stored in content models via STI)
-#  file_metadata(File properties and processing metadata, separate from AI-generated content) :json
-#  location(Source location of document (file path, URL, or identifier))                      :string           not null
-#  metadata(LLM-generated structured metadata using document-type-specific schemas)           :json
-#  status(Document processing status: pending, processing, processed, error)                  :string           default("pending"), not null
-#  title(Human-readable document title for display and search)                                :string           not null
-#  file_modified_at(Timestamp when the source file was last modified)                        :datetime         not null
-#  created_at(Standard creation and update timestamps)                                        :datetime         not null
-#  updated_at(Standard creation and update timestamps)                                        :datetime         not null
-#
-# Indexes
-#
-#  index_ragdoll_documents_on_created_at                (created_at)
-#  index_ragdoll_documents_on_document_type             (document_type)
-#  index_ragdoll_documents_on_document_type_and_status  (document_type,status)
-#  index_ragdoll_documents_on_fulltext_search           (to_tsvector('english'::regconfig, (((((((COALESCE(title, ''::character varying))::text || ' '::text) || COALESCE((metadata ->> 'summary'::text), ''::text)) || ' '::text) || COALESCE((metadata ->> 'keywords'::text), ''::text)) || ' '::text) || COALESCE((metadata ->> 'description'::text), ''::text)))) USING gin
-#  index_ragdoll_documents_on_location                  (location) UNIQUE
-#  index_ragdoll_documents_on_metadata_classification   (((metadata ->> 'classification'::text)))
-#  index_ragdoll_documents_on_metadata_type             (((metadata ->> 'document_type'::text)))
-#  index_ragdoll_documents_on_status                    (status)
-#  index_ragdoll_documents_on_title                     (title)
-#
-
 module Ragdoll
   module Core
     module Models
@@ -73,8 +44,8 @@ module Ragdoll
         validates :title, presence: true
         validates :document_type, presence: true,
                                   inclusion: { in: %w[text image audio pdf docx html markdown mixed] }
-        validates :summary, presence: false  # Allow empty summaries initially
-        validates :keywords, presence: false  # Allow empty keywords initially
+        validates :summary, presence: false # Allow empty summaries initially
+        validates :keywords, presence: false # Allow empty keywords initially
         validates :status, inclusion: { in: %w[pending processing processed error] }
         validates :file_modified_at, presence: true
 
@@ -142,9 +113,9 @@ module Ragdoll
           @pending_content = value
 
           # If document is already persisted, create the content immediately
-          if persisted?
-            create_content_from_pending
-          end
+          return unless persisted?
+
+          create_content_from_pending
         end
 
         # Content statistics
@@ -236,7 +207,7 @@ module Ragdoll
 
         def total_file_size
           # Could be implemented by summing file sizes from content metadata
-          contents.sum { |c| c.metadata.dig('file_size') || 0 }
+          contents.sum { |c| c.metadata.dig("file_size") || 0 }
         end
 
         def primary_file_type
@@ -248,7 +219,7 @@ module Ragdoll
         def process_content!
           # Content processing is now handled by individual content models
           # This method orchestrates the overall processing
-          
+
           # Generate embeddings for all content
           generate_embeddings_for_all_content!
 
@@ -461,11 +432,11 @@ module Ragdoll
           # If content_type is specified, only get IDs for that type
           if content_type
             case content_type.to_s
-            when 'text'
+            when "text"
               content_ids.concat(text_contents.pluck(:id)) if text_contents.any?
-            when 'image'
+            when "image"
               content_ids.concat(image_contents.pluck(:id)) if image_contents.any?
-            when 'audio'
+            when "audio"
               content_ids.concat(audio_contents.pluck(:id)) if audio_contents.any?
             end
           else
@@ -480,13 +451,12 @@ module Ragdoll
           # Use the base STI class name 'Ragdoll::Core::Models::Content' as that's what's stored
           # in polymorphic associations with STI
           Ragdoll::Core::Models::Embedding.where(
-            embeddable_type: 'Ragdoll::Core::Models::Content',
+            embeddable_type: "Ragdoll::Core::Models::Content",
             embeddable_id: content_ids
           )
         end
 
         private
-
 
         def has_pending_content?
           @pending_content.present?
@@ -513,10 +483,10 @@ module Ragdoll
           when "image"
             # For images, set the description (stored in content field)
             if image_contents.any?
-              image_contents.first.update!(content: value)  # content field stores description
+              image_contents.first.update!(content: value) # content field stores description
             else
               image_contents.create!(
-                content: value,  # content field stores description
+                content: value, # content field stores description
                 embedding_model: default_image_model,
                 metadata: { manually_set: true }
               )
@@ -524,10 +494,10 @@ module Ragdoll
           when "audio"
             # For audio, set the transcript (stored in content field)
             if audio_contents.any?
-              audio_contents.first.update!(content: value)  # content field stores transcript
+              audio_contents.first.update!(content: value) # content field stores transcript
             else
               audio_contents.create!(
-                content: value,  # content field stores transcript
+                content: value, # content field stores transcript
                 embedding_model: default_audio_model,
                 metadata: { manually_set: true }
               )
@@ -541,7 +511,6 @@ module Ragdoll
             )
           end
         end
-
 
         def self.embeddings_search(query_embedding, **options)
           Ragdoll::Core::Models::Embedding.search_similar(query_embedding, **options)

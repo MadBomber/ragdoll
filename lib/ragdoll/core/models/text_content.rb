@@ -3,34 +3,6 @@
 require "active_record"
 require_relative "content"
 
-# == Schema Information
-#
-# Table name: ragdoll_contents (STI)
-#
-#  id                                                            :bigint           not null, primary key
-#  type(Type of content - TextContent, ImageContent, AudioContent) :string         not null
-#  document_id(Reference to parent document)                     :bigint           not null
-#  embedding_model(Embedding model to use for this content)      :string           not null
-#  content(Text content or description of the file)              :text
-#  data(Raw data from file)                                      :text
-#  metadata(Additional metadata about the file's raw data)       :json             default({})
-#  duration(Duration of audio in seconds - for audio content)    :float
-#  sample_rate(Audio sample rate in Hz - for audio content)      :integer
-#  created_at(Standard creation and update timestamps)           :datetime         not null
-#  updated_at(Standard creation and update timestamps)           :datetime         not null
-#
-# Indexes
-#
-#  index_ragdoll_contents_on_document_id        (document_id)
-#  index_ragdoll_contents_on_embedding_model    (embedding_model)
-#  index_ragdoll_contents_on_type               (type)
-#  index_ragdoll_contents_on_fulltext_search    (to_tsvector('english'::regconfig, COALESCE(content, ''::text))) USING gin
-#
-# Foreign Keys
-#
-#  fk_rails_...  (document_id => ragdoll_documents.id)
-#
-
 module Ragdoll
   module Core
     module Models

@@ -3,34 +3,6 @@
 require "active_record"
 require_relative "content"
 
-# == Schema Information
-#
-# Table name: ragdoll_contents (STI)
-#
-#  id                                                            :bigint           not null, primary key
-#  type(Type of content - TextContent, ImageContent, AudioContent) :string         not null
-#  document_id(Reference to parent document)                     :bigint           not null
-#  embedding_model(Embedding model to use for this content)      :string           not null
-#  content(Text content or description of the file)              :text
-#  data(Raw data from file)                                      :text
-#  metadata(Additional metadata about the file's raw data)       :json             default({})
-#  duration(Duration of audio in seconds - for audio content)    :float
-#  sample_rate(Audio sample rate in Hz - for audio content)      :integer
-#  created_at(Standard creation and update timestamps)           :datetime         not null
-#  updated_at(Standard creation and update timestamps)           :datetime         not null
-#
-# Indexes
-#
-#  index_ragdoll_contents_on_document_id        (document_id)
-#  index_ragdoll_contents_on_embedding_model    (embedding_model)
-#  index_ragdoll_contents_on_type               (type)
-#  index_ragdoll_contents_on_fulltext_search    (to_tsvector('english'::regconfig, COALESCE(content, ''::text))) USING gin
-#
-# Foreign Keys
-#
-#  fk_rails_...  (document_id => ragdoll_documents.id)
-#
-
 module Ragdoll
   module Core
     module Models
@@ -62,11 +34,11 @@ module Ragdoll
         # Image-specific technical metadata (raw file properties)
         # This metadata is about the actual image file data, not AI-generated insights
         def alt_text
-          metadata.dig('alt_text')
+          metadata.dig("alt_text")
         end
 
         def alt_text=(value)
-          self.metadata = metadata.merge('alt_text' => value)
+          self.metadata = metadata.merge("alt_text" => value)
         end
 
         def embedding_count
@@ -79,56 +51,56 @@ module Ragdoll
         end
 
         def image_size
-          metadata.dig('file_size') || 0
+          metadata.dig("file_size") || 0
         end
 
         def image_size=(value)
-          self.metadata = metadata.merge('file_size' => value)
+          self.metadata = metadata.merge("file_size" => value)
         end
 
         def image_content_type
-          metadata.dig('content_type')
+          metadata.dig("content_type")
         end
 
         def image_content_type=(value)
-          self.metadata = metadata.merge('content_type' => value)
+          self.metadata = metadata.merge("content_type" => value)
         end
 
         def image_filename
-          metadata.dig('filename')
+          metadata.dig("filename")
         end
 
         def image_filename=(value)
-          self.metadata = metadata.merge('filename' => value)
+          self.metadata = metadata.merge("filename" => value)
         end
 
         def image_dimensions
-          width = metadata.dig('width')
-          height = metadata.dig('height')
+          width = metadata.dig("width")
+          height = metadata.dig("height")
           return nil unless width && height
 
           { width: width, height: height }
         end
 
         def set_image_dimensions(width, height)
-          self.metadata = metadata.merge('width' => width, 'height' => height)
+          self.metadata = metadata.merge("width" => width, "height" => height)
         end
 
         # Image format and technical details
         def color_space
-          metadata.dig('color_space')
+          metadata.dig("color_space")
         end
 
         def color_space=(value)
-          self.metadata = metadata.merge('color_space' => value)
+          self.metadata = metadata.merge("color_space" => value)
         end
 
         def bit_depth
-          metadata.dig('bit_depth')
+          metadata.dig("bit_depth")
         end
 
         def bit_depth=(value)
-          self.metadata = metadata.merge('bit_depth' => value)
+          self.metadata = metadata.merge("bit_depth" => value)
         end
 
         # Generate description from image file using LLM vision capabilities
@@ -204,7 +176,7 @@ module Ragdoll
             document.location if image_file?(document.location)
           elsif image_attached?
             # Try to get path from stored data (if it's a file path)
-            data if data&.start_with?('/')
+            data if data&.start_with?("/")
           end
         end
 

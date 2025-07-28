@@ -3,31 +3,6 @@
 require "active_record"
 require "neighbor"
 
-# == Schema Information
-#
-# Table name: ragdoll_embeddings
-#
-#  id                                                                                              :bigint           not null, primary key
-#  chunk_index(Chunk index for ordering embeddings within the embeddable content)                  :integer          not null
-#  content(Original text content that was embedded, typically a document chunk)                    :text             not null
-#  embeddable_type                                                                                 :string           not null
-#  embedding_vector(Vector embedding using pgvector for optimal similarity search performance)     :vector(1536)     not null
-#  returned_at(Timestamp of most recent usage, for recency-based ranking and cache management)     :datetime
-#  usage_count(Number of times used in similarity searches, for caching optimization)              :integer          default(0)
-#  created_at(Standard creation and update timestamps for lifecycle tracking)                      :datetime         not null
-#  updated_at(Standard creation and update timestamps for lifecycle tracking)                      :datetime         not null
-#  embeddable_id(Polymorphic reference to embeddable content (text, image, audio))                 :bigint           not null
-#
-# Indexes
-#
-#  index_ragdoll_embeddings_on_embeddable                         (embeddable_type,embeddable_id)
-#  index_ragdoll_embeddings_on_embeddable_chunk                   (embeddable_type,embeddable_id,chunk_index) UNIQUE
-#  index_ragdoll_embeddings_on_embeddable_type_and_embeddable_id  (embeddable_type,embeddable_id)
-#  index_ragdoll_embeddings_on_embedding_vector_cosine            (embedding_vector) USING ivfflat
-#  index_ragdoll_embeddings_on_returned_at                        (returned_at)
-#  index_ragdoll_embeddings_on_usage_count                        (usage_count)
-#
-
 module Ragdoll
   module Core
     module Models
@@ -80,7 +55,8 @@ module Ragdoll
         end
 
         # PostgreSQL pgvector similarity search using neighbor gem
-        def self.search_similar(query_embedding, limit: Ragdoll.config.search[:max_results], threshold: Ragdoll.config.search[:similarity_threshold], filters: {})
+        def self.search_similar(query_embedding, limit: Ragdoll.config.search[:max_results],
+                                threshold: Ragdoll.config.search[:similarity_threshold], filters: {})
           # Apply filters
           scope = all
           scope = scope.where(embeddable_id: filters[:embeddable_id]) if filters[:embeddable_id]

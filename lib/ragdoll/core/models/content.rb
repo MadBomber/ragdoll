@@ -2,33 +2,6 @@
 
 require "active_record"
 
-# == Schema Information
-#
-# Table name: ragdoll_contents
-#
-#  id              :bigint           not null, primary key
-#  type            :string           not null
-#  document_id     :bigint           not null
-#  embedding_model :string           not null
-#  content         :text
-#  data            :text
-#  metadata        :json             default({})
-#  duration        :float
-#  sample_rate     :integer
-#  created_at      :datetime         not null
-#  updated_at      :datetime         not null
-#
-# Indexes
-#
-#  index_ragdoll_contents_on_embedding_model      (embedding_model)
-#  index_ragdoll_contents_on_type                 (type)
-#  index_ragdoll_contents_on_fulltext_search      (to_tsvector('english'::regconfig, COALESCE(content, ''::text))) USING gin
-#
-# Foreign Keys
-#
-#  fk_rails_...  (document_id => ragdoll_documents.id)
-#
-
 module Ragdoll
   module Core
     module Models
@@ -49,7 +22,7 @@ module Ragdoll
         validates :document_id, presence: true
 
         # JSON columns are handled natively by PostgreSQL
-        
+
         scope :by_type, ->(content_type) { where(type: content_type) }
         scope :with_embeddings, -> { joins(:embeddings).distinct }
         scope :without_embeddings, -> { left_joins(:embeddings).where(embeddings: { id: nil }) }
@@ -69,11 +42,11 @@ module Ragdoll
 
           # Generate embeddings for each chunk
           embedding_service = Ragdoll::Core::EmbeddingService.new
-          
+
           chunks.each_with_index do |chunk_text, index|
             begin
               vector = embedding_service.generate_embedding(chunk_text)
-              
+
               embeddings.create!(
                 content: chunk_text,
                 embedding_vector: vector,

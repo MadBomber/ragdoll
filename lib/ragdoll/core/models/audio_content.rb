@@ -3,34 +3,6 @@
 require "active_record"
 require_relative "content"
 
-# == Schema Information
-#
-# Table name: ragdoll_contents (STI)
-#
-#  id                                                            :bigint           not null, primary key
-#  type(Type of content - TextContent, ImageContent, AudioContent) :string         not null
-#  document_id(Reference to parent document)                     :bigint           not null
-#  embedding_model(Embedding model to use for this content)      :string           not null
-#  content(Text content or description of the file)              :text
-#  data(Raw data from file)                                      :text
-#  metadata(Additional metadata about the file's raw data)       :json             default({})
-#  duration(Duration of audio in seconds - for audio content)    :float
-#  sample_rate(Audio sample rate in Hz - for audio content)      :integer
-#  created_at(Standard creation and update timestamps)           :datetime         not null
-#  updated_at(Standard creation and update timestamps)           :datetime         not null
-#
-# Indexes
-#
-#  index_ragdoll_contents_on_document_id        (document_id)
-#  index_ragdoll_contents_on_embedding_model    (embedding_model)
-#  index_ragdoll_contents_on_type               (type)
-#  index_ragdoll_contents_on_fulltext_search    (to_tsvector('english'::regconfig, COALESCE(content, ''::text))) USING gin
-#
-# Foreign Keys
-#
-#  fk_rails_...  (document_id => ragdoll_documents.id)
-#
-
 module Ragdoll
   module Core
     module Models
@@ -47,7 +19,6 @@ module Ragdoll
           scope = scope.where("duration <= ?", max_duration) if max_duration
           scope
         }
-
 
         # Audio content accessors - content field stores transcript for embedding
         def transcript
@@ -73,52 +44,52 @@ module Ragdoll
         end
 
         def audio_size
-          metadata.dig('file_size') || 0
+          metadata.dig("file_size") || 0
         end
 
         def audio_size=(value)
-          self.metadata = metadata.merge('file_size' => value)
+          self.metadata = metadata.merge("file_size" => value)
         end
 
         def audio_content_type
-          metadata.dig('content_type')
+          metadata.dig("content_type")
         end
 
         def audio_content_type=(value)
-          self.metadata = metadata.merge('content_type' => value)
+          self.metadata = metadata.merge("content_type" => value)
         end
 
         def audio_filename
-          metadata.dig('filename')
+          metadata.dig("filename")
         end
 
         def audio_filename=(value)
-          self.metadata = metadata.merge('filename' => value)
+          self.metadata = metadata.merge("filename" => value)
         end
 
         # Audio format and technical details
         def codec
-          metadata.dig('codec')
+          metadata.dig("codec")
         end
 
         def codec=(value)
-          self.metadata = metadata.merge('codec' => value)
+          self.metadata = metadata.merge("codec" => value)
         end
 
         def bitrate
-          metadata.dig('bitrate')
+          metadata.dig("bitrate")
         end
 
         def bitrate=(value)
-          self.metadata = metadata.merge('bitrate' => value)
+          self.metadata = metadata.merge("bitrate" => value)
         end
 
         def channels
-          metadata.dig('channels')
+          metadata.dig("channels")
         end
 
         def channels=(value)
-          self.metadata = metadata.merge('channels' => value)
+          self.metadata = metadata.merge("channels" => value)
         end
 
         def duration_formatted
