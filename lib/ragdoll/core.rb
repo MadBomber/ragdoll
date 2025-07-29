@@ -10,6 +10,8 @@ $DEBUG_ME = true
 require_relative "core/version"
 require_relative "core/errors"
 require_relative "core/configuration"
+require_relative "core/configuration_service"
+require_relative "core/model_resolver"
 require_relative "core/database"
 require_relative "core/shrine_config"
 require_relative "core/models/document"

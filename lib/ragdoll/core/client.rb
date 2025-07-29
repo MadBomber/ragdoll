@@ -6,14 +6,22 @@ module Ragdoll
   module Core
     class Client
       def initialize
+        # Setup configuration services
+        @config_service = ConfigurationService.new
+        @model_resolver = ModelResolver.new(@config_service)
+
         # Setup logging
         setup_logging
 
         # Setup database connection
-        Database.setup(Ragdoll.config.database_config)
+        Database.setup(@config_service.config.database)
 
-        @embedding_service = EmbeddingService.new
-        @search_engine = SearchEngine.new(@embedding_service)
+        @embedding_service = EmbeddingService.new(
+          client: nil,
+          config_service: @config_service,
+          model_resolver: @model_resolver
+        )
+        @search_engine = SearchEngine.new(@embedding_service, config_service: @config_service)
       end
 
       # Primary method for RAG applications
@@ -124,7 +132,6 @@ module Ragdoll
                                                    **parsed[:metadata]
                                                  })
 
-
         # Queue background jobs for processing if content is available
         embeddings_queued = false
         if parsed[:content].present?
@@ -133,7 +140,6 @@ module Ragdoll
           Ragdoll::Core::Jobs::ExtractKeywords.perform_later(doc_id)
           embeddings_queued = true
         end
-
 
         # Return success information
         {
@@ -265,14 +271,13 @@ module Ragdoll
         require "active_job"
 
         # Create log directory if it doesn't exist
-        # FIXME: log_file is not in current config structure
-        log_file = Ragdoll.config.logging_config[:filepath] || File.join(Dir.home, ".ragdoll", "ragdoll.log")
+        log_file = @config_service.config.logging[:filepath]
         log_dir = File.dirname(log_file)
         FileUtils.mkdir_p(log_dir) unless Dir.exist?(log_dir)
 
         # Set up logger with appropriate level
         logger = Logger.new(log_file)
-        logger.level = case Ragdoll.config.logging_config[:level]
+        logger.level = case @config_service.config.logging[:level]
                        when :debug then Logger::DEBUG
                        when :info then Logger::INFO
                        when :warn then Logger::WARN
@@ -290,25 +295,11 @@ module Ragdoll
       end
 
       def build_enhanced_prompt(original_prompt, context)
-        # FIXME: prompt_template is not in current config structure
-        template = default_prompt_template
+        template = @config_service.config.prompt_template(:rag_enhancement)
 
         template
           .gsub("{{context}}", context)
           .gsub("{{prompt}}", original_prompt)
-      end
-
-      def default_prompt_template
-        <<~TEMPLATE
-          You are an AI assistant. Use the following context to help answer the user's question. If the context doesn't contain relevant information, say so.
-
-          Context:
-          {{context}}
-
-          Question: {{prompt}}
-
-          Answer:
-        TEMPLATE
       end
     end
   end

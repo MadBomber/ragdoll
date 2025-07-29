@@ -12,37 +12,60 @@ module Ragdoll
       class ConfigurationLoadUnknownError < StandardError; end
 
       DEFAULT = {
-        directory: File.join(Dir.home, ".ragdoll"),
-        filepath: File.join(Dir.home, ".ragdoll", "config.yml"),
+        # Base directory for all Ragdoll files - single source of truth
+        base_directory: File.join(Dir.home, ".ragdoll"),
+
+        # Configuration file path derived from base directory
+        config_filepath: File.join(Dir.home, ".ragdoll", "config.yml"),
+
+        # Model configurations organized by purpose with inheritance support
         models: {
-          default: "openai/gpt-4o",
-          summary: "openai/gpt-4o",
-          keywords: "openai/gpt-4o",
+          text_generation: {
+            default: "openai/gpt-4o",
+            summary: nil,    # Inherits from default
+            keywords: nil    # Inherits from default
+          },
           embedding: {
+            provider: :openai,
             text: "openai/text-embedding-3-small",
             image: "openai/clip-vit-base-patch32",
-            audio: "openai/whisper-1"
+            audio: "openai/whisper-1",
+            max_dimensions: 3072,
+            cache_embeddings: true
           }
         },
-        chunking: {
+
+        # Processing configuration by content type
+        processing: {
           text: {
-            max_tokens: 1000,
-            overlap: 200
-          },
-          image: {
-            max_tokens: 4096,
-            overlap: 128
-          },
-          audio: {
-            max_tokens: 4096,
-            overlap: 128
+            chunking: {
+              max_tokens: 1000,
+              overlap: 200
+            }
           },
           default: {
-            max_tokens: 4096,
-            overlap: 128
+            chunking: {
+              max_tokens: 4096,
+              overlap: 128
+            }
+          },
+          search: {
+            similarity_threshold: 0.7,
+            max_results: 10,
+            analytics: {
+              enable: true,
+              usage_tracking_enabled: true,
+              ranking_enabled: true,
+              recency_weight: 0.3,
+              frequency_weight: 0.7,
+              similarity_weight: 1.0
+            }
           }
         },
-        ruby_llm_config: {
+
+        # LLM provider configurations (renamed from ruby_llm_config)
+        llm_providers: {
+          default_provider: :openai,
           openai: {
             api_key: -> { ENV["OPENAI_API_KEY"] },
             organization: -> { ENV["OPENAI_ORGANIZATION"] },
@@ -70,41 +93,48 @@ module Ragdoll
             api_key: -> { ENV["OPENROUTER_API_KEY"] }
           }
         },
-        embedding_config: {
-          provider: :openai,
-          cache_embeddings: true,
-          max_embedding_dimensions: 3072 # Support up to text-embedding-3-large
-        },
-        summarization_config: {
+
+        # Summarization configuration
+        summarization: {
           enable: true,
           max_length: 300,
           min_content_length: 300
         },
-        database_config: {
+
+        # Database configuration with standardized ENV variable name
+        database: {
           adapter: "postgresql",
           database: "ragdoll_development",
           username: "ragdoll",
-          password: -> { ENV["DATABASE_PASSWORD"] },
+          password: -> { ENV["RAGDOLL_DATABASE_PASSWORD"] }, # Fixed ENV variable name
           host: "localhost",
           port: 5432,
           auto_migrate: true,
-          logger: nil # Set to Logger.new(STDOUT) for debugging
+          logger: nil
         },
-        logging_config: {
-          log_level: :warn,
-          log_directory: File.join(Dir.home, ".ragdoll"),
-          log_filepath: File.join(Dir.home, ".ragdoll", "ragdoll.log")
+
+        # Logging configuration with corrected key names and path derivation
+        logging: {
+          level: :warn, # Fixed: was log_level, now matches usage
+          directory: File.join(Dir.home, ".ragdoll", "logs"),
+          filepath: File.join(Dir.home, ".ragdoll", "logs", "ragdoll.log")
         },
-        search: {
-          similarity_threshold: 0.7,
-          max_results: 10,
-          enable_analytics: true,
-          enable_usage_tracking: true,
-          usage_ranking_enabled: true,
-          usage_recency_weight: 0.3,
-          usage_frequency_weight: 0.7,
-          usage_similarity_weight: 1.0
-        }
+
+        # Prompt templates for customizable text generation
+        prompt_templates: {
+          rag_enhancement: <<~TEMPLATE.strip
+            You are an AI assistant. Use the following context to help answer the user's question.
+            If the context doesn't contain relevant information, say so.
+
+            Context:
+            {{context}}
+
+            Question: {{prompt}}
+
+            Answer:
+          TEMPLATE
+        },
+
       }
 
       def initialize(config = {})
@@ -114,7 +144,7 @@ module Ragdoll
       end
 
       def self.load(path: nil)
-        path ||= DEFAULT[:filepath]
+        path ||= DEFAULT[:config_filepath]
 
         raise ConfigurationFileNotFoundError, "Configuration file not found: #{path}" unless File.exist?(path)
 
@@ -127,17 +157,17 @@ module Ragdoll
 
       def save(path: nil)
         if path.nil?
-          path = @config.filepath
+          path = @config.config_filepath
         else
-          save_filepath = @config.filepath
-          @config.filepath = path
+          save_filepath = @config.config_filepath
+          @config.config_filepath = path
         end
 
         FileUtils.mkdir_p(File.dirname(path))
 
         File.write(path, @config.to_yaml)
       rescue StandardError => e
-        @config.filepath = save_filepath unless save_filepath.nil?
+        @config.config_filepath = save_filepath unless save_filepath.nil?
         raise ConfigurationSaveError, "Failed to save configuration to #{path}: #{e.message}"
       end
 
@@ -156,6 +186,35 @@ module Ragdoll
           # If no slash, let RubyLLM determine provider from model name
           { provider: nil, model: provider_model_string }
         end
+      end
+
+      # Resolve model with inheritance support
+      # Returns the model string for a given task, with inheritance from default
+      def resolve_model(task_type)
+        case task_type
+        when :embedding
+          @config.models[:embedding]
+        when :text, :summary, :keywords, :default
+          @config.models[:text_generation][task_type] || @config.models[:text_generation][:default]
+        else
+          @config.models[:text_generation][:default]
+        end
+      end
+
+      # Get provider credentials for a given provider
+      def provider_credentials(provider = nil)
+        provider ||= @config.llm_providers[:default_provider]
+        @config.llm_providers[provider] || {}
+      end
+
+      # Resolve embedding model for content type
+      def embedding_model(content_type = :text)
+        @config.models[:embedding][content_type] || @config.models[:embedding][:text]
+      end
+
+      # Get prompt template
+      def prompt_template(template_name = :rag_enhancement)
+        @config.prompt_templates[template_name]
       end
 
       # Enable method delegation to the internal OpenStruct

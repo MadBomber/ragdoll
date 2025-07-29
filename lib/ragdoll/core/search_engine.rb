@@ -5,13 +5,15 @@
 module Ragdoll
   module Core
     class SearchEngine
-      def initialize(embedding_service)
+      def initialize(embedding_service, config_service: nil)
         @embedding_service = embedding_service
+        @config_service = config_service || ConfigurationService.new
       end
 
       def search_documents(query, options = {})
-        limit = options[:limit] || Ragdoll.config.search[:max_results]
-        threshold = options[:threshold] || Ragdoll.config.search[:similarity_threshold]
+        search_config = @config_service.search_config
+        limit = options[:limit] || search_config[:max_results]
+        threshold = options[:threshold] || search_config[:similarity_threshold]
         filters = options[:filters] || {}
 
         # Generate embedding for the query
@@ -26,8 +28,9 @@ module Ragdoll
       end
 
       def search_similar_content(query_or_embedding, options = {})
-        limit = options[:limit] || Ragdoll.config.search[:max_results]
-        threshold = options[:threshold] || Ragdoll.config.search[:similarity_threshold]
+        search_config = @config_service.search_config
+        limit = options[:limit] || search_config[:max_results]
+        threshold = options[:threshold] || search_config[:similarity_threshold]
         filters = options[:filters] || {}
 
         if query_or_embedding.is_a?(Array)

@@ -7,8 +7,9 @@ module Ragdoll
     class TextGenerationService
       class GenerationError < StandardError; end
 
-      def initialize(client: nil)
-        @configuration = Ragdoll.config
+      def initialize(client: nil, config_service: nil, model_resolver: nil)
+        @config_service = config_service || ConfigurationService.new
+        @model_resolver = model_resolver || ModelResolver.new(@config_service)
         @client = client
         configure_ruby_llm_if_possible unless @client
       end
@@ -17,16 +18,16 @@ module Ragdoll
         return "" if text.nil? || text.strip.empty?
 
         # Skip summarization if not enabled
-        unless @configuration.summarization_config[:enable]
+        unless @config_service.config.summarization[:enable]
           puts "⚠️  LLM summarization disabled, using fallback (first 500 chars)"
           return text[0..500]
         end
 
         # Skip if content is too short
-        min_length = @configuration.summarization_config[:min_content_length]
+        min_length = @config_service.config.summarization[:min_content_length]
         return text if text.length < min_length
 
-        max_length ||= @configuration.summarization_config[:max_length]
+        max_length ||= @config_service.config.summarization[:max_length]
 
         # Clean and prepare text
         cleaned_text = clean_text(text)
@@ -37,13 +38,10 @@ module Ragdoll
         begin
           if @client == :ruby_llm_configured
             # Use RubyLLM for text generation
-            # Use summary model from models config, fallback to default
-            model_string = @configuration.models[:summary] || @configuration.models[:default]
-            
-            # Parse provider/model - use only the model part for RubyLLM
-            parsed = @configuration.parse_provider_model(model_string)
-            model = parsed[:model] || model_string
-            
+            # Use model resolver to get summary model with inheritance
+            resolved_model = @model_resolver.resolve_for_task(:summary)
+            model = resolved_model[:model]
+
             chat = RubyLLM.chat.with_model(model)
                           .with_temperature(0.3)
             chat.add_message(role: "user", content: prompt)
@@ -62,8 +60,9 @@ module Ragdoll
             end
           elsif @client
             # Use custom client for testing
-            model = @configuration.models[:summary] || @configuration.models[:default]
-            
+            resolved_model = @model_resolver.resolve_for_task(:summary)
+            model = resolved_model[:model]
+
             response = @client.chat(
               model: model,
               messages: [
@@ -105,12 +104,9 @@ module Ragdoll
           if @client == :ruby_llm_configured
             # Use RubyLLM for keyword extraction
             # Use keywords model from models config, fallback to default
-            model_string = @configuration.models[:keywords] || @configuration.models[:default]
-            
-            # Parse provider/model - use only the model part for RubyLLM
-            parsed = @configuration.parse_provider_model(model_string)
-            model = parsed[:model] || model_string
-            
+            resolved_model = @model_resolver.resolve_for_task(:keywords)
+            model = resolved_model[:model]
+
             chat = RubyLLM.chat.with_model(model).with_temperature(0.1)
             chat.add_message(role: "user", content: prompt)
             response = chat.complete
@@ -131,9 +127,10 @@ module Ragdoll
               raise GenerationError, "Invalid response format from text generation API"
             end
           elsif @client
-            # Use custom client for testing  
-            model = @configuration.models[:keywords] || @configuration.models[:default]
-            
+            # Use custom client for testing
+            resolved_model = @model_resolver.resolve_for_task(:keywords)
+            model = resolved_model[:model]
+
             response = @client.chat(
               model: model,
               messages: [
@@ -170,9 +167,9 @@ module Ragdoll
 
       def configure_ruby_llm_if_possible
         # Only configure if we have valid configuration
-        # Use embedding_config provider, fallback to :openai
-        provider = @configuration.embedding_config[:provider] || :openai
-        config = @configuration.ruby_llm_config[provider] || {}
+        # Use embedding provider, fallback to :openai
+        provider = @config_service.config.models[:embedding][:provider] || :openai
+        config = @config_service.config.llm_providers[provider] || {}
 
         # Check if we have the necessary API key for the provider
         has_api_key = case provider

@@ -55,8 +55,8 @@ module Ragdoll
         end
 
         # PostgreSQL pgvector similarity search using neighbor gem
-        def self.search_similar(query_embedding, limit: Ragdoll.config.search[:max_results],
-                                threshold: Ragdoll.config.search[:similarity_threshold], filters: {})
+        def self.search_similar(query_embedding, limit: Ragdoll.config.processing[:search][:max_results],
+                                threshold: Ragdoll.config.processing[:search][:similarity_threshold], filters: {})
           # Apply filters
           scope = all
           scope = scope.where(embeddable_id: filters[:embeddable_id]) if filters[:embeddable_id]
