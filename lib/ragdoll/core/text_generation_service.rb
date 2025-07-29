@@ -39,8 +39,8 @@ module Ragdoll
           if @client == :ruby_llm_configured
             # Use RubyLLM for text generation
             # Use model resolver to get summary model with inheritance
-            resolved_model = @model_resolver.resolve_for_task(:summary)
-            model = resolved_model[:model]
+            model_obj = @model_resolver.resolve_for_task(:summary)
+            model = model_obj.model
 
             chat = RubyLLM.chat.with_model(model)
                           .with_temperature(0.3)
@@ -60,8 +60,8 @@ module Ragdoll
             end
           elsif @client
             # Use custom client for testing
-            resolved_model = @model_resolver.resolve_for_task(:summary)
-            model = resolved_model[:model]
+            model_obj = @model_resolver.resolve_for_task(:summary)
+            model = model_obj.model
 
             response = @client.chat(
               model: model,
@@ -104,8 +104,8 @@ module Ragdoll
           if @client == :ruby_llm_configured
             # Use RubyLLM for keyword extraction
             # Use keywords model from models config, fallback to default
-            resolved_model = @model_resolver.resolve_for_task(:keywords)
-            model = resolved_model[:model]
+            model_obj = @model_resolver.resolve_for_task(:keywords)
+            model = model_obj.model
 
             chat = RubyLLM.chat.with_model(model).with_temperature(0.1)
             chat.add_message(role: "user", content: prompt)
@@ -128,8 +128,8 @@ module Ragdoll
             end
           elsif @client
             # Use custom client for testing
-            resolved_model = @model_resolver.resolve_for_task(:keywords)
-            model = resolved_model[:model]
+            model_obj = @model_resolver.resolve_for_task(:keywords)
+            model = model_obj.model
 
             response = @client.chat(
               model: model,

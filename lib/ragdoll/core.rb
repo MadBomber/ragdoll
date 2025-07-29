@@ -9,6 +9,7 @@ $DEBUG_ME = true
 
 require_relative "core/version"
 require_relative "core/errors"
+require_relative "core/model"
 require_relative "core/configuration"
 require_relative "core/configuration_service"
 require_relative "core/model_resolver"
@@ -58,7 +59,7 @@ module Ragdoll
     end
 
     # Factory method for creating clients
-    def self.client(config = nil)
+    def self.client(_config = nil)
       Client.new
     end
 

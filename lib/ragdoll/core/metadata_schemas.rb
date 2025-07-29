@@ -11,7 +11,7 @@ module Ragdoll
         properties: {
           summary: {
             type: "string",
-            description: "Concise summary of the text content (2-3 sentences)"
+            description: "Concise summary of the text content (2-3 paragraphs)"
           },
           keywords: {
             type: "array",
@@ -67,7 +67,7 @@ module Ragdoll
           },
           summary: {
             type: "string",
-            description: "Brief summary of the image content (1 sentence)"
+            description: "Brief summary of the image content (1 paragraph)"
           },
           objects: {
             type: "array",
@@ -130,7 +130,7 @@ module Ragdoll
           },
           content_type: {
             type: "string",
-            enum: %w[speech music podcast interview lecture presentation sound_effect other],
+            enum: %w[speech music podcast interview lecture presentation sound_effect meeting other],
             description: "Type of audio content"
           },
           keywords: {

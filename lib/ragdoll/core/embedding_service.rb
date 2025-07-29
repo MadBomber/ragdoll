@@ -21,10 +21,10 @@ module Ragdoll
         begin
           if @client
             # Use custom client for testing
-            embedding_model = @model_resolver.resolve_embedding(:text)
+            embedding_config = @model_resolver.resolve_embedding(:text)
             response = @client.embed(
               input: cleaned_text,
-              model: embedding_model[:full_name]
+              model: embedding_config.model.to_s
             )
 
             if response && response["embeddings"]&.first
@@ -36,9 +36,9 @@ module Ragdoll
             end
           else
             # Use RubyLLM for real embedding generation
-            embedding_model = @model_resolver.resolve_embedding(:text)
+            embedding_config = @model_resolver.resolve_embedding(:text)
             # Use just the model name for RubyLLM
-            model = embedding_model[:model]
+            model = embedding_config.model.model
 
             begin
               response = RubyLLM.embed(cleaned_text, model: model)
@@ -58,13 +58,11 @@ module Ragdoll
         rescue StandardError => e
           # Only use fallback if no client was provided (RubyLLM failures)
           # If a client was provided, we should raise the error for proper test behavior
-          if @client
-            raise EmbeddingError, "Failed to generate embedding: #{e.message}"
-          else
-            # No client - this is a RubyLLM configuration issue, use fallback
-            puts "Warning: Embedding generation failed (#{e.message}), using fallback"
-            generate_fallback_embedding
-          end
+          raise EmbeddingError, "Failed to generate embedding: #{e.message}" if @client
+
+          # No client - this is a RubyLLM configuration issue, use fallback
+          puts "Warning: Embedding generation failed (#{e.message}), using fallback"
+          generate_fallback_embedding
         end
       end
 
@@ -78,10 +76,10 @@ module Ragdoll
         begin
           if @client
             # Use custom client for testing
-            embedding_model = @model_resolver.resolve_embedding(:text)
+            embedding_config = @model_resolver.resolve_embedding(:text)
             response = @client.embed(
               input: cleaned_texts,
-              model: embedding_model[:full_name]
+              model: embedding_config.model.to_s
             )
 
             if response && response["embeddings"]
@@ -93,9 +91,9 @@ module Ragdoll
             end
           else
             # Use RubyLLM for real embedding generation (batch mode)
-            embedding_model = @model_resolver.resolve_embedding(:text)
+            embedding_config = @model_resolver.resolve_embedding(:text)
             # Use just the model name for RubyLLM
-            model = embedding_model[:model]
+            model = embedding_config.model.model
 
             cleaned_texts.map do |text|
               response = RubyLLM.embed(text, model: model)
@@ -115,13 +113,11 @@ module Ragdoll
         rescue StandardError => e
           # Only use fallback if no client was provided (RubyLLM failures)
           # If a client was provided, we should raise the error for proper test behavior
-          if @client
-            raise EmbeddingError, "Failed to generate embeddings: #{e.message}"
-          else
-            # No client - this is a RubyLLM configuration issue, use fallback
-            puts "Warning: Batch embedding generation failed (#{e.message}), using fallback"
-            texts.map { generate_fallback_embedding }
-          end
+          raise EmbeddingError, "Failed to generate embeddings: #{e.message}" if @client
+
+          # No client - this is a RubyLLM configuration issue, use fallback
+          puts "Warning: Batch embedding generation failed (#{e.message}), using fallback"
+          texts.map { generate_fallback_embedding }
         end
       end
 
