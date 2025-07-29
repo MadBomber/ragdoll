@@ -25,21 +25,21 @@ class CoreTest < Minitest::Test
   def test_configure_yields_configuration
     Ragdoll::Core.configure do |config|
       assert_instance_of Ragdoll::Core::Configuration, config
-      config.models[:default] = "test/provider"
+      config.models[:text_generation][:default] = "test/provider"
     end
 
-    assert_equal "test/provider", Ragdoll::Core.configuration.models[:default]
+    assert_equal "test/provider", Ragdoll::Core.configuration.models[:text_generation][:default]
   end
 
   def test_configure_modifies_configuration
     Ragdoll::Core.configure do |config|
-      config.models[:default] = "new/provider"
-      config.chunking[:text][:max_tokens] = 500
+      config.models[:text_generation][:default] = "new/provider"
+      config.processing[:text][:chunking][:max_tokens] = 500
     end
 
     config = Ragdoll::Core.configuration
-    assert_equal "new/provider", config.models[:default]
-    assert_equal 500, config.chunking[:text][:max_tokens]
+    assert_equal "new/provider", config.models[:text_generation][:default]
+    assert_equal 500, config.processing[:text][:chunking][:max_tokens]
   end
 
   def test_client_factory_method_with_no_options
@@ -71,29 +71,29 @@ class CoreTest < Minitest::Test
   def test_reset_configuration_helper_method
     # First, modify the configuration
     Ragdoll::Core.configure do |config|
-      config.models[:default] = "modified/provider"
+      config.models[:text_generation][:default] = "modified/provider"
     end
 
-    assert_equal "modified/provider", Ragdoll::Core.configuration.models[:default]
+    assert_equal "modified/provider", Ragdoll::Core.configuration.models[:text_generation][:default]
 
     # Reset should restore defaults
     Ragdoll::Core.reset_configuration!
 
-    assert_equal "openai/gpt-4o", Ragdoll::Core.configuration.models[:default]
+    assert_equal "openai/gpt-4o", Ragdoll::Core.configuration.models[:text_generation][:default]
   end
 
   def test_multiple_configure_calls
     Ragdoll::Core.configure do |config|
-      config.models[:default] = "first/provider"
+      config.models[:text_generation][:default] = "first/provider"
     end
 
     Ragdoll::Core.configure do |config|
-      config.chunking[:text][:max_tokens] = 123
+      config.processing[:text][:chunking][:max_tokens] = 123
     end
 
     config = Ragdoll::Core.configuration
-    assert_equal "first/provider", config.models[:default]  # Should persist
-    assert_equal 123, config.chunking[:text][:max_tokens]   # Should be set
+    assert_equal "first/provider", config.models[:text_generation][:default] # Should persist
+    assert_equal 123, config.processing[:text][:chunking][:max_tokens] # Should be set
   end
 
   def test_configuration_thread_safety
@@ -104,9 +104,9 @@ class CoreTest < Minitest::Test
     3.times do |i|
       threads << Thread.new do
         Ragdoll::Core.configure do |config|
-          config.chunking[:text][:max_tokens] = 100 + i
+          config.processing[:text][:chunking][:max_tokens] = 100 + i
         end
-        results << Ragdoll::Core.configuration.chunking[:text][:max_tokens]
+        results << Ragdoll::Core.configuration.processing[:text][:chunking][:max_tokens]
       end
     end
 

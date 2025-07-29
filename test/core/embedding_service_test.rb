@@ -7,7 +7,7 @@ class EmbeddingServiceTest < Minitest::Test
     super
     @config = Ragdoll::Core::Configuration.new
     @config.models[:embedding][:text] = "test-model"
-    @config.ruby_llm_config[:openai][:api_key] = "test-key"
+    @config.llm_providers[:openai][:api_key] = "test-key"
   end
 
   def test_initialize_with_default_configuration
