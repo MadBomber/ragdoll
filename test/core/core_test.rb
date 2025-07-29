@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "test_helper"
+require_relative "../test_helper"
 
 class CoreTest < Minitest::Test
   def setup
@@ -25,21 +25,21 @@ class CoreTest < Minitest::Test
   def test_configure_yields_configuration
     Ragdoll::Core.configure do |config|
       assert_instance_of Ragdoll::Core::Configuration, config
-      config.llm_provider = :test_provider
+      config.models[:default] = "test/provider"
     end
 
-    assert_equal :test_provider, Ragdoll::Core.configuration.llm_provider
+    assert_equal "test/provider", Ragdoll::Core.configuration.models[:default]
   end
 
   def test_configure_modifies_configuration
     Ragdoll::Core.configure do |config|
-      config.llm_provider = :new_provider
-      config.chunk_size = 500
+      config.models[:default] = "new/provider"
+      config.chunking[:text][:max_tokens] = 500
     end
 
     config = Ragdoll::Core.configuration
-    assert_equal :new_provider, config.llm_provider
-    assert_equal 500, config.chunk_size
+    assert_equal "new/provider", config.models[:default]
+    assert_equal 500, config.chunking[:text][:max_tokens]
   end
 
   def test_client_factory_method_with_no_options
@@ -60,38 +60,40 @@ class CoreTest < Minitest::Test
       auto_migrate: true
     }
 
+    # The config parameter is accepted but ignored - client always uses Ragdoll.config
     client = Ragdoll::Core.client(config)
 
     assert_instance_of Ragdoll::Core::Client, client
-    assert_equal config, client.instance_variable_get(:@config)
+    # Client doesn't store config as instance variable - it uses Ragdoll.config
+    refute client.instance_variable_defined?(:@config)
   end
 
   def test_reset_configuration_helper_method
     # First, modify the configuration
     Ragdoll::Core.configure do |config|
-      config.llm_provider = :modified
+      config.models[:default] = "modified/provider"
     end
 
-    assert_equal :modified, Ragdoll::Core.configuration.llm_provider
+    assert_equal "modified/provider", Ragdoll::Core.configuration.models[:default]
 
     # Reset should restore defaults
     Ragdoll::Core.reset_configuration!
 
-    assert_equal :openai, Ragdoll::Core.configuration.llm_provider
+    assert_equal "openai/gpt-4o", Ragdoll::Core.configuration.models[:default]
   end
 
   def test_multiple_configure_calls
     Ragdoll::Core.configure do |config|
-      config.llm_provider = :first
+      config.models[:default] = "first/provider"
     end
 
     Ragdoll::Core.configure do |config|
-      config.chunk_size = 123
+      config.chunking[:text][:max_tokens] = 123
     end
 
     config = Ragdoll::Core.configuration
-    assert_equal :first, config.llm_provider  # Should persist
-    assert_equal 123, config.chunk_size       # Should be set
+    assert_equal "first/provider", config.models[:default]  # Should persist
+    assert_equal 123, config.chunking[:text][:max_tokens]   # Should be set
   end
 
   def test_configuration_thread_safety
@@ -102,9 +104,9 @@ class CoreTest < Minitest::Test
     3.times do |i|
       threads << Thread.new do
         Ragdoll::Core.configure do |config|
-          config.chunk_size = 100 + i
+          config.chunking[:text][:max_tokens] = 100 + i
         end
-        results << Ragdoll::Core.configuration.chunk_size
+        results << Ragdoll::Core.configuration.chunking[:text][:max_tokens]
       end
     end
 
@@ -116,7 +118,7 @@ class CoreTest < Minitest::Test
 
   def test_hybrid_search_delegation
     # Test that hybrid_search method is properly delegated
-    assert Ragdoll::Core.respond_to?(:hybrid_search), "hybrid_search should be delegated to Core module"
+    assert_respond_to Ragdoll::Core, :hybrid_search, "hybrid_search should be delegated to Core module"
   end
 
   def test_module_delegation_completeness
@@ -129,7 +131,7 @@ class CoreTest < Minitest::Test
     ]
 
     expected_methods.each do |method|
-      assert Ragdoll::Core.respond_to?(method), "#{method} should be available on Core module"
+      assert_respond_to Ragdoll::Core, method, "#{method} should be available on Core module"
     end
   end
 end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "test_helper"
+require_relative "../test_helper"
 
 class TextChunkerTest < Minitest::Test
   def setup
@@ -23,7 +23,7 @@ class TextChunkerTest < Minitest::Test
 
   def test_empty_text_returns_empty_array
     chunker = @chunker.new("")
-    assert_equal [], chunker.chunk
+    assert_empty chunker.chunk
   end
 
   def test_short_text_returns_single_chunk
@@ -137,7 +137,7 @@ class TextChunkerTest < Minitest::Test
 
     # Should combine small paragraphs
     assert result.length < 3
-    assert result.first.include?("Short para")
+    assert_includes result.first, "Short para"
   end
 
   def test_chunk_by_structure_splits_large_paragraphs

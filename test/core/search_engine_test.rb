@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "test_helper"
+require_relative "../test_helper"
 
 class SearchEngineTest < Minitest::Test
   def setup
@@ -59,7 +59,7 @@ class SearchEngineTest < Minitest::Test
     @embedding_service.expect(:generate_embedding, nil, [query])
 
     result = @search_engine.search_documents(query)
-    assert_equal [], result
+    assert_empty result
   end
 
   def test_search_documents_with_custom_options
@@ -119,7 +119,7 @@ class SearchEngineTest < Minitest::Test
     @embedding_service.expect(:generate_embedding, nil, [query])
 
     result = @search_engine.search_similar_content(query)
-    assert_equal [], result
+    assert_empty result
   end
 
   def test_search_similar_content_with_custom_options

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../test_helper"
+require_relative "../../test_helper"
 
 module Ragdoll
   module Core
@@ -15,7 +15,8 @@ module Ragdoll
             status: "processed"
           )
 
-          @text_content = @document.text_contents.create!(
+          @text_content = Ragdoll::Core::Models::TextContent.create!(
+            document: @document,
             content: "Test content",
             embedding_model: "test-model"
           )
@@ -95,7 +96,9 @@ module Ragdoll
 
           assert_equal @text_content, embedding.embeddable
           assert_equal @text_content.id, embedding.embeddable_id
-          assert_equal "Ragdoll::Core::Models::TextContent", embedding.embeddable_type
+          # NOTE: ActiveRecord STI with polymorphic associations stores base class name
+          # The actual object class is correct, but embeddable_type stores the base class
+          assert_equal "Ragdoll::Core::Models::Content", embedding.embeddable_type
         end
 
         def test_scopes
@@ -181,7 +184,8 @@ module Ragdoll
 
           # Test basic attributes that definitely exist
           assert_equal embedding.embeddable_id, @text_content.id
-          assert_equal embedding.embeddable_type, "Ragdoll::Core::Models::TextContent"
+          # NOTE: ActiveRecord STI with polymorphic associations stores base class name
+          assert_equal embedding.embeddable_type, "Ragdoll::Core::Models::Content"
           assert_equal "Test chunk", embedding.content
           assert_equal 0, embedding.chunk_index
           assert_equal vector, embedding.embedding_vector
