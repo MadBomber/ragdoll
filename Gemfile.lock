@@ -35,10 +35,12 @@ GEM
     annotate (2.6.5)
       activerecord (>= 2.3.0)
       rake (>= 0.8.7)
+    ansi (1.5.0)
     ast (2.4.3)
     base64 (0.3.0)
     benchmark (0.4.1)
     bigdecimal (3.2.2)
+    builder (3.3.0)
     concurrent-ruby (1.3.5)
     connection_pool (2.5.3)
     content_disposition (1.0.0)
@@ -79,6 +81,11 @@ GEM
     logger (1.7.0)
     marcel (1.0.4)
     minitest (5.25.5)
+    minitest-reporters (1.7.1)
+      ansi
+      builder
+      minitest (>= 5.0)
+      ruby-progressbar
     multi_json (1.16.0)
     multipart-post (2.4.1)
     neighbor (0.6.0)
@@ -212,6 +219,7 @@ DEPENDENCIES
   debug_me
   docx
   minitest
+  minitest-reporters
   neighbor
   opensearch-ruby
   pdf-reader

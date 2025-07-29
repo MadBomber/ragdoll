@@ -34,13 +34,17 @@ module Ragdoll
           # Configure RubyLLM using the same pattern as the working example
           configure_ruby_llm_globally
 
-          primary_temp    = primary.delete(:temperature) || DEFAULT_OPTIONS[:temperature]
-          @primary_prompt = primary.delete(:prompt) || DEFAULT_OPTIONS[:prompt]
-          fallback_temp   = fallback.delete(:temperature) || DEFAULT_FALLBACK_OPTIONS[:temperature]
+          # Duplicate hashes to avoid modifying frozen constants
+          primary_opts = primary.dup
+          fallback_opts = fallback.dup
+
+          primary_temp    = primary_opts.delete(:temperature) || DEFAULT_OPTIONS[:temperature]
+          @primary_prompt = primary_opts.delete(:prompt) || DEFAULT_OPTIONS[:prompt]
+          fallback_temp   = fallback_opts.delete(:temperature) || DEFAULT_FALLBACK_OPTIONS[:temperature]
 
           puts "🤖 ImageDescriptionService: Attempting to create primary model..."
           begin
-            @primary = RubyLLM.chat(**primary).with_temperature(primary_temp)
+            @primary = RubyLLM.chat(**primary_opts).with_temperature(primary_temp)
             puts "✅ ImageDescriptionService: Primary model created successfully: #{@primary.class}"
           rescue StandardError => e
             puts "❌ ImageDescriptionService: Primary model creation failed: #{e.message}"
@@ -49,7 +53,7 @@ module Ragdoll
 
           puts "🔄 ImageDescriptionService: Attempting to create fallback model..."
           begin
-            @fallback = RubyLLM.chat(**fallback).with_temperature(fallback_temp)
+            @fallback = RubyLLM.chat(**fallback_opts).with_temperature(fallback_temp)
             puts "✅ ImageDescriptionService: Fallback model created successfully: #{@fallback.class}"
           rescue StandardError => e
             puts "❌ ImageDescriptionService: Fallback model creation failed: #{e.message}"

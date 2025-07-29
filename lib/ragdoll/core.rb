@@ -57,7 +57,7 @@ module Ragdoll
 
     # Factory method for creating clients
     def self.client(config = nil)
-      Client.new(config)
+      Client.new
     end
 
     # Delegate high-level API methods to default client

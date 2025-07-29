@@ -30,6 +30,7 @@ group :development, :test do
   gem "bundler"                         # The best way to manage your application's dependencies
   gem "debug_me"                        # A tool to print the labeled value of variables.
   gem "minitest"                        # minitest provides a complete suite of testing facilities supporting TDD, BDD, mocking, and benchmarking
+  gem "minitest-reporters"               # Create customizable Minitest output formats
   gem "rake"                            # Rake is a Make-like program implemented in Ruby
   gem "rubocop"                         # Automatic Ruby code style checking tool.
   gem "rubocop-minitest"                # Automatic Minitest code style checking tool.
