@@ -19,9 +19,9 @@ module Ragdoll
           summary: "openai/gpt-4o",
           keywords: "openai/gpt-4o",
           embedding: {
-            text: "text-embedding-3-small",
-            image: "image-embedding-3-small", # FIXME
-            audio: "audio-embedding-3-small" # FIXME
+            text: "openai/text-embedding-3-small",
+            image: "openai/clip-vit-base-patch32",
+            audio: "openai/whisper-1"
           }
         },
         chunking: {
@@ -188,84 +188,3 @@ module Ragdoll
     end
   end
 end
-
-__END__
-
-{
-directory: "/Users/dewayne/.ragdoll",
- filepath: "/Users/dewayne/.ragdoll/config.yml",
- embedding_config:
-  {default:
-    {model: "openai/gpt-4o-mini", summary_model: "openai/gpt-4o-mini", keywords_model: "openai/gpt-4o-mini", max_dimensions: 3072},
-   text: {model: "openai/text-embedding-3-small", max_tokens: 1000, overlap: 200},
-   image: {model: "laion/CLIP-ViT-H-14", max_tokens: 4096, overlap: 128},
-   audio: {model: "openl3", transcription_model: "openai/whisper-large-v2", max_tokens: 4096, overlap: 128}},
- chunking: {text: {max_tokens: 1000, overlap: 200}, default: {max_tokens: 4096, overlap: 128}},
- ruby_llm_config:
-  {openai: {api_key: "***", organization: nil, project: nil},
-   anthropic:
-    {api_key: "***"},
-   google: {api_key: "***", project_id: nil},
-   azure: {api_key: nil, endpoint: nil, api_version: "2024-02-01"},
-   ollama: {endpoint: "http://localhost:11434/v1"},
-   huggingface: {api_key: nil},
-   openrouter: {api_key: nil}},
- summarization_config: {enable: true, model: nil, max_length: 300, min_content_length: 300},
- database_config:
-  {adapter: "postgresql",
-   database: "ragdoll_development",
-   username: "ragdoll",
-   password: "ragdoll",
-   host: "localhost",
-   port: 5432,
-   pool: 20,
-   timeout: 5000,
-   auto_migrate: true,
-   logger: nil},
- logging_config: {level: :warn, directory: "/Users/dewayne/.ragdoll", filepath: "/Users/dewayne/.ragdoll/ragdoll.log"},
- search:
-  {similarity_threshold: 0.7,
-   max_results: 10,
-   enable_analytics: true,
-   enable_usage_tracking: true,
-   usage_ranking_enabled: true,
-   usage_recency_weight: 0.3,
-   usage_frequency_weight: 0.7,
-   usage_similarity_weight: 1.0},
- llm_provider: :openai,
- openai_api_key: "***",
- llm_config:
-  {openai: {api_key: "***", organization: nil, project: nil},
-   anthropic:
-    {api_key: "***"},
-   google: {api_key: "***", project_id: nil},
-   azure: {api_key: nil, endpoint: nil, api_version: "2024-02-01"},
-   ollama: {endpoint: "http://localhost:11434"},
-   huggingface: {api_key: nil},
-   openrouter: {api_key: nil}},
- embedding_provider: :openai,
- embedding_model: "text-embedding-3-small",
- max_embedding_dimensions: 3072,
- cache_embeddings: true,
- default_model: "gpt-4o-mini",
- summary_provider_model: "openai/gpt-4o-mini",
- keywords_provider_model: "openai/gpt-4o-mini",
- embeddings_provider_model: "openai/text-embedding-3-small",
- summary_model: nil,
- chunk_size: 1000,
- chunk_overlap: 200,
- enable_document_summarization: true,
- summary_max_length: 300,
- summary_min_content_length: 300,
- prompt_template: nil,
- search_similarity_threshold: 0.7,
- max_search_results: 10,
- enable_search_analytics: true,
- enable_usage_tracking: true,
- usage_ranking_enabled: true,
- usage_recency_weight: 0.3,
- usage_frequency_weight: 0.7,
- usage_similarity_weight: 1.0,
- log_level: :warn,
- log_file: "/Users/dewayne/.ragdoll/ragdoll.log"
-}

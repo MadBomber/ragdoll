@@ -34,20 +34,22 @@ module Ragdoll
             end
           else
             # Use RubyLLM for real embedding generation
-            model = Ragdoll.config.models[:embedding][:text] || 'text-embedding-3-small'
+            model_string = Ragdoll.config.models[:embedding][:text] || "openai/text-embedding-3-small"
+            # Parse provider/model format and use just the model name for RubyLLM
+            parsed = Ragdoll.config.parse_provider_model(model_string)
+            model = parsed[:model] || model_string
             response = RubyLLM.embed(cleaned_text, model: model)
-            
+
             # Extract the embedding vector from RubyLLM::Embedding object
-            if response.respond_to?(:instance_variable_get)
-              vectors = response.instance_variable_get(:@vectors)
-              if vectors && vectors.is_a?(Array)
-                vectors
-              else
-                raise EmbeddingError, "No vectors found in RubyLLM response"
-              end
-            else
+            unless response.respond_to?(:instance_variable_get)
               raise EmbeddingError, "Unexpected response type from RubyLLM: #{response.class}"
             end
+
+            vectors = response.instance_variable_get(:@vectors)
+            raise EmbeddingError, "No vectors found in RubyLLM response" unless vectors && vectors.is_a?(Array)
+
+            vectors
+
           end
         rescue StandardError => e
           raise EmbeddingError, "Failed to generate embedding: #{e.message}"
@@ -79,22 +81,23 @@ module Ragdoll
             end
           else
             # Use RubyLLM for real embedding generation (batch mode)
-            model = Ragdoll.config.models[:embedding][:text] || 'text-embedding-3-small'
-            
+            model_string = Ragdoll.config.models[:embedding][:text] || "openai/text-embedding-3-small"
+            # Parse provider/model format and use just the model name for RubyLLM
+            parsed = Ragdoll.config.parse_provider_model(model_string)
+            model = parsed[:model] || model_string
+
             cleaned_texts.map do |text|
               response = RubyLLM.embed(text, model: model)
-              
+
               # Extract the embedding vector from RubyLLM::Embedding object
-              if response.respond_to?(:instance_variable_get)
-                vectors = response.instance_variable_get(:@vectors)
-                if vectors && vectors.is_a?(Array)
-                  vectors
-                else
-                  raise EmbeddingError, "No vectors found in RubyLLM response"
-                end
-              else
+              unless response.respond_to?(:instance_variable_get)
                 raise EmbeddingError, "Unexpected response type from RubyLLM: #{response.class}"
               end
+
+              vectors = response.instance_variable_get(:@vectors)
+              raise EmbeddingError, "No vectors found in RubyLLM response" unless vectors && vectors.is_a?(Array)
+
+              vectors
             end
           end
         rescue StandardError => e
@@ -132,9 +135,7 @@ module Ragdoll
             if config[:organization] && ruby_llm_config.respond_to?(:openai_organization=)
               ruby_llm_config.openai_organization = config[:organization]
             end
-            if config[:project] && ruby_llm_config.respond_to?(:openai_project=)
-              ruby_llm_config.openai_project = config[:project]
-            end
+            ruby_llm_config.openai_project = config[:project] if config[:project] && ruby_llm_config.respond_to?(:openai_project=)
           when :anthropic
             ruby_llm_config.anthropic_api_key = config[:api_key] if ruby_llm_config.respond_to?(:anthropic_api_key=)
           when :google
@@ -144,9 +145,7 @@ module Ragdoll
             end
           when :azure
             ruby_llm_config.azure_api_key = config[:api_key] if ruby_llm_config.respond_to?(:azure_api_key=)
-            if config[:endpoint] && ruby_llm_config.respond_to?(:azure_endpoint=)
-              ruby_llm_config.azure_endpoint = config[:endpoint]
-            end
+            ruby_llm_config.azure_endpoint = config[:endpoint] if config[:endpoint] && ruby_llm_config.respond_to?(:azure_endpoint=)
             if config[:api_version] && ruby_llm_config.respond_to?(:azure_api_version=)
               ruby_llm_config.azure_api_version = config[:api_version]
             end
