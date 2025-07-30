@@ -55,9 +55,18 @@ class ModelTest < Minitest::Test
     model = Model.new("")
 
     assert_nil model.provider
-    assert_equal "", model.model
+    assert_nil model.model
     assert_equal "", model.to_s
-    assert_equal({ provider: nil, model: "" }, model.to_h)
+    assert_equal({ provider: nil, model: nil }, model.to_h)
+  end
+
+  def test_model_with_nil
+    model = Model.new(nil)
+
+    assert_nil model.provider
+    assert_nil model.model
+    assert_equal "", model.to_s
+    assert_equal({ provider: nil, model: nil }, model.to_h)
   end
 
   def test_model_with_only_slash

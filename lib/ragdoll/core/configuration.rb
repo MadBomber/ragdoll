@@ -3,6 +3,7 @@
 require "yaml"
 require "fileutils"
 require "ostruct"
+require_relative "model"
 
 module Ragdoll
   module Core
@@ -13,23 +14,23 @@ module Ragdoll
 
       DEFAULT = {
         # Base directory for all Ragdoll files - single source of truth
-        base_directory: File.join(Dir.home, ".ragdoll"),
+        base_directory: File.join(Dir.home, ".config", "ragdoll"),
 
         # Configuration file path derived from base directory
-        config_filepath: File.join(Dir.home, ".ragdoll", "config.yml"),
+        config_filepath: File.join(Dir.home, ".config", "ragdoll", "config.yml"),
 
         # Model configurations organized by purpose with inheritance support
         models: {
           text_generation: {
-            default: "openai/gpt-4o",
-            summary: nil,    # Inherits from default
-            keywords: nil    # Inherits from default
+            default: -> { Model.new(ENV["DEFAULT_TEXT_MODEL"] || "openai/gpt-4o") },
+            summary: -> { Model.new(ENV["SUMMARY_MODEL"] || "openai/gpt-4o") },
+            keywords: -> { Model.new(ENV["KEYWORDS_MODEL"] || "openai/gpt-4o") }
           },
           embedding: {
             provider: :openai,
-            text: "openai/text-embedding-3-small",
-            image: "openai/clip-vit-base-patch32",
-            audio: "openai/whisper-1",
+            text: -> { Model.new(ENV["TEXT_EMBEDDING_MODEL"] || "openai/text-embedding-3-small") },
+            image: -> { Model.new(ENV["IMAGE_EMBEDDING_MODEL"] || "openai/clip-vit-base-patch32") },
+            audio: -> { Model.new(ENV["AUDIO_EMBEDDING_MODEL"] || "openai/whisper-1") },
             max_dimensions: 3072,
             cache_embeddings: true
           }
@@ -116,8 +117,8 @@ module Ragdoll
         # Logging configuration with corrected key names and path derivation
         logging: {
           level: :warn, # Fixed: was log_level, now matches usage
-          directory: File.join(Dir.home, ".ragdoll", "logs"),
-          filepath: File.join(Dir.home, ".ragdoll", "logs", "ragdoll.log")
+          directory: File.join(Dir.home, ".config", "ragdoll", "logs"),
+          filepath: File.join(Dir.home, ".config", "ragdoll", "logs", "ragdoll.log")
         },
 
         # Prompt templates for customizable text generation
@@ -133,13 +134,13 @@ module Ragdoll
 
             Answer:
           TEMPLATE
-        },
+        }
 
-      }
+      }.freeze
 
       def initialize(config = {})
         merged_config = deep_merge(self.class::DEFAULT, config)
-        resolved_config = resolve_procs(merged_config)
+        resolved_config = resolve_procs(merged_config, [])
         @config = OpenStruct.new(resolved_config)
       end
 
@@ -228,12 +229,19 @@ module Ragdoll
 
       private
 
-      def resolve_procs(obj)
+      def resolve_procs(obj, path = [])
         case obj
         when Hash
-          obj.transform_values { |v| resolve_procs(v) }
+          obj.each_with_object({}) { |(k, v), result| result[k] = resolve_procs(v, path + [k]) }
         when Proc
           obj.call
+        when String
+          # Convert strings to Model instances in the models configuration section
+          if path.length >= 2 && path[0] == :models
+            Model.new(obj)
+          else
+            obj
+          end
         else
           obj
         end
