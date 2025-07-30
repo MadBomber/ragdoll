@@ -125,7 +125,7 @@ module Ragdoll
           adapter: "postgresql",
           database: "ragdoll_development",
           username: "ragdoll",
-          password: ENV["RAGDOLL_DATABASE_PASSWORD"],
+          password: ENV.fetch("RAGDOLL_DATABASE_PASSWORD", nil),
           host: "localhost",
           port: 5432,
           auto_migrate: true,

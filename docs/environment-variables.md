@@ -149,16 +149,25 @@ export AZURE_OPENAI_API_VERSION="2024-02-01"
 - Database variables use the `RAGDOLL_DATABASE_` prefix for clarity
 
 ### Default Value Handling
-The codebase uses two patterns for environment variable handling:
+The codebase uses a consistent pattern for environment variable handling:
 
-1. **ENV.fetch with defaults**: `ENV.fetch("VAR_NAME", "default_value")`
-2. **Proc-based lazy evaluation**: `-> { ENV["VAR_NAME"] }` (for secrets that shouldn't have defaults)
+**ENV.fetch pattern**: All environment variable access uses `ENV.fetch("VAR_NAME", default_value)` for consistency and explicit default handling:
+
+1. **Variables with defaults**: `ENV.fetch("AZURE_OPENAI_API_VERSION", "2024-02-01")`
+2. **Variables without defaults**: `ENV.fetch("OPENAI_API_KEY", nil)` (for secrets that shouldn't have fallback values)
+
+This approach provides:
+- **Explicit defaults**: Clear indication of what happens when a variable is unset
+- **Consistent behavior**: Same pattern throughout the codebase
+- **Better debugging**: Easier to track environment variable usage
+- **Security**: Secrets explicitly default to `nil` rather than having fallback values
 
 ### Security Considerations
-- API keys and secrets use proc-based evaluation without default values
+- API keys and secrets use `ENV.fetch("KEY", nil)` to explicitly return `nil` when unset
 - Database passwords are handled securely with the RAGDOLL_ prefix
 - Never commit actual API keys or passwords to version control
 - Use environment-specific configuration files or secret management systems
+- The proc-based lazy evaluation (`-> { ENV.fetch("KEY", nil) }`) ensures credentials are only accessed when needed
 
 ## Troubleshooting
 

@@ -68,30 +68,30 @@ module Ragdoll
         llm_providers: {
           default_provider: :openai,
           openai: {
-            api_key: -> { ENV["OPENAI_API_KEY"] },
-            organization: -> { ENV["OPENAI_ORGANIZATION"] },
-            project: -> { ENV["OPENAI_PROJECT"] }
+            api_key: -> { ENV.fetch("OPENAI_API_KEY", nil) },
+            organization: -> { ENV.fetch("OPENAI_ORGANIZATION", nil) },
+            project: -> { ENV.fetch("OPENAI_PROJECT", nil) }
           },
           anthropic: {
-            api_key: -> { ENV["ANTHROPIC_API_KEY"] }
+            api_key: -> { ENV.fetch("ANTHROPIC_API_KEY", nil) }
           },
           google: {
-            api_key: -> { ENV["GOOGLE_API_KEY"] },
-            project_id: -> { ENV["GOOGLE_PROJECT_ID"] }
+            api_key: -> { ENV.fetch("GOOGLE_API_KEY", nil) },
+            project_id: -> { ENV.fetch("GOOGLE_PROJECT_ID", nil) }
           },
           azure: {
-            api_key: -> { ENV["AZURE_OPENAI_API_KEY"] },
-            endpoint: -> { ENV["AZURE_OPENAI_ENDPOINT"] },
+            api_key: -> { ENV.fetch("AZURE_OPENAI_API_KEY", nil) },
+            endpoint: -> { ENV.fetch("AZURE_OPENAI_ENDPOINT", nil) },
             api_version: -> { ENV.fetch("AZURE_OPENAI_API_VERSION", "2024-02-01") }
           },
           ollama: {
             endpoint: -> { ENV.fetch("OLLAMA_ENDPOINT", "http://localhost:11434") }
           },
           huggingface: {
-            api_key: -> { ENV["HUGGINGFACE_API_KEY"] }
+            api_key: -> { ENV.fetch("HUGGINGFACE_API_KEY", nil) }
           },
           openrouter: {
-            api_key: -> { ENV["OPENROUTER_API_KEY"] }
+            api_key: -> { ENV.fetch("OPENROUTER_API_KEY", nil) }
           }
         },
 
@@ -107,7 +107,7 @@ module Ragdoll
           adapter: "postgresql",
           database: "ragdoll_development",
           username: "ragdoll",
-          password: -> { ENV["RAGDOLL_DATABASE_PASSWORD"] }, # Fixed ENV variable name
+          password: -> { ENV.fetch("RAGDOLL_DATABASE_PASSWORD", nil) },
           host: "localhost",
           port: 5432,
           auto_migrate: true,
