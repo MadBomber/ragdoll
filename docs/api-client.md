@@ -20,38 +20,26 @@ The Client class serves as the primary orchestration layer, providing:
 ### Basic Initialization
 
 ```ruby
-# Using default configuration
-client = Ragdoll::Core::Client.new
-
-# Using custom configuration
-client = Ragdoll::Core::Client.new(
-  llm_provider: :openai,
-  embedding_model: 'text-embedding-3-large',
-  database_config: {
-    adapter: 'postgresql',
-    database: 'ragdoll_production',
-    # ... other database settings
-  }
-)
-
-# Using delegation (recommended)
+# Setup configuration first
 Ragdoll::Core.configure do |config|
-  # ... configuration
+  config.llm_providers[:openai][:api_key] = ENV['OPENAI_API_KEY']
+  config.models[:embedding][:text] = 'openai/text-embedding-3-small'
+  config.models[:text_generation][:default] = 'openai/gpt-4o-mini'
+  config.database = {
+    adapter: 'postgresql',
+    database: 'ragdoll_development',
+    username: 'ragdoll',
+    password: ENV['RAGDOLL_DATABASE_PASSWORD'],
+    host: 'localhost',
+    port: 5432,
+    auto_migrate: true
+  }
 end
 
-# Access via module delegation
-result = Ragdoll::Core.add_document(path: 'document.pdf')
+# Initialize client (uses global configuration)
+client = Ragdoll::Core::Client.new
 ```
 
-### Configuration Override
-
-```ruby
-# Temporarily override configuration for specific operations
-client.with_configuration(embedding_model: 'text-embedding-3-large') do
-  # Use larger embedding model for this operation
-  result = client.add_document(path: 'important_document.pdf')
-end
-```
 
 ## Document Management
 
@@ -66,100 +54,50 @@ result = client.add_document(path: 'research_paper.pdf')
 # {
 #   success: true,
 #   document_id: "123",
-#   message: "Document 'research_paper' added successfully with ID 123",
+#   title: "research_paper",
+#   document_type: "pdf",
+#   content_length: 15000,
 #   embeddings_queued: true,
-#   processing_jobs: ["GenerateEmbeddingsJob", "ExtractKeywordsJob", "GenerateSummaryJob"]
+#   message: "Document 'research_paper' added successfully with ID 123"
 # }
-
-# Add document with options
-result = client.add_document(
-  path: 'document.pdf',
-  title: 'Custom Document Title',
-  metadata: {
-    author: 'John Doe',
-    category: 'research',
-    tags: ['AI', 'machine learning']
-  },
-  chunk_size: 1500,
-  chunk_overlap: 300,
-  background_processing: true
-)
 ```
 
 #### Text Content Addition
 
 ```ruby
 # Add raw text content
-result = client.add_text(
+doc_id = client.add_text(
   content: "This is the text content to be processed...",
   title: "Text Document",
-  metadata: {
-    source: 'user_input',
-    language: 'en'
-  }
+  source: 'user_input',
+  language: 'en'
 )
 
 # Add text with custom chunking
-result = client.add_text(
+doc_id = client.add_text(
   content: long_text_content,
+  title: "Long Text Document",
   chunk_size: 800,
-  chunk_overlap: 150,
-  preserve_structure: true  # Maintain paragraph boundaries
+  chunk_overlap: 150
 )
 ```
 
-#### Multi-Modal Content Addition
-
-```ruby
-# Add image with description
-result = client.add_image(
-  image_path: 'diagram.png',
-  description: 'Neural network architecture diagram',
-  alt_text: 'Diagram showing layers of a convolutional neural network',
-  document_id: existing_document_id  # Optional: attach to existing document
-)
-
-# Add audio with transcript
-result = client.add_audio(
-  audio_path: 'lecture.mp3',
-  transcript: 'Today we will discuss machine learning fundamentals...',
-  document_id: existing_document_id  # Optional: attach to existing document
-)
-
-# Add mixed content document
-result = client.add_mixed_document(
-  files: [
-    { type: 'text', path: 'notes.txt' },
-    { type: 'image', path: 'chart.png', description: 'Performance chart' },
-    { type: 'audio', path: 'recording.mp3' }
-  ],
-  title: 'Complete Research Package'
-)
-```
 
 ### Directory Processing
 
 ```ruby
 # Process entire directory
-result = client.add_directory(
+results = client.add_directory(
   path: '/path/to/documents',
-  recursive: true,
-  file_patterns: ['*.pdf', '*.docx', '*.txt'],
-  exclude_patterns: ['*temp*', '*.log'],
-  batch_size: 10,
-  parallel_processing: true
+  recursive: true
 )
 
-# Returns:
-# {
-#   success: true,
-#   processed_files: 25,
-#   skipped_files: 3,
-#   failed_files: 1,
-#   document_ids: ["123", "124", "125", ...],
-#   processing_jobs: 75,
-#   estimated_completion: "2024-01-15T10:30:00Z"
-# }
+# Returns array of results:
+# [
+#   { file: "/path/to/doc1.pdf", document_id: "123", status: "success" },
+#   { file: "/path/to/doc2.txt", document_id: "124", status: "success" },
+#   { file: "/path/to/bad.doc", error: "Unsupported format", status: "error" }
+# ]
 ```
 
 ### Document Retrieval
@@ -169,76 +107,34 @@ result = client.add_directory(
 ```ruby
 # Get document by ID
 document = client.get_document(id: "123")
+# Returns document hash with basic information
+
+# Get document status
+status = client.document_status(id: "123")
 # Returns:
 # {
 #   id: "123",
 #   title: "research_paper",
-#   location: "/path/to/research_paper.pdf",
-#   document_type: "pdf",
 #   status: "processed",
-#   created_at: "2024-01-15T09:00:00Z",
-#   updated_at: "2024-01-15T09:05:00Z",
-#   metadata: {
-#     summary: "This paper explores...",
-#     keywords: ["AI", "neural networks"],
-#     classification: "research",
-#     topics: ["artificial intelligence"]
-#   },
-#   file_metadata: {
-#     size: 2048576,
-#     mime_type: "application/pdf",
-#     pages: 15
-#   },
-#   content_summary: {
-#     text_contents: 1,
-#     image_contents: 3,
-#     audio_contents: 0,
-#     embeddings_count: 24,
-#     embeddings_ready: true
-#   }
+#   embeddings_count: 24,
+#   embeddings_ready: true,
+#   content_preview: "This research paper discusses...",
+#   message: "Document processed successfully with 24 embeddings"
 # }
-
-# Get document with content
-document = client.get_document(id: "123", include_content: true)
-# Includes actual text, image descriptions, and audio transcripts
 ```
 
 #### Document Listing
 
 ```ruby
-# List all documents
+# List documents with basic options
 documents = client.list_documents
 
-# List with pagination
-documents = client.list_documents(
-  page: 1,
-  per_page: 20,
-  sort: 'created_at',
-  order: 'desc'
-)
-
-# List with filters
+# List with options
 documents = client.list_documents(
   status: 'processed',
-  document_type: ['pdf', 'docx'],
-  created_after: 1.week.ago,
-  has_embeddings: true,
-  classification: 'research'
+  document_type: 'pdf',
+  limit: 20
 )
-
-# Returns:
-# {
-#   documents: [
-#     { id: "123", title: "doc1", status: "processed", ... },
-#     { id: "124", title: "doc2", status: "processing", ... }
-#   ],
-#   pagination: {
-#     current_page: 1,
-#     total_pages: 5,
-#     total_count: 89,
-#     per_page: 20
-#   }
-# }
 ```
 
 ### Document Updates
@@ -301,147 +197,41 @@ results = client.search(query: "machine learning algorithms")
 results = client.search(
   query: "neural network architectures",
   limit: 25,
-  similarity_threshold: 0.8,
-  content_types: ['text', 'image'],
-  include_metadata: true
+  threshold: 0.8
 )
 
 # Returns:
 # {
 #   query: "neural network architectures",
-#   total_results: 15,
-#   search_time: 0.234,
 #   results: [
 #     {
-#       id: "emb_456",
+#       embedding_id: "456",
 #       document_id: "123",
-#       content: "Neural networks are computational models...",
-#       content_type: "text",
-#       similarity_score: 0.92,
-#       usage_score: 0.15,
-#       composite_score: 0.87,
 #       document_title: "Deep Learning Fundamentals",
-#       metadata: { classification: "research", topics: ["AI"] },
+#       document_location: "/path/to/document.pdf",
+#       content: "Neural networks are computational models...",
+#       similarity: 0.92,
 #       chunk_index: 3,
-#       returned_count: 5
+#       usage_count: 5
 #     }
-#   ]
+#   ],
+#   total_results: 15
 # }
-```
 
-### Advanced Search
-
-#### Faceted Search
-
-```ruby
-# Search with facets
-results = client.search_with_facets(
-  query: "artificial intelligence",
-  facets: {
-    content_type: ['text', 'image'],
-    classification: ['research', 'technical'],
-    topics: ['machine learning', 'neural networks'],
-    date_range: [6.months.ago, Time.current]
-  },
-  include_facet_counts: true
-)
-
-# Returns results plus facet breakdown:
-# {
-#   results: [...],
-#   facets: {
-#     content_type: { text: 45, image: 12, audio: 3 },
-#     classification: { research: 30, technical: 20, educational: 10 },
-#     topics: { "machine learning": 35, "neural networks": 25 }
-#   }
-# }
-```
-
-#### Hybrid Search
-
-```ruby
-# Combine semantic and full-text search
+# Hybrid search (semantic + full-text)
 results = client.hybrid_search(
-  query: "convolutional neural networks",
+  query: "neural networks",
   semantic_weight: 0.7,
-  fulltext_weight: 0.3,
-  limit: 30
-)
-
-# Advanced hybrid search with filters
-results = client.hybrid_search(
-  query: "deep learning optimization",
-  semantic_weight: 0.6,
-  fulltext_weight: 0.4,
-  filters: {
-    classification: 'research',
-    min_usage_count: 2
-  },
-  boost_recent: true  # Boost recently added documents
-)
-```
-
-#### Multi-Modal Search
-
-```ruby
-# Search across content types
-results = client.cross_modal_search(
-  query: "neural network diagram",
-  content_types: ['text', 'image', 'audio'],
-  content_weights: {
-    'text' => 1.0,
-    'image' => 0.9,    # Slightly lower weight for images
-    'audio' => 0.7     # Lower weight for audio transcripts
-  }
-)
-
-# Content-type specific search
-text_results = client.search_text_content(
-  query: "machine learning theory",
-  chunk_overlap_tolerance: 0.1  # Handle overlapping chunks
-)
-
-image_results = client.search_image_content(
-  query: "architecture visualization",
-  include_alt_text: true
-)
-
-audio_results = client.search_audio_content(
-  query: "lecture on AI ethics",
-  transcript_confidence_threshold: 0.8
+  text_weight: 0.3
 )
 ```
 
 ### Search Analytics
 
 ```ruby
-# Get search suggestions
-suggestions = client.get_search_suggestions(
-  partial_query: "machine",
-  limit: 10,
-  include_recent: true
-)
-# Returns: ["machine learning", "machine vision", "machine translation", ...]
-
-# Search analytics
-analytics = client.search_analytics(
-  date_range: 1.month.ago..Time.current,
-  include_top_queries: true,
-  include_performance_metrics: true
-)
-
-# Returns:
-# {
-#   total_searches: 1250,
-#   unique_queries: 380,
-#   average_results_per_search: 12.5,
-#   average_search_time: 0.156,
-#   top_queries: [
-#     { query: "machine learning", count: 45, avg_results: 15 },
-#     { query: "neural networks", count: 32, avg_results: 18 }
-#   ],
-#   content_type_distribution: { text: 70, image: 20, audio: 10 }
-# }
+# Simple search analytics available
+analytics = client.search_analytics(days: 30)
+# Returns basic usage statistics
 ```
 
 ## RAG Enhancement
@@ -452,24 +242,21 @@ analytics = client.search_analytics(
 # Get relevant context for a query
 context = client.get_context(
   query: "How do neural networks learn?",
-  limit: 5,
-  min_similarity: 0.75,
-  max_context_length: 2000  # Character limit
+  limit: 5
 )
 
 # Returns:
 # {
-#   query: "How do neural networks learn?",
-#   context_items: [
+#   context_chunks: [
 #     {
 #       content: "Neural networks learn through backpropagation...",
-#       source: "Deep Learning Textbook, Chapter 3",
+#       source: "/path/to/textbook.pdf",
 #       similarity: 0.91,
-#       content_type: "text"
+#       chunk_index: 3
 #     }
 #   ],
-#   total_context_length: 1850,
-#   sources: ["Deep Learning Textbook", "AI Research Paper"]
+#   combined_context: "Neural networks learn through backpropagation...",
+#   total_chunks: 5
 # }
 ```
 
@@ -479,64 +266,18 @@ context = client.get_context(
 # Enhance prompt with relevant context
 enhanced = client.enhance_prompt(
   prompt: "Explain how neural networks learn",
-  context_limit: 5,
-  max_context_length: 1500,
-  template: :academic,  # Use academic writing template
-  include_sources: true
+  context_limit: 5
 )
 
 # Returns:
 # {
+#   enhanced_prompt: "You are an AI assistant. Use the following context...",
 #   original_prompt: "Explain how neural networks learn",
-#   enhanced_prompt: "Based on the following context...\n\n[CONTEXT]\n\nExplain how neural networks learn",
-#   context_used: 3,
-#   context_length: 1200,
-#   sources: ["Source A", "Source B", "Source C"],
-#   template_applied: "academic"
-# }
-
-# Custom prompt templates
-enhanced = client.enhance_prompt(
-  prompt: "What is deep learning?",
-  template: {
-    prefix: "You are an AI expert. Using the provided context:",
-    context_separator: "\n---\n",
-    suffix: "\nProvide a comprehensive answer with examples.",
-    include_source_attribution: true
-  }
-)
-```
-
-### RAG Pipeline
-
-```ruby
-# Complete RAG workflow
-rag_result = client.rag_query(
-  query: "What are the latest developments in transformer architectures?",
-  llm_provider: :openai,
-  model: 'gpt-4',
-  context_limit: 7,
-  temperature: 0.1,
-  include_sources: true,
-  stream_response: false
-)
-
-# Returns:
-# {
-#   query: "What are the latest developments in transformer architectures?",
-#   context_retrieved: 7,
-#   llm_response: "Recent developments in transformer architectures include...",
-#   sources_used: [
-#     { title: "Attention is All You Need", similarity: 0.94 },
-#     { title: "BERT: Bidirectional Encoder Representations", similarity: 0.89 }
-#   ],
-#   response_metadata: {
-#     model: "gpt-4",
-#     tokens_used: 450,
-#     response_time: 2.3
-#   }
+#   context_sources: ["/path/to/textbook.pdf", "/path/to/paper.pdf"],
+#   context_count: 3
 # }
 ```
+
 
 ## Document Status and Monitoring
 
@@ -601,91 +342,13 @@ result = client.retry_failed_jobs(
 ### Health Monitoring
 
 ```ruby
-# System health check
-health = client.health_check
-# Returns:
-# {
-#   status: "healthy",  # healthy, degraded, unhealthy
-#   components: {
-#     database: "healthy",
-#     embedding_service: "healthy",
-#     background_jobs: "healthy",
-#     search_index: "healthy"
-#   },
-#   performance: {
-#     avg_search_time: 0.156,
-#     avg_embedding_time: 0.089,
-#     queue_depth: 3
-#   },
-#   last_check: "2024-01-15T10:00:00Z"
-# }
+# Simple health check
+healthy = client.healthy?
+# Returns true/false
 
-# Detailed health information
-detailed_health = client.detailed_health_check
-```
-
-### System Statistics
-
-```ruby
-# Comprehensive system statistics
+# Basic system statistics
 stats = client.stats
-# Returns:
-# {
-#   documents: {
-#     total: 1250,
-#     by_type: { pdf: 450, docx: 300, text: 250, image: 150, audio: 100 },
-#     by_status: { processed: 1200, processing: 30, error: 20 },
-#     total_size: "2.5 GB"
-#   },
-#   content: {
-#     text_contents: 1150,
-#     image_contents: 250,
-#     audio_contents: 180,
-#     mixed_documents: 75
-#   },
-#   embeddings: {
-#     total: 28500,
-#     by_model: { "text-embedding-3-small": 25000, "text-embedding-ada-002": 3500 },
-#     avg_per_document: 22.8,
-#     index_size: "1.2 GB"
-#   },
-#   search: {
-#     total_searches: 5600,
-#     avg_results_per_search: 15.2,
-#     avg_search_time: 0.145,
-#     top_queries: ["machine learning", "neural networks", "AI research"]
-#   },
-#   usage: {
-#     active_users: 45,
-#     searches_today: 230,
-#     documents_added_today: 12,
-#     storage_used: "3.1 GB",
-#     api_calls_today: 1250
-#   }
-# }
-
-# Time-series statistics
-time_stats = client.time_series_stats(
-  period: 1.month.ago..Time.current,
-  granularity: 'day'  # hour, day, week, month
-)
-```
-
-### Configuration Management
-
-```ruby
-# Get current configuration (sanitized)
-config = client.configuration
-# Returns configuration without sensitive data (API keys masked)
-
-# Update configuration at runtime
-result = client.update_configuration(
-  search_similarity_threshold: 0.8,
-  max_search_results: 30
-)
-
-# Reset to defaults
-client.reset_configuration(preserve_credentials: true)
+# Returns document statistics hash
 ```
 
 ## Error Handling
