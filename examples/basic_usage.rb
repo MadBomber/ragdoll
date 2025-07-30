@@ -18,7 +18,7 @@ Ragdoll.configure do |config|
     adapter: "postgresql",
     database: "ragdoll_basic_example",
     username: "ragdoll",
-    password: ENV["DATABASE_PASSWORD"],
+    password: ENV["RAGDOLL_DATABASE_PASSWORD"],
     host: "localhost",
     port: 5432,
     auto_migrate: true

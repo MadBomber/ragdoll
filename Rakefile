@@ -17,10 +17,10 @@ task :setup_test_db do
   test_db_config = {
     adapter: "postgresql",
     database: "ragdoll_test",
-    username: ENV["POSTGRES_USER"] || "postgres",
-    password: ENV["POSTGRES_PASSWORD"] || "",
-    host: ENV["POSTGRES_HOST"] || "localhost",
-    port: ENV["POSTGRES_PORT"] || 5432
+    username: ENV["RAGDOLL_POSTGRES_USER"] || "postgres",
+    password: ENV["RAGDOLL_POSTGRES_PASSWORD"] || "",
+    host: ENV["RAGDOLL_POSTGRES_HOST"] || "localhost",
+    port: ENV["RAGDOLL_POSTGRES_PORT"] || 5432
   }
 
   # Ensure database exists
