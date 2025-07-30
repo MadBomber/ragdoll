@@ -213,10 +213,10 @@ module Minitest
       Ragdoll::Core::Database.setup({
                                       adapter: "postgresql",
                                       database: "ragdoll_test",
-                                      username: ENV["RAGDOLL_POSTGRES_USER"] || "postgres",
-                                      password: ENV["RAGDOLL_POSTGRES_PASSWORD"] || "",
-                                      host: ENV["RAGDOLL_POSTGRES_HOST"] || "localhost",
-                                      port: ENV["RAGDOLL_POSTGRES_PORT"] || 5432,
+                                      username: ENV.fetch("RAGDOLL_POSTGRES_USER", "postgres"),
+                                      password: ENV.fetch("RAGDOLL_POSTGRES_PASSWORD", ""),
+                                      host: ENV.fetch("RAGDOLL_POSTGRES_HOST", "localhost"),
+                                      port: ENV.fetch("RAGDOLL_POSTGRES_PORT", 5432),
                                       auto_migrate: true,
                                       logger: nil
                                     })

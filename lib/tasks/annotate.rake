@@ -18,7 +18,7 @@ task :environment do
                                     adapter: "postgresql",
                                     database: "ragdoll_development",
                                     username: "ragdoll",
-                                    password: ENV["RAGDOLL_DATABASE_PASSWORD"] || ENV["DATABASE_PASSWORD"],
+                                    password: ENV.fetch("RAGDOLL_DATABASE_PASSWORD", ENV["DATABASE_PASSWORD"]),
                                     host: "localhost",
                                     port: 5432,
                                     auto_migrate: false # Don't auto-migrate during annotation

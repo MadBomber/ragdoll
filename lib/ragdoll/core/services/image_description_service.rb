@@ -147,7 +147,7 @@ module Ragdoll
             nil
           end
           # FIXME: ollama_url is not in current config structure, should use ruby_llm_config[:ollama][:endpoint]
-          ollama_endpoint = ragdoll_config&.ruby_llm_config&.dig(:ollama, :endpoint) || ENV["OLLAMA_API_BASE"] || ENV["OLLAMA_ENDPOINT"] || "http://localhost:11434"
+          ollama_endpoint = ragdoll_config&.ruby_llm_config&.dig(:ollama, :endpoint) || ENV.fetch("OLLAMA_API_BASE", ENV.fetch("OLLAMA_ENDPOINT", "http://localhost:11434"))
 
           puts "🔗 ImageDescriptionService: Using ollama endpoint: #{ollama_endpoint}"
 

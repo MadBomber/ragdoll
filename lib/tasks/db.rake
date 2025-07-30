@@ -18,7 +18,7 @@ namespace :db do
       ActiveRecord::Base.establish_connection(
         adapter: 'postgresql',
         database: 'postgres', # Connect to postgres database initially
-        username: ENV['POSTGRES_SUPERUSER'] || 'postgres',
+        username: ENV.fetch('POSTGRES_SUPERUSER', 'postgres'),
         password: ENV['POSTGRES_SUPERUSER_PASSWORD'],
         host: config.database_config[:host] || 'localhost',
         port: config.database_config[:port] || 5432
@@ -60,7 +60,7 @@ namespace :db do
       ActiveRecord::Base.establish_connection(
         adapter: 'postgresql',
         database: 'ragdoll_development',
-        username: ENV['POSTGRES_SUPERUSER'] || 'postgres',
+        username: ENV.fetch('POSTGRES_SUPERUSER', 'postgres'),
         password: ENV['POSTGRES_SUPERUSER_PASSWORD'],
         host: config.database_config[:host] || 'localhost',
         port: config.database_config[:port] || 5432

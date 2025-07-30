@@ -22,15 +22,15 @@ module Ragdoll
         # Model configurations organized by purpose with inheritance support
         models: {
           text_generation: {
-            default: -> { Model.new(ENV["RAGDOLL_DEFAULT_TEXT_MODEL"] || "openai/gpt-4o") },
-            summary: -> { Model.new(ENV["RAGDOLL_SUMMARY_MODEL"] || "openai/gpt-4o") },
-            keywords: -> { Model.new(ENV["RAGDOLL_KEYWORDS_MODEL"] || "openai/gpt-4o") }
+            default: -> { Model.new(ENV.fetch("RAGDOLL_DEFAULT_TEXT_MODEL", "openai/gpt-4o")) },
+            summary: -> { Model.new(ENV.fetch("RAGDOLL_SUMMARY_MODEL", "openai/gpt-4o")) },
+            keywords: -> { Model.new(ENV.fetch("RAGDOLL_KEYWORDS_MODEL", "openai/gpt-4o")) }
           },
           embedding: {
             provider: :openai,
-            text: -> { Model.new(ENV["RAGDOLL_TEXT_EMBEDDING_MODEL"] || "openai/text-embedding-3-small") },
-            image: -> { Model.new(ENV["RAGDOLL_IMAGE_EMBEDDING_MODEL"] || "openai/clip-vit-base-patch32") },
-            audio: -> { Model.new(ENV["RAGDOLL_AUDIO_EMBEDDING_MODEL"] || "openai/whisper-1") },
+            text: -> { Model.new(ENV.fetch("RAGDOLL_TEXT_EMBEDDING_MODEL", "openai/text-embedding-3-small")) },
+            image: -> { Model.new(ENV.fetch("RAGDOLL_IMAGE_EMBEDDING_MODEL", "openai/clip-vit-base-patch32")) },
+            audio: -> { Model.new(ENV.fetch("RAGDOLL_AUDIO_EMBEDDING_MODEL", "openai/whisper-1")) },
             max_dimensions: 3072,
             cache_embeddings: true
           }
@@ -82,10 +82,10 @@ module Ragdoll
           azure: {
             api_key: -> { ENV["AZURE_OPENAI_API_KEY"] },
             endpoint: -> { ENV["AZURE_OPENAI_ENDPOINT"] },
-            api_version: -> { ENV["AZURE_OPENAI_API_VERSION"] || "2024-02-01" }
+            api_version: -> { ENV.fetch("AZURE_OPENAI_API_VERSION", "2024-02-01") }
           },
           ollama: {
-            endpoint: -> { ENV["OLLAMA_ENDPOINT"] || "http://localhost:11434" }
+            endpoint: -> { ENV.fetch("OLLAMA_ENDPOINT", "http://localhost:11434") }
           },
           huggingface: {
             api_key: -> { ENV["HUGGINGFACE_API_KEY"] }
