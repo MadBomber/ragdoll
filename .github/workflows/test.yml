@@ -2,9 +2,9 @@ name: Test
 
 on:
   push:
-    branches: [main]
+    branches: [main, ci_with_pg]
   pull_request:
-    branches: [main]
+    branches: [main, ci_with_pg]
 
 jobs:
   test:
