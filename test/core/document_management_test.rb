@@ -4,6 +4,11 @@ require_relative "../test_helper"
 require "securerandom"
 
 class DocumentManagementTest < Minitest::Test
+  def setup
+    super
+    skip_if_database_unavailable
+  end
+
   def test_add_document_with_metadata
     location = "/path/to/document.txt"
     content = "This is the document content"

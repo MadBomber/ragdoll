@@ -6,6 +6,11 @@ module Ragdoll
   module Core
     module Models
       class DocumentTest < Minitest::Test
+        def setup
+          super
+          skip_if_database_unavailable
+        end
+
         def test_create_document
           document = Ragdoll::Core::Models::Document.create!(
             location: "/path/to/doc.txt",
@@ -301,17 +306,17 @@ module Ragdoll
 
         def test_extract_keywords_with_empty_query
           keywords = Ragdoll::Core::Models::Document.extract_keywords(query: "")
-          assert_equal [], keywords
+          assert_empty keywords
         end
 
         def test_extract_keywords_with_nil_query
           keywords = Ragdoll::Core::Models::Document.extract_keywords(query: nil)
-          assert_equal [], keywords
+          assert_empty keywords
         end
 
         def test_extract_keywords_with_whitespace_only
           keywords = Ragdoll::Core::Models::Document.extract_keywords(query: "   \t\n   ")
-          assert_equal [], keywords
+          assert_empty keywords
         end
 
         def test_extract_keywords_removes_duplicates

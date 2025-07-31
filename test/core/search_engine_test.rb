@@ -5,6 +5,7 @@ require_relative "../test_helper"
 class SearchEngineTest < Minitest::Test
   def setup
     super
+    skip_if_database_unavailable
     @embedding_service = Minitest::Mock.new
     @search_engine = Ragdoll::Core::SearchEngine.new(@embedding_service)
   end

@@ -8,6 +8,7 @@ module Ragdoll
       class EmbeddingTest < Minitest::Test
         def setup
           super
+          skip_if_database_unavailable
           @document = Ragdoll::Core::Models::Document.create!(
             location: "/test.txt",
             title: "Test Document",
