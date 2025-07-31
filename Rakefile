@@ -9,6 +9,10 @@ $VERBOSE = nil
 require "bundler/gem_tasks"
 require "rake/testtask"
 
+def ci_environment?
+  ENV["CI"] == "true" || ENV["RAGDOLL_SKIP_DATABASE_TESTS"] == "true"
+end
+
 desc "Setup test database"
 task :setup_test_db do
   require_relative "lib/ragdoll-core"
@@ -60,7 +64,7 @@ Rake::TestTask.new(:test) do |t|
 end
 
 # Make test task depend on database setup only if not skipping database tests
-task test: :setup_test_db unless ENV["CI"] == "true" || ENV["RAGDOLL_SKIP_DATABASE_TESTS"] == "true"
+task test: :setup_test_db unless ci_environment?
 
 # Load annotate tasks
 Dir.glob("lib/tasks/*.rake").each { |r| load r }

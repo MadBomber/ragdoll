@@ -2,18 +2,14 @@
 
 require_relative "../../test_helper"
 
-# Skip this entire test class in CI environments
-if ENV["CI"] == "true" || ENV["RAGDOLL_SKIP_DATABASE_TESTS"] == "true"
-  puts "Skipping EmbeddingTest (database-dependent) in CI environment"
-else
-
 module Ragdoll
   module Core
     module Models
       class EmbeddingTest < Minitest::Test
         def setup
           super
-          skip_if_database_unavailable
+          return skip("Skipping database test in CI environment") if ci_environment?
+
           @document = Ragdoll::Core::Models::Document.create!(
             location: "/test.txt",
             title: "Test Document",
@@ -304,5 +300,3 @@ module Ragdoll
     end
   end
 end
-
-end # End conditional block for CI environment
