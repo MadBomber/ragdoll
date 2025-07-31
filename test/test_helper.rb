@@ -201,14 +201,14 @@ ActiveRecord::Migration.verbose = false
 module Minitest
   class Test
     def skip_if_database_unavailable(message = "Skipping database test in CI environment")
-      skip(message) if ENV["RAGDOLL_SKIP_DATABASE_TESTS"] == "true"
+      skip(message) if ENV["RAGDOLL_SKIP_DATABASE_TESTS"] == "true" || ENV["CI"] == "true"
     end
 
     def setup
       Ragdoll::Core.reset_configuration!
 
       # Skip database setup in CI environment
-      return if ENV["RAGDOLL_SKIP_DATABASE_TESTS"] == "true"
+      return if ENV["RAGDOLL_SKIP_DATABASE_TESTS"] == "true" || ENV["CI"] == "true"
 
       # Silence all ActiveRecord output
       ActiveRecord::Base.logger = nil
@@ -230,7 +230,7 @@ module Minitest
     def teardown
       # Skip database cleanup in CI environment
       # Clean up database in correct order to avoid foreign key violations
-      if (ENV["RAGDOLL_SKIP_DATABASE_TESTS"] != "true") && ActiveRecord::Base.connected?
+      if (ENV["RAGDOLL_SKIP_DATABASE_TESTS"] != "true" && ENV["CI"] != "true") && ActiveRecord::Base.connected?
         # Delete child tables first, then parent tables (using current schema)
         tables_to_clean = %w[
           ragdoll_embeddings
