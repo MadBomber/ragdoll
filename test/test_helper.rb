@@ -115,74 +115,72 @@ class CompactTestReporter < Minitest::Reporters::BaseReporter
     puts "=" * 80
 
     all_failed = (@failed_tests + @error_tests).sort_by { |r| [test_file_from_result(r), r.klass, r.name] }
-    
-    if all_failed.any?
-      puts
-      puts "Failed Tests by File:"
-      puts "-" * 40
 
-      # Group by test file
-      tests_by_file = all_failed.group_by { |result| test_file_from_result(result) }
-      
-      tests_by_file.each do |file_path, file_tests|
-        relative_path = file_path.gsub(Dir.pwd + "/", "")
-        puts
-        puts "\e[1m#{relative_path}\e[0m (#{file_tests.count} failure#{'s' if file_tests.count != 1})"
-        
-        file_tests.each do |result|
-          status_color = result.result_code == "F" ? "\e[31m" : "\e[31m"
-          status_text = result.result_code == "F" ? "FAIL" : "ERROR"
-          puts "  #{status_color}#{status_text}\e[0m #{result.klass}##{result.name}"
-          
-          # Show brief error message
-          if result.failure
-            message = result.failure.message.split("\n").first || ""
-            message = message[0, 100] + "..." if message.length > 100
-            puts "       #{message}"
-          end
-        end
-        
-        puts
-        puts "  \e[36m# Run this file:\e[0m"
-        puts "  bundle exec rake test #{relative_path}"
-        puts
-        puts "  \e[36m# Run specific test:\e[0m"
-        file_tests.each do |result|
-          puts "  bundle exec ruby #{relative_path} -n #{result.name}"
-        end
+    return unless all_failed.any?
+
+    puts
+    puts "Failed Tests by File:"
+    puts "-" * 40
+
+    # Group by test file
+    tests_by_file = all_failed.group_by { |result| test_file_from_result(result) }
+
+    tests_by_file.each do |file_path, file_tests|
+      relative_path = file_path.gsub(Dir.pwd + "/", "")
+      puts
+      puts "\e[1m#{relative_path}\e[0m (#{file_tests.count} failure#{'s' if file_tests.count != 1})"
+
+      file_tests.each do |result|
+        status_color = result.result_code == "F" ? "\e[31m" : "\e[31m"
+        status_text = result.result_code == "F" ? "FAIL" : "ERROR"
+        puts "  #{status_color}#{status_text}\e[0m #{result.klass}##{result.name}"
+
+        # Show brief error message
+        next unless result.failure
+
+        message = result.failure.message.split("\n").first || ""
+        message = message[0, 100] + "..." if message.length > 100
+        puts "       #{message}"
       end
 
       puts
-      puts "=" * 80
-      puts "Quick Commands:"
-      puts "  \e[36m# Run all tests:\e[0m"
-      puts "  bundle exec rake test"
+      puts "  \e[36m# Run this file:\e[0m"
+      puts "  bundle exec rake test #{relative_path}"
       puts
-      puts "  \e[36m# Run only failed files:\e[0m"
-      tests_by_file.keys.each do |file_path|
-        relative_path = file_path.gsub(Dir.pwd + "/", "")
-        puts "  bundle exec rake test #{relative_path}"
+      puts "  \e[36m# Run specific test:\e[0m"
+      file_tests.each do |result|
+        puts "  bundle exec ruby #{relative_path} -n #{result.name}"
       end
-      puts "=" * 80
     end
+
+    puts
+    puts "=" * 80
+    puts "Quick Commands:"
+    puts "  \e[36m# Run all tests:\e[0m"
+    puts "  bundle exec rake test"
+    puts
+    puts "  \e[36m# Run only failed files:\e[0m"
+    tests_by_file.keys.each do |file_path|
+      relative_path = file_path.gsub(Dir.pwd + "/", "")
+      puts "  bundle exec rake test #{relative_path}"
+    end
+    puts "=" * 80
   end
 
   def test_file_from_result(result)
     # Extract test file path from backtrace
     if result.failure && result.failure.respond_to?(:backtrace) && result.failure.backtrace
       test_line = result.failure.backtrace.find { |line| line.include?("/test/") && line.include?("_test.rb") }
-      if test_line
-        return test_line.split(":").first
-      end
+      return test_line.split(":").first if test_line
     end
-    
+
     # Fallback: try to guess from class name
     class_name = result.klass.to_s
     if class_name.end_with?("Test")
       # Convert CamelCase to snake_case
-      file_name = class_name.gsub(/([A-Z])/, '_\1').downcase.gsub(/^_/, '') + ".rb"
+      file_name = class_name.gsub(/([A-Z])/, '_\1').downcase.gsub(/^_/, "") + ".rb"
       test_dir = File.join(Dir.pwd, "test")
-      
+
       # Search for the file
       Dir.glob("#{test_dir}/**/*_test.rb").find do |path|
         File.basename(path) == file_name
@@ -209,6 +207,9 @@ module Minitest
     def setup
       Ragdoll::Core.reset_configuration!
 
+      # Skip database setup in CI environment
+      return if ENV["RAGDOLL_SKIP_DATABASE_TESTS"] == "true"
+
       # Silence all ActiveRecord output
       ActiveRecord::Base.logger = nil
       ActiveRecord::Migration.verbose = false
@@ -227,8 +228,9 @@ module Minitest
     end
 
     def teardown
+      # Skip database cleanup in CI environment
       # Clean up database in correct order to avoid foreign key violations
-      if ActiveRecord::Base.connected?
+      if (ENV["RAGDOLL_SKIP_DATABASE_TESTS"] != "true") && ActiveRecord::Base.connected?
         # Delete child tables first, then parent tables (using current schema)
         tables_to_clean = %w[
           ragdoll_embeddings

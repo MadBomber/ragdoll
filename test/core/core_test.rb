@@ -47,12 +47,14 @@ class CoreTest < Minitest::Test
   end
 
   def test_client_factory_method_with_no_options
+    skip_if_database_unavailable
     client = Ragdoll::Core.client
 
     assert_instance_of Ragdoll::Core::Client, client
   end
 
   def test_client_factory_method_with_config
+    skip_if_database_unavailable
     config = Ragdoll::Core::Configuration.new
     config.database_config = {
       adapter: "postgresql",
