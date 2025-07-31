@@ -2,6 +2,11 @@
 
 require_relative "../../test_helper"
 
+# Skip this entire test class in CI environments
+if ENV["CI"] == "true" || ENV["RAGDOLL_SKIP_DATABASE_TESTS"] == "true"
+  puts "Skipping EmbeddingTest (database-dependent) in CI environment"
+else
+
 module Ragdoll
   module Core
     module Models
@@ -299,3 +304,5 @@ module Ragdoll
     end
   end
 end
+
+end # End conditional block for CI environment

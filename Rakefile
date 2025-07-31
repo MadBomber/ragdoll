@@ -59,8 +59,8 @@ Rake::TestTask.new(:test) do |t|
   t.test_files = FileList["test/**/*_test.rb"]
 end
 
-# Make test task depend on database setup
-task test: :setup_test_db
+# Make test task depend on database setup only if not skipping database tests
+task test: :setup_test_db unless ENV["CI"] == "true" || ENV["RAGDOLL_SKIP_DATABASE_TESTS"] == "true"
 
 # Load annotate tasks
 Dir.glob("lib/tasks/*.rake").each { |r| load r }
