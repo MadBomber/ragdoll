@@ -18,22 +18,22 @@ The configuration system provides 25+ configurable options organized into logica
 ### Simple Setup
 
 ```ruby
-require 'ragdoll'
+require 'ragdoll-core'
 
 Ragdoll::Core.configure do |config|
-  # Configure Ruby LLM providers
-  config.ruby_llm_config[:openai][:api_key] = ENV['OPENAI_API_KEY']
+  # Configure LLM providers (new structure)
+  config.llm_providers[:openai][:api_key] = ENV['OPENAI_API_KEY']
   
-  # Configure models
-  config.models[:embedding][:text] = 'text-embedding-3-small'
-  config.models[:default] = 'openai/gpt-4o-mini'
+  # Configure models (new structure)
+  config.models[:embedding][:text] = 'openai/text-embedding-3-small'
+  config.models[:text_generation][:default] = 'openai/gpt-4o-mini'
   
   # Database (PostgreSQL REQUIRED)
-  config.database_config = {
+  config.database = {
     adapter: 'postgresql',
     database: 'ragdoll_development',
     username: 'ragdoll',
-    password: ENV['DATABASE_PASSWORD'],
+    password: ENV['RAGDOLL_DATABASE_PASSWORD'],
     host: 'localhost',
     port: 5432,
     auto_migrate: true
@@ -45,42 +45,41 @@ end
 
 ```ruby
 Ragdoll::Core.configure do |config|
-  # Configure Ruby LLM providers
-  config.ruby_llm_config[:openai][:api_key] = ENV['OPENAI_API_KEY']
-  config.ruby_llm_config[:openai][:organization] = ENV['OPENAI_ORGANIZATION']
-  config.ruby_llm_config[:openai][:project] = ENV['OPENAI_PROJECT']
+  # Configure LLM providers (new structure)
+  config.llm_providers[:openai][:api_key] = ENV['OPENAI_API_KEY']
+  config.llm_providers[:openai][:organization] = ENV['OPENAI_ORGANIZATION']
+  config.llm_providers[:openai][:project] = ENV['OPENAI_PROJECT']
   
-  # Configure models
-  config.models[:embedding][:text] = 'text-embedding-3-small'
-  config.models[:default] = 'openai/gpt-4o-mini'
-  config.models[:summary] = 'openai/gpt-4o'
-  config.models[:keywords] = 'openai/gpt-4o-mini'
+  # Configure models (new structure)
+  config.models[:embedding][:text] = 'openai/text-embedding-3-small'
+  config.models[:text_generation][:default] = 'openai/gpt-4o-mini'
+  config.models[:text_generation][:summary] = 'openai/gpt-4o'
+  config.models[:text_generation][:keywords] = 'openai/gpt-4o-mini'
   
   # Production PostgreSQL with pgvector
-  config.database_config = {
+  config.database = {
     adapter: 'postgresql',
     database: ENV['DATABASE_NAME'] || 'ragdoll_production',
     username: ENV['DATABASE_USERNAME'] || 'ragdoll',
-    password: ENV['DATABASE_PASSWORD'],
+    password: ENV['RAGDOLL_DATABASE_PASSWORD'],
     host: ENV['DATABASE_HOST'] || 'localhost',
     port: ENV['DATABASE_PORT'] || 5432,
-    pool: ENV['DATABASE_POOL'] || 20,
     auto_migrate: false  # Handle migrations separately in production
   }
   
   # Production logging
-  config.logging_config[:log_level] = :info
-  config.logging_config[:log_filepath] = '/var/log/ragdoll/ragdoll.log'
+  config.logging[:level] = :info
+  config.logging[:filepath] = '/var/log/ragdoll/ragdoll.log'
   
   # Performance settings
-  config.chunking[:text][:max_tokens] = 1000
-  config.chunking[:text][:overlap] = 200
-  config.search[:similarity_threshold] = 0.75
-  config.search[:max_results] = 50
+  config.processing[:text][:chunking][:max_tokens] = 1000
+  config.processing[:text][:chunking][:overlap] = 200
+  config.processing[:search][:similarity_threshold] = 0.75
+  config.processing[:search][:max_results] = 50
   
   # Enable summarization
-  config.summarization_config[:enable] = true
-  config.summarization_config[:max_length] = 300
+  config.summarization[:enable] = true
+  config.summarization[:max_length] = 300
 end
 ```
 
@@ -92,53 +91,53 @@ Ragdoll supports 7 LLM providers through the ruby_llm integration:
 
 ```ruby
 # OpenAI (recommended for production)
-config.ruby_llm_config[:openai][:api_key] = ENV['OPENAI_API_KEY']
-config.ruby_llm_config[:openai][:organization] = ENV['OPENAI_ORGANIZATION']
-config.ruby_llm_config[:openai][:project] = ENV['OPENAI_PROJECT']
-config.models[:embedding][:text] = 'text-embedding-3-small'  # or text-embedding-3-large
-config.models[:default] = 'openai/gpt-4o'
-config.models[:summary] = 'openai/gpt-4o'
-config.models[:keywords] = 'openai/gpt-4o-mini'
+config.llm_providers[:openai][:api_key] = ENV['OPENAI_API_KEY']
+config.llm_providers[:openai][:organization] = ENV['OPENAI_ORGANIZATION']
+config.llm_providers[:openai][:project] = ENV['OPENAI_PROJECT']
+config.models[:embedding][:text] = 'openai/text-embedding-3-small'  # or text-embedding-3-large
+config.models[:text_generation][:default] = 'openai/gpt-4o'
+config.models[:text_generation][:summary] = 'openai/gpt-4o'
+config.models[:text_generation][:keywords] = 'openai/gpt-4o-mini'
 
 # Anthropic Claude
-config.ruby_llm_config[:anthropic][:api_key] = ENV['ANTHROPIC_API_KEY']
-config.ruby_llm_config[:openai][:api_key] = ENV['OPENAI_API_KEY']  # Still needed for embeddings
-config.models[:embedding][:text] = 'text-embedding-3-small'  # OpenAI embeddings
-config.models[:default] = 'anthropic/claude-3-sonnet-20240229'
-config.models[:summary] = 'anthropic/claude-3-sonnet-20240229'
-config.models[:keywords] = 'anthropic/claude-3-haiku-20240307'
+config.llm_providers[:anthropic][:api_key] = ENV['ANTHROPIC_API_KEY']
+config.llm_providers[:openai][:api_key] = ENV['OPENAI_API_KEY']  # Still needed for embeddings
+config.models[:embedding][:text] = 'openai/text-embedding-3-small'  # OpenAI embeddings
+config.models[:text_generation][:default] = 'anthropic/claude-3-sonnet-20240229'
+config.models[:text_generation][:summary] = 'anthropic/claude-3-sonnet-20240229'
+config.models[:text_generation][:keywords] = 'anthropic/claude-3-haiku-20240307'
 
 # Google Gemini
-config.ruby_llm_config[:google][:api_key] = ENV['GOOGLE_API_KEY']
-config.ruby_llm_config[:google][:project_id] = ENV['GOOGLE_PROJECT_ID']
-config.models[:default] = 'google/gemini-1.5-pro'
-config.models[:summary] = 'google/gemini-1.5-pro'
-config.models[:keywords] = 'google/gemini-1.5-flash'
+config.llm_providers[:google][:api_key] = ENV['GOOGLE_API_KEY']
+config.llm_providers[:google][:project_id] = ENV['GOOGLE_PROJECT_ID']
+config.models[:text_generation][:default] = 'google/gemini-1.5-pro'
+config.models[:text_generation][:summary] = 'google/gemini-1.5-pro'
+config.models[:text_generation][:keywords] = 'google/gemini-1.5-flash'
 
 # Azure OpenAI
-config.ruby_llm_config[:azure][:api_key] = ENV['AZURE_OPENAI_API_KEY']
-config.ruby_llm_config[:azure][:endpoint] = ENV['AZURE_OPENAI_ENDPOINT']
-config.ruby_llm_config[:azure][:api_version] = ENV['AZURE_OPENAI_API_VERSION']
+config.llm_providers[:azure][:api_key] = ENV['AZURE_OPENAI_API_KEY']
+config.llm_providers[:azure][:endpoint] = ENV['AZURE_OPENAI_ENDPOINT']
+config.llm_providers[:azure][:api_version] = ENV['AZURE_OPENAI_API_VERSION']
 config.models[:embedding][:text] = 'text-embedding-ada-002'
-config.models[:default] = 'azure/gpt-4'
+config.models[:text_generation][:default] = 'azure/gpt-4'
 
 # Ollama (local deployment)
-config.ruby_llm_config[:ollama][:endpoint] = ENV['OLLAMA_ENDPOINT'] || 'http://localhost:11434/v1'
-config.models[:default] = 'ollama/llama3:8b'
-config.models[:summary] = 'ollama/llama3:8b'
-config.models[:keywords] = 'ollama/llama3:8b'
+config.llm_providers[:ollama][:endpoint] = ENV['OLLAMA_ENDPOINT'] || 'http://localhost:11434'
+config.models[:text_generation][:default] = 'ollama/llama3:8b'
+config.models[:text_generation][:summary] = 'ollama/llama3:8b'
+config.models[:text_generation][:keywords] = 'ollama/llama3:8b'
 config.models[:embedding][:text] = 'nomic-embed-text'
 
 # HuggingFace
-config.ruby_llm_config[:huggingface][:api_key] = ENV['HUGGINGFACE_API_KEY']
-config.models[:default] = 'huggingface/microsoft/DialoGPT-medium'
+config.llm_providers[:huggingface][:api_key] = ENV['HUGGINGFACE_API_KEY']
+config.models[:text_generation][:default] = 'huggingface/microsoft/DialoGPT-medium'
 config.models[:embedding][:text] = 'sentence-transformers/all-MiniLM-L6-v2'
 
 # OpenRouter (access to multiple models)
-config.ruby_llm_config[:openrouter][:api_key] = ENV['OPENROUTER_API_KEY']
-config.models[:default] = 'openrouter/anthropic/claude-3-sonnet'
-config.models[:summary] = 'openrouter/anthropic/claude-3-sonnet'
-config.models[:keywords] = 'openrouter/openai/gpt-3.5-turbo'
+config.llm_providers[:openrouter][:api_key] = ENV['OPENROUTER_API_KEY']
+config.models[:text_generation][:default] = 'openrouter/anthropic/claude-3-sonnet'
+config.models[:text_generation][:summary] = 'openrouter/anthropic/claude-3-sonnet'
+config.models[:text_generation][:keywords] = 'openrouter/openai/gpt-3.5-turbo'
 ```
 
 ### Multi-Provider Configuration
@@ -146,16 +145,16 @@ config.models[:keywords] = 'openrouter/openai/gpt-3.5-turbo'
 ```ruby
 # Use different providers for different tasks
 Ragdoll::Core.configure do |config|
-  # Configure multiple Ruby LLM providers
-  config.ruby_llm_config[:openai][:api_key] = ENV['OPENAI_API_KEY']
-  config.ruby_llm_config[:anthropic][:api_key] = ENV['ANTHROPIC_API_KEY']
-  config.ruby_llm_config[:ollama][:endpoint] = 'http://localhost:11434/v1'
+  # Configure multiple LLM providers
+  config.llm_providers[:openai][:api_key] = ENV['OPENAI_API_KEY']
+  config.llm_providers[:anthropic][:api_key] = ENV['ANTHROPIC_API_KEY']
+  config.llm_providers[:ollama][:endpoint] = 'http://localhost:11434'
   
   # Configure models for different tasks
-  config.models[:embedding][:text] = 'text-embedding-3-small'  # OpenAI embeddings
-  config.models[:default] = 'openai/gpt-4o-mini'              # OpenAI for general tasks
-  config.models[:summary] = 'anthropic/claude-3-sonnet-20240229'  # Claude for summarization
-  config.models[:keywords] = 'ollama/llama3:8b'               # Local Ollama for keywords
+  config.models[:embedding][:text] = 'openai/text-embedding-3-small'  # OpenAI embeddings
+  config.models[:text_generation][:default] = 'openai/gpt-4o-mini'    # OpenAI for general tasks
+  config.models[:text_generation][:summary] = 'anthropic/claude-3-sonnet-20240229'  # Claude for summarization
+  config.models[:text_generation][:keywords] = 'ollama/llama3:8b'     # Local Ollama for keywords
 end
 ```
 

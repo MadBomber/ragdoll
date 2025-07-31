@@ -75,11 +75,9 @@ module Ragdoll
         end
 
         def content_types
-          types = []
-          types << "text" if text_contents.any?
-          types << "image" if image_contents.any?
-          types << "audio" if audio_contents.any?
-          types
+          %w[text image audio].select do |type|
+            send("#{type}_contents").any?
+          end
         end
 
         def primary_content_type
@@ -91,16 +89,14 @@ module Ragdoll
 
         # Dynamic content method that forwards to appropriate content table
         def content
-          case primary_content_type
-          when "text"
-            # Return the combined content from all text_contents
-            text_contents.pluck(:content).compact.join("\n\n")
-          when "image"
-            # Return the combined descriptions from all image_contents (content field stores description)
-            image_contents.pluck(:content).compact.join("\n\n")
-          when "audio"
-            # Return the combined transcripts from all audio_contents (content field stores transcript)
-            audio_contents.pluck(:content).compact.join("\n\n")
+          type = primary_content_type
+
+          if %w[text image audio].include?(type)
+            # Return the combined content from the appropriate content type
+            # For text: actual text content
+            # For image: AI-generated descriptions (stored in content field)
+            # For audio: transcripts (stored in content field)
+            send("#{type}_contents").pluck(:content).compact.join("\n\n")
           else
             # Fallback: try to get any available content
             contents.pluck(:content).compact.join("\n\n")
@@ -128,15 +124,13 @@ module Ragdoll
         end
 
         def total_embedding_count
-          text_embeddings.count + image_embeddings.count + audio_embeddings.count
+          %w[text image audio].sum { |type| send("#{type}_embeddings").count }
         end
 
         def embeddings_by_type
-          {
-            text: text_embeddings.count,
-            image: image_embeddings.count,
-            audio: audio_embeddings.count
-          }
+          %w[text image audio].each_with_object({}) do |type, result|
+            result[type.to_sym] = send("#{type}_embeddings").count
+          end
         end
 
         # Document metadata methods - now using dedicated columns
@@ -231,9 +225,9 @@ module Ragdoll
 
         # Generate embeddings for all content types
         def generate_embeddings_for_all_content!
-          text_contents.each(&:generate_embeddings!)
-          image_contents.each(&:generate_embeddings!)
-          audio_contents.each(&:generate_embeddings!)
+          %w[text image audio].each do |type|
+            send("#{type}_contents").each(&:generate_embeddings!)
+          end
         end
 
         # Generate structured metadata using LLM
@@ -429,21 +423,11 @@ module Ragdoll
         def all_embeddings(content_type: nil)
           content_ids = []
 
-          # If content_type is specified, only get IDs for that type
-          if content_type
-            case content_type.to_s
-            when "text"
-              content_ids.concat(text_contents.pluck(:id)) if text_contents.any?
-            when "image"
-              content_ids.concat(image_contents.pluck(:id)) if image_contents.any?
-            when "audio"
-              content_ids.concat(audio_contents.pluck(:id)) if audio_contents.any?
-            end
-          else
-            # Collect all content IDs across all content types
-            content_ids.concat(text_contents.pluck(:id)) if text_contents.any?
-            content_ids.concat(image_contents.pluck(:id)) if image_contents.any?
-            content_ids.concat(audio_contents.pluck(:id)) if audio_contents.any?
+          content_types = content_type ? [content_type.to_s] : %w[text image audio]
+
+          content_types.each do |type|
+            content_relation = send("#{type}_contents")
+            content_ids.concat(content_relation.pluck(:id)) if content_relation.any?
           end
 
           return Ragdoll::Core::Models::Embedding.none if content_ids.empty?
@@ -593,24 +577,9 @@ module Ragdoll
 
         def total_embeddings_count
           # Count embeddings through polymorphic associations
-          embedding_count = 0
-
-          # Count embeddings for text contents
-          text_contents.each do |content|
-            embedding_count += content.embeddings.count
+          %w[text image audio].sum do |type|
+            send("#{type}_contents").sum { |content| content.embeddings.count }
           end
-
-          # Count embeddings for image contents
-          image_contents.each do |content|
-            embedding_count += content.embeddings.count
-          end
-
-          # Count embeddings for audio contents
-          audio_contents.each do |content|
-            embedding_count += content.embeddings.count
-          end
-
-          embedding_count
         end
 
         # Normalize location to absolute path for file paths
