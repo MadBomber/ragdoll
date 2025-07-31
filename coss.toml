@@ -135,6 +135,7 @@ ai_summary_enabled = false
 # 20. Submodules and Component References
 [submodules]
 # References to integration gems in the ragdoll ecosystem
+ragdoll          = "https://github.com/MadBomber/ragdoll"
 ragdoll-cli      = "https://github.com/MadBomber/ragdoll-cli"
 ragdoll-rails    = "https://github.com/MadBomber/ragdoll-rails"
 ragdoll-docs     = "https://github.com/MadBomber/ragdoll-docs"
