@@ -9,6 +9,19 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ragdoll_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
     strategy:
       fail-fast: false
       matrix:
@@ -19,6 +32,11 @@ jobs:
             name: "TruffleRuby"
 
     name: ${{ matrix.name }}
+    env:
+      RAGDOLL_POSTGRES_HOST: localhost
+      RAGDOLL_POSTGRES_USER: postgres
+      RAGDOLL_POSTGRES_PASSWORD: postgres
+      RAGDOLL_POSTGRES_PORT: 5432
     steps:
       - uses: actions/checkout@v4
 
