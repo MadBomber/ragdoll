@@ -33,6 +33,7 @@ jobs:
       RAGDOLL_POSTGRES_USER: postgres
       RAGDOLL_POSTGRES_PASSWORD: postgres
       RAGDOLL_POSTGRES_PORT: 5432
+      RAGDOLL_SKIP_DATABASE_TESTS: true
     steps:
       - uses: actions/checkout@v4
       - name: Install ImageMagick

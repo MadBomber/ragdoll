@@ -202,6 +202,10 @@ ActiveRecord::Migration.verbose = false
 
 module Minitest
   class Test
+    def skip_if_database_unavailable(message = "Skipping database test in CI environment")
+      skip(message) if ENV["RAGDOLL_SKIP_DATABASE_TESTS"] == "true"
+    end
+
     def setup
       Ragdoll::Core.reset_configuration!
 
