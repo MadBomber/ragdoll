@@ -1,0 +1,3 @@
+[submodule "docs"]
+	path = docs
+	url = ssh://git@github.com/MadBomber/ragdoll-docs.git
