@@ -8,7 +8,7 @@
     <tr>
       <td width="50%">
         <a href="https://research.ibm.com/blog/retrieval-augmented-generation-RAG" target="_blank">
-          <img src="rag_doll.png" alt="Ragdoll" width="800">
+          <img src="ragdoll.png" alt="Ragdoll" width="800">
         </a>
       </td>
       <td width="50%" valign="top">
