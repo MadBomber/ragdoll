@@ -7,7 +7,7 @@ module Ragdoll
     def initialize(client: nil, config_service: nil, model_resolver: nil)
       @client = client
       @config_service = config_service || Ragdoll::ConfigurationService.new
-      @model_resolver = model_resolver || Ragdoll::Core::ModelResolver.new(@config_service)
+      @model_resolver = model_resolver || Ragdoll::ModelResolver.new(@config_service)
       configure_ruby_llm unless @client
     end
 

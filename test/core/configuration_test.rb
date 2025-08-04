@@ -10,10 +10,10 @@ class ConfigurationTest < Minitest::Test
 
   def test_default_values
     # Test new configuration structure
-    assert_equal Model.new("openai/gpt-4o"), @config.models[:text_generation][:default]
-    assert_equal Model.new("openai/gpt-4o"), @config.models[:text_generation][:summary] # Now returns Model instead of nil
-    assert_equal Model.new("openai/gpt-4o"), @config.models[:text_generation][:keywords] # Now returns Model instead of nil
-    assert_equal Model.new("openai/text-embedding-3-small"), @config.models[:embedding][:text]
+    assert_equal Ragdoll::Core::Model.new("openai/gpt-4o"), @config.models[:text_generation][:default]
+    assert_equal Ragdoll::Core::Model.new("openai/gpt-4o"), @config.models[:text_generation][:summary] # Now returns Model instead of nil
+    assert_equal Ragdoll::Core::Model.new("openai/gpt-4o"), @config.models[:text_generation][:keywords] # Now returns Model instead of nil
+    assert_equal Ragdoll::Core::Model.new("openai/text-embedding-3-small"), @config.models[:embedding][:text]
     assert_equal 1000, @config.processing[:text][:chunking][:max_tokens]
     assert_equal 200, @config.processing[:text][:chunking][:overlap]
     assert_equal 0.7, @config.processing[:search][:similarity_threshold]
@@ -235,14 +235,14 @@ class ConfigurationTest < Minitest::Test
 
   def test_model_inheritance_methods
     # Test new model resolution methods
-    assert_equal Model.new("openai/gpt-4o"), @config.resolve_model(:default)
-    assert_equal Model.new("openai/gpt-4o"), @config.resolve_model(:summary) # Should inherit from default
-    assert_equal Model.new("openai/gpt-4o"), @config.resolve_model(:keywords) # Should inherit from default
+    assert_equal Ragdoll::Core::Model.new("openai/gpt-4o"), @config.resolve_model(:default)
+    assert_equal Ragdoll::Core::Model.new("openai/gpt-4o"), @config.resolve_model(:summary) # Should inherit from default
+    assert_equal Ragdoll::Core::Model.new("openai/gpt-4o"), @config.resolve_model(:keywords) # Should inherit from default
 
     # Test embedding model resolution
-    assert_equal Model.new("openai/text-embedding-3-small"), @config.embedding_model(:text)
-    assert_equal Model.new("openai/clip-vit-base-patch32"), @config.embedding_model(:image)
-    assert_equal Model.new("openai/whisper-1"), @config.embedding_model(:audio)
+    assert_equal Ragdoll::Core::Model.new("openai/text-embedding-3-small"), @config.embedding_model(:text)
+    assert_equal Ragdoll::Core::Model.new("openai/clip-vit-base-patch32"), @config.embedding_model(:image)
+    assert_equal Ragdoll::Core::Model.new("openai/whisper-1"), @config.embedding_model(:audio)
   end
 
   def test_prompt_template_access

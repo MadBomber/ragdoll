@@ -6,7 +6,7 @@ require "tempfile"
 class DocumentProcessorTest < Minitest::Test
   def setup
     super
-    @processor = Ragdoll::Core::DocumentProcessor
+    @processor = Ragdoll::DocumentProcessor
   end
 
   def test_class_parse_method
@@ -79,7 +79,7 @@ class DocumentProcessorTest < Minitest::Test
   def test_parse_error_on_invalid_file
     processor = @processor.new("/nonexistent/file.txt")
 
-    assert_raises(Ragdoll::Core::DocumentProcessor::ParseError) do
+    assert_raises(Ragdoll::DocumentProcessor::ParseError) do
       processor.parse
     end
   end
@@ -108,8 +108,8 @@ class DocumentProcessorTest < Minitest::Test
   end
 
   def test_error_classes_inheritance
-    assert Ragdoll::Core::DocumentProcessor::ParseError < Ragdoll::Core::DocumentError
-    assert Ragdoll::Core::DocumentProcessor::UnsupportedFormatError < Ragdoll::Core::DocumentProcessor::ParseError
+    assert Ragdoll::DocumentProcessor::ParseError < Ragdoll::Core::DocumentError
+    assert Ragdoll::DocumentProcessor::UnsupportedFormatError < Ragdoll::DocumentProcessor::ParseError
   end
 
   private

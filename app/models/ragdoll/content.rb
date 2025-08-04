@@ -36,7 +36,7 @@ module Ragdoll
       embeddings.destroy_all
 
       # Use TextChunker to split content into chunks
-      chunks = Ragdoll::Core::TextChunker.chunk(embedding_content)
+      chunks = Ragdoll::TextChunker.chunk(embedding_content)
 
       # Generate embeddings for each chunk
       embedding_service = Ragdoll::EmbeddingService.new

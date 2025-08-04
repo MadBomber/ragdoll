@@ -15,7 +15,7 @@ class ClientTest < Minitest::Test
     return if ci_environment?
 
     assert_instance_of Ragdoll::EmbeddingService, @client.instance_variable_get(:@embedding_service)
-    assert_instance_of Ragdoll::Core::SearchEngine, @client.instance_variable_get(:@search_engine)
+    assert_instance_of Ragdoll::SearchEngine, @client.instance_variable_get(:@search_engine)
   end
 
   def test_enhance_prompt_with_context
@@ -25,8 +25,8 @@ class ClientTest < Minitest::Test
     @client.add_document(path: "test_content.txt")
 
     # Mock DocumentProcessor to return test content
-    original_parse = Ragdoll::Core::DocumentProcessor.method(:parse)
-    Ragdoll::Core::DocumentProcessor.define_singleton_method(:parse) do |_path|
+    original_parse = Ragdoll::DocumentProcessor.method(:parse)
+    Ragdoll::DocumentProcessor.define_singleton_method(:parse) do |_path|
       {
         content: "Relevant context content",
         metadata: { title: "Test Doc" },
@@ -43,7 +43,7 @@ class ClientTest < Minitest::Test
       assert_instance_of Integer, result[:context_count]
     ensure
       # Restore original method
-      Ragdoll::Core::DocumentProcessor.define_singleton_method(:parse, original_parse)
+      Ragdoll::DocumentProcessor.define_singleton_method(:parse, original_parse)
     end
   end
 
@@ -162,8 +162,8 @@ class ClientTest < Minitest::Test
 
     with_temp_text_file("File content") do |file_path|
       # Mock DocumentProcessor to return metadata with title
-      original_parse = Ragdoll::Core::DocumentProcessor.method(:parse)
-      Ragdoll::Core::DocumentProcessor.define_singleton_method(:parse) do |path|
+      original_parse = Ragdoll::DocumentProcessor.method(:parse)
+      Ragdoll::DocumentProcessor.define_singleton_method(:parse) do |path|
         {
           content: File.read(path),
           metadata: { title: "Custom Title" },
@@ -179,7 +179,7 @@ class ClientTest < Minitest::Test
         assert_equal "Custom Title", doc[:title]
       ensure
         # Restore original method
-        Ragdoll::Core::DocumentProcessor.define_singleton_method(:parse, original_parse)
+        Ragdoll::DocumentProcessor.define_singleton_method(:parse, original_parse)
       end
     end
   end
@@ -190,8 +190,8 @@ class ClientTest < Minitest::Test
     content_with_title = "File content"
     with_temp_text_file(content_with_title) do |file_path|
       # Mock DocumentProcessor to return metadata with title
-      original_parse = Ragdoll::Core::DocumentProcessor.method(:parse)
-      Ragdoll::Core::DocumentProcessor.define_singleton_method(:parse) do |path|
+      original_parse = Ragdoll::DocumentProcessor.method(:parse)
+      Ragdoll::DocumentProcessor.define_singleton_method(:parse) do |path|
         {
           content: File.read(path),
           metadata: { title: "Metadata Title" },
@@ -206,7 +206,7 @@ class ClientTest < Minitest::Test
         assert_equal "Metadata Title", doc[:title]
       ensure
         # Restore original method
-        Ragdoll::Core::DocumentProcessor.define_singleton_method(:parse, original_parse)
+        Ragdoll::DocumentProcessor.define_singleton_method(:parse, original_parse)
       end
     end
   end
@@ -349,15 +349,15 @@ class ClientTest < Minitest::Test
 
     # Mock stats to raise an error
     # Mock DocumentManagement.get_document_stats to raise error
-    original_method = Ragdoll::Core::DocumentManagement.method(:get_document_stats)
-    Ragdoll::Core::DocumentManagement.define_singleton_method(:get_document_stats) do
+    original_method = Ragdoll::DocumentManagement.method(:get_document_stats)
+    Ragdoll::DocumentManagement.define_singleton_method(:get_document_stats) do
       raise StandardError, "Storage error"
     end
 
     refute @client.healthy?
 
     # Restore original method
-    Ragdoll::Core::DocumentManagement.define_singleton_method(:get_document_stats, original_method)
+    Ragdoll::DocumentManagement.define_singleton_method(:get_document_stats, original_method)
   end
 
   def test_client_uses_database_storage
@@ -367,7 +367,7 @@ class ClientTest < Minitest::Test
     search_engine = client.instance_variable_get(:@search_engine)
 
     # Client uses SearchEngine, not direct storage backend
-    assert_instance_of Ragdoll::Core::SearchEngine, search_engine
+    assert_instance_of Ragdoll::SearchEngine, search_engine
   end
 
   def test_client_initializes_embedding_service

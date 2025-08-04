@@ -18,7 +18,7 @@ class DocumentManagementTest < Minitest::Test
       author: "Test Author"
     }
 
-    doc_id = Ragdoll::Core::DocumentManagement.add_document(location, content, metadata)
+    doc_id = Ragdoll::DocumentManagement.add_document(location, content, metadata)
 
     assert_match(/^\d+$/, doc_id)
     document = Ragdoll::Document.find(doc_id)
@@ -33,7 +33,7 @@ class DocumentManagementTest < Minitest::Test
     location = "/path/to/document.txt"
     content = "This is the document content"
 
-    doc_id = Ragdoll::Core::DocumentManagement.add_document(location, content)
+    doc_id = Ragdoll::DocumentManagement.add_document(location, content)
 
     assert_match(/^\d+$/, doc_id)
     document = Ragdoll::Document.find(doc_id)
@@ -45,7 +45,7 @@ class DocumentManagementTest < Minitest::Test
   def test_get_document_existing
     document = create_test_document
 
-    result = Ragdoll::Core::DocumentManagement.get_document(document.id)
+    result = Ragdoll::DocumentManagement.get_document(document.id)
 
     refute_nil result
     assert_equal document.id.to_s, result[:id]
@@ -55,7 +55,7 @@ class DocumentManagementTest < Minitest::Test
   end
 
   def test_get_document_nonexistent
-    result = Ragdoll::Core::DocumentManagement.get_document(999_999)
+    result = Ragdoll::DocumentManagement.get_document(999_999)
 
     assert_nil result
   end
@@ -63,7 +63,7 @@ class DocumentManagementTest < Minitest::Test
   def test_update_document_existing
     document = create_test_document
 
-    result = Ragdoll::Core::DocumentManagement.update_document(
+    result = Ragdoll::DocumentManagement.update_document(
       document.id,
       title: "Updated Title",
       metadata: { updated: true }
@@ -79,7 +79,7 @@ class DocumentManagementTest < Minitest::Test
   end
 
   def test_update_document_nonexistent
-    result = Ragdoll::Core::DocumentManagement.update_document(999_999, title: "New Title")
+    result = Ragdoll::DocumentManagement.update_document(999_999, title: "New Title")
 
     assert_nil result
   end
@@ -87,7 +87,7 @@ class DocumentManagementTest < Minitest::Test
   def test_delete_document_existing
     document = create_test_document
 
-    result = Ragdoll::Core::DocumentManagement.delete_document(document.id)
+    result = Ragdoll::DocumentManagement.delete_document(document.id)
 
     assert_equal true, result
     assert_raises(ActiveRecord::RecordNotFound) do
@@ -96,7 +96,7 @@ class DocumentManagementTest < Minitest::Test
   end
 
   def test_delete_document_nonexistent
-    result = Ragdoll::Core::DocumentManagement.delete_document(999_999)
+    result = Ragdoll::DocumentManagement.delete_document(999_999)
 
     assert_nil result
   end
@@ -106,7 +106,7 @@ class DocumentManagementTest < Minitest::Test
     create_test_document(title: "Document 2")
     create_test_document(title: "Document 3")
 
-    result = Ragdoll::Core::DocumentManagement.list_documents
+    result = Ragdoll::DocumentManagement.list_documents
 
     assert_kind_of Array, result
     assert_equal 3, result.length
@@ -123,7 +123,7 @@ class DocumentManagementTest < Minitest::Test
       create_test_document(title: "Document #{i + 1}")
     end
 
-    result = Ragdoll::Core::DocumentManagement.list_documents(limit: 3, offset: 1)
+    result = Ragdoll::DocumentManagement.list_documents(limit: 3, offset: 1)
 
     assert_kind_of Array, result
     assert_equal 3, result.length
@@ -136,7 +136,7 @@ class DocumentManagementTest < Minitest::Test
     create_test_document(status: "processed")
     create_test_document(status: "processed")
 
-    stats = Ragdoll::Core::DocumentManagement.get_document_stats
+    stats = Ragdoll::DocumentManagement.get_document_stats
 
     assert_kind_of Hash, stats
     assert_equal 4, stats[:total_documents]
@@ -153,7 +153,7 @@ class DocumentManagementTest < Minitest::Test
       embedding_model: "test-model"
     )
 
-    embedding_id = Ragdoll::Core::DocumentManagement.add_embedding(
+    embedding_id = Ragdoll::DocumentManagement.add_embedding(
       text_content.id,
       0,
       Array.new(1536) { |i| (i / 1536.0) },
@@ -174,7 +174,7 @@ class DocumentManagementTest < Minitest::Test
 
   def test_extract_title_from_location_private_method
     # Test the private method indirectly through add_document
-    doc_id = Ragdoll::Core::DocumentManagement.add_document("/path/to/my_document.pdf", "content")
+    doc_id = Ragdoll::DocumentManagement.add_document("/path/to/my_document.pdf", "content")
     document = Ragdoll::Document.find(doc_id)
 
     assert_equal "my_document", document.title
@@ -182,7 +182,7 @@ class DocumentManagementTest < Minitest::Test
 
   def test_handles_url_locations
     url = "http://example.com/document.pdf"
-    doc_id = Ragdoll::Core::DocumentManagement.add_document(url, "content")
+    doc_id = Ragdoll::DocumentManagement.add_document(url, "content")
     document = Ragdoll::Document.find(doc_id)
 
     assert_equal url, document.location # Should not be expanded for URLs
@@ -190,7 +190,7 @@ class DocumentManagementTest < Minitest::Test
 
   def test_handles_ftp_locations
     ftp_url = "ftp://example.com/document.pdf"
-    doc_id = Ragdoll::Core::DocumentManagement.add_document(ftp_url, "content")
+    doc_id = Ragdoll::DocumentManagement.add_document(ftp_url, "content")
     document = Ragdoll::Document.find(doc_id)
 
     assert_equal ftp_url, document.location # Should not be expanded for FTP URLs

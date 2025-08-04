@@ -235,7 +235,7 @@ module Ragdoll
       generated_metadata = generator.generate_for_document(self)
 
       # Validate metadata against schema
-      errors = Ragdoll::Core::MetadataSchemas.validate_metadata(document_type, generated_metadata)
+      errors = Ragdoll::MetadataSchemas.validate_metadata(document_type, generated_metadata)
       if errors.any?
         Rails.logger.warn "Metadata validation errors: #{errors.join(', ')}" if defined?(Rails)
         puts "Metadata validation errors: #{errors.join(', ')}"

@@ -4,7 +4,7 @@ require_relative "../test_helper"
 
 class ModelTest < Minitest::Test
   def test_model_with_provider
-    model = Model.new("openai/gpt-4o-mini")
+    model = Ragdoll::Core::Model.new("openai/gpt-4o-mini")
 
     assert_equal :openai, model.provider
     assert_equal "gpt-4o-mini", model.model
@@ -14,7 +14,7 @@ class ModelTest < Minitest::Test
   end
 
   def test_model_without_provider_no_slash
-    model = Model.new("claude-3-opus")
+    model = Ragdoll::Core::Model.new("claude-3-opus")
 
     assert_nil model.provider
     assert_equal "claude-3-opus", model.model
@@ -24,7 +24,7 @@ class ModelTest < Minitest::Test
   end
 
   def test_model_with_empty_provider
-    model = Model.new("/llama3-70b")
+    model = Ragdoll::Core::Model.new("/llama3-70b")
 
     assert_nil model.provider
     assert_equal "llama3-70b", model.model
@@ -34,7 +34,7 @@ class ModelTest < Minitest::Test
   end
 
   def test_model_with_complex_provider_and_model
-    model = Model.new("anthropic/claude-3-5-sonnet-20241022")
+    model = Ragdoll::Core::Model.new("anthropic/claude-3-5-sonnet-20241022")
 
     assert_equal :anthropic, model.provider
     assert_equal "claude-3-5-sonnet-20241022", model.model
@@ -43,7 +43,7 @@ class ModelTest < Minitest::Test
   end
 
   def test_model_with_multiple_slashes
-    model = Model.new("huggingface-hub/microsoft/DialoGPT-medium")
+    model = Ragdoll::Core::Model.new("huggingface-hub/microsoft/DialoGPT-medium")
 
     assert_equal :"huggingface-hub", model.provider
     assert_equal "microsoft/DialoGPT-medium", model.model
@@ -52,7 +52,7 @@ class ModelTest < Minitest::Test
   end
 
   def test_model_with_empty_string
-    model = Model.new("")
+    model = Ragdoll::Core::Model.new("")
 
     assert_nil model.provider
     assert_nil model.model
@@ -61,7 +61,7 @@ class ModelTest < Minitest::Test
   end
 
   def test_model_with_nil
-    model = Model.new(nil)
+    model = Ragdoll::Core::Model.new(nil)
 
     assert_nil model.provider
     assert_nil model.model
@@ -70,7 +70,7 @@ class ModelTest < Minitest::Test
   end
 
   def test_model_with_only_slash
-    model = Model.new("/")
+    model = Ragdoll::Core::Model.new("/")
 
     assert_nil model.provider
     assert_equal "", model.model
@@ -79,37 +79,37 @@ class ModelTest < Minitest::Test
   end
 
   def test_model_provider_returns_symbol
-    model = Model.new("openai/gpt-4")
+    model = Ragdoll::Core::Model.new("openai/gpt-4")
 
     assert_instance_of Symbol, model.provider
     assert_equal :openai, model.provider
   end
 
   def test_model_provider_returns_nil_for_no_provider
-    model = Model.new("gpt-4")
+    model = Ragdoll::Core::Model.new("gpt-4")
 
     assert_nil model.provider
     assert_instance_of NilClass, model.provider
   end
 
   def test_model_equality
-    model1 = Model.new("openai/gpt-4")
-    model2 = Model.new("openai/gpt-4")
-    model3 = Model.new("anthropic/claude-3")
+    model1 = Ragdoll::Core::Model.new("openai/gpt-4")
+    model2 = Ragdoll::Core::Model.new("openai/gpt-4")
+    model3 = Ragdoll::Core::Model.new("anthropic/claude-3")
 
     assert_equal model1, model2
     refute_equal model1, model3
   end
 
   def test_model_hash_equality
-    model1 = Model.new("openai/gpt-4")
-    model2 = Model.new("openai/gpt-4")
+    model1 = Ragdoll::Core::Model.new("openai/gpt-4")
+    model2 = Ragdoll::Core::Model.new("openai/gpt-4")
 
     assert_equal model1.hash, model2.hash
   end
 
   def test_model_immutable
-    model = Model.new("openai/gpt-4")
+    model = Ragdoll::Core::Model.new("openai/gpt-4")
 
     # Data.define creates immutable objects
     assert_raises(FrozenError) do
@@ -118,7 +118,7 @@ class ModelTest < Minitest::Test
   end
 
   def test_model_inspect
-    model = Model.new("openai/gpt-4o-mini")
+    model = Ragdoll::Core::Model.new("openai/gpt-4o-mini")
 
     # Data.define provides a nice inspect method
     assert_includes model.inspect, "openai/gpt-4o-mini"
@@ -126,7 +126,7 @@ class ModelTest < Minitest::Test
   end
 
   def test_edge_cases_with_whitespace
-    model = Model.new(" openai/gpt-4 ")
+    model = Ragdoll::Core::Model.new(" openai/gpt-4 ")
 
     # The class doesn't trim whitespace - it preserves the original string
     assert_equal :" openai", model.provider
@@ -134,21 +134,21 @@ class ModelTest < Minitest::Test
   end
 
   def test_numeric_provider_and_model
-    model = Model.new("123/456")
+    model = Ragdoll::Core::Model.new("123/456")
 
     assert_equal :"123", model.provider
     assert_equal "456", model.model
   end
 
   def test_special_characters_in_model_name
-    model = Model.new("openai/gpt-4-turbo-preview@2024-01-25")
+    model = Ragdoll::Core::Model.new("openai/gpt-4-turbo-preview@2024-01-25")
 
     assert_equal :openai, model.provider
     assert_equal "gpt-4-turbo-preview@2024-01-25", model.model
   end
 
   def test_model_with_url_like_structure
-    model = Model.new("https://api.openai.com/v1/gpt-4")
+    model = Ragdoll::Core::Model.new("https://api.openai.com/v1/gpt-4")
 
     assert_equal :"https:", model.provider
     assert_equal "/api.openai.com/v1/gpt-4", model.model

@@ -5,12 +5,12 @@ require_relative "../test_helper"
 class TextChunkerTest < Minitest::Test
   def setup
     super
-    @chunker = Ragdoll::Core::TextChunker
+    @chunker = Ragdoll::TextChunker
   end
 
   def test_constants
-    assert_equal 1000, Ragdoll::Core::TextChunker::DEFAULT_CHUNK_SIZE
-    assert_equal 200, Ragdoll::Core::TextChunker::DEFAULT_CHUNK_OVERLAP
+    assert_equal 1000, Ragdoll::TextChunker::DEFAULT_CHUNK_SIZE
+    assert_equal 200, Ragdoll::TextChunker::DEFAULT_CHUNK_OVERLAP
   end
 
   def test_class_chunk_method

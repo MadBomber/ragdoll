@@ -8,7 +8,7 @@ class SearchEngineTest < Minitest::Test
     return skip("Skipping database test in CI environment") if ci_environment?
 
     @embedding_service = Minitest::Mock.new
-    @search_engine = Ragdoll::Core::SearchEngine.new(@embedding_service)
+    @search_engine = Ragdoll::SearchEngine.new(@embedding_service)
   end
 
   def teardown

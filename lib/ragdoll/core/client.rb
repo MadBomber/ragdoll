@@ -7,8 +7,8 @@ module Ragdoll
     class Client
       def initialize
         # Setup configuration services
-        @config_service = ConfigurationService.new
-        @model_resolver = ModelResolver.new(@config_service)
+        @config_service = Ragdoll::ConfigurationService.new
+        @model_resolver = Ragdoll::ModelResolver.new(@config_service)
 
         # Setup logging
         setup_logging
@@ -16,12 +16,12 @@ module Ragdoll
         # Setup database connection
         Database.setup(@config_service.config.database)
 
-        @embedding_service = EmbeddingService.new(
+        @embedding_service = Ragdoll::EmbeddingService.new(
           client: nil,
           config_service: @config_service,
           model_resolver: @model_resolver
         )
-        @search_engine = SearchEngine.new(@embedding_service, config_service: @config_service)
+        @search_engine = Ragdoll::SearchEngine.new(@embedding_service, config_service: @config_service)
       end
 
       # Primary method for RAG applications
@@ -119,14 +119,14 @@ module Ragdoll
       # Document management
       def add_document(path:)
         # Parse the document
-        parsed = DocumentProcessor.parse(path)
+        parsed = Ragdoll::DocumentProcessor.parse(path)
 
         # Extract title from metadata or use filename
         title = parsed[:metadata][:title] ||
                 File.basename(path, File.extname(path))
 
         # Add document to database
-        doc_id = DocumentManagement.add_document(path, parsed[:content], {
+        doc_id = Ragdoll::DocumentManagement.add_document(path, parsed[:content], {
                                                    title: title,
                                                    document_type: parsed[:document_type],
                                                    **parsed[:metadata]
@@ -161,7 +161,7 @@ module Ragdoll
 
       def add_text(content:, title:, **options)
         # Add document to database
-        doc_id = DocumentManagement.add_document(title, content, {
+        doc_id = Ragdoll::DocumentManagement.add_document(title, content, {
                                                    title: title,
                                                    document_type: "text",
                                                    **options
@@ -194,7 +194,7 @@ module Ragdoll
       end
 
       def get_document(id:)
-        document_hash = DocumentManagement.get_document(id)
+        document_hash = Ragdoll::DocumentManagement.get_document(id)
         return nil unless document_hash
 
         # DocumentManagement.get_document already returns a hash with all needed info
@@ -234,20 +234,20 @@ module Ragdoll
       end
 
       def update_document(id:, **updates)
-        DocumentManagement.update_document(id, **updates)
+        Ragdoll::DocumentManagement.update_document(id, **updates)
       end
 
       def delete_document(id:)
-        DocumentManagement.delete_document(id)
+        Ragdoll::DocumentManagement.delete_document(id)
       end
 
       def list_documents(**options)
-        DocumentManagement.list_documents(options)
+        Ragdoll::DocumentManagement.list_documents(options)
       end
 
       # Analytics and stats
       def stats
-        DocumentManagement.get_document_stats
+        Ragdoll::DocumentManagement.get_document_stats
       end
 
       def search_analytics(days: 30)

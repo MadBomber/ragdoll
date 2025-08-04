@@ -29,7 +29,7 @@ class CoreTest < Minitest::Test
     end
 
     default_model = Ragdoll::Core.configuration.models[:text_generation][:default]
-    expected = default_model.is_a?(Model) ? default_model.name : default_model
+    expected = default_model.is_a?(Ragdoll::Core::Model) ? default_model.name : default_model
     assert_equal "test/provider", expected
   end
 
@@ -41,7 +41,7 @@ class CoreTest < Minitest::Test
 
     config = Ragdoll::Core.configuration
     default_model = config.models[:text_generation][:default]
-    expected = default_model.is_a?(Model) ? default_model.name : default_model
+    expected = default_model.is_a?(Ragdoll::Core::Model) ? default_model.name : default_model
     assert_equal "new/provider", expected
     assert_equal 500, config.processing[:text][:chunking][:max_tokens]
   end
@@ -83,7 +83,7 @@ class CoreTest < Minitest::Test
     end
 
     default_model = Ragdoll::Core.configuration.models[:text_generation][:default]
-    expected = default_model.is_a?(Model) ? default_model.name : default_model
+    expected = default_model.is_a?(Ragdoll::Core::Model) ? default_model.name : default_model
     assert_equal "modified/provider", expected
 
     # Reset should restore defaults
@@ -103,7 +103,7 @@ class CoreTest < Minitest::Test
 
     config = Ragdoll::Core.configuration
     default_model = config.models[:text_generation][:default]
-    expected = default_model.is_a?(Model) ? default_model.name : default_model
+    expected = default_model.is_a?(Ragdoll::Core::Model) ? default_model.name : default_model
     assert_equal "first/provider", expected # Should persist
     assert_equal 123, config.processing[:text][:chunking][:max_tokens] # Should be set
   end
