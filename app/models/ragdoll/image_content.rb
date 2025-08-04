@@ -110,8 +110,7 @@ module Ragdoll
         return false unless image_path
 
         # Use the image description service
-        require_relative "../../lib/ragdoll/core/services/image_description_service"
-        description_service = Ragdoll::Core::Services::ImageDescriptionService.new
+        description_service = Ragdoll::ImageDescriptionService.new
 
         generated_description = description_service.generate_description(image_path, options)
 

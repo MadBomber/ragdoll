@@ -39,7 +39,7 @@ module Ragdoll
       chunks = Ragdoll::Core::TextChunker.chunk(embedding_content)
 
       # Generate embeddings for each chunk
-      embedding_service = Ragdoll::Core::EmbeddingService.new
+      embedding_service = Ragdoll::EmbeddingService.new
 
       chunks.each_with_index do |chunk_text, index|
         begin

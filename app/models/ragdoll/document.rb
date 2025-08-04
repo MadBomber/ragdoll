@@ -231,7 +231,7 @@ module Ragdoll
     def generate_metadata!
       require_relative "../../lib/ragdoll/core/services/metadata_generator"
 
-      generator = Ragdoll::Core::Services::MetadataGenerator.new
+      generator = Ragdoll::MetadataGenerator.new
       generated_metadata = generator.generate_for_document(self)
 
       # Validate metadata against schema

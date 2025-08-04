@@ -14,7 +14,7 @@ class ClientTest < Minitest::Test
   def test_initialize_with_default_config
     return if ci_environment?
 
-    assert_instance_of Ragdoll::Core::EmbeddingService, @client.instance_variable_get(:@embedding_service)
+    assert_instance_of Ragdoll::EmbeddingService, @client.instance_variable_get(:@embedding_service)
     assert_instance_of Ragdoll::Core::SearchEngine, @client.instance_variable_get(:@search_engine)
   end
 
@@ -376,7 +376,7 @@ class ClientTest < Minitest::Test
     client = Ragdoll::Core::Client.new
     embedding_service = client.instance_variable_get(:@embedding_service)
 
-    assert_instance_of Ragdoll::Core::EmbeddingService, embedding_service
+    assert_instance_of Ragdoll::EmbeddingService, embedding_service
   end
 
   def test_client_setup_logging

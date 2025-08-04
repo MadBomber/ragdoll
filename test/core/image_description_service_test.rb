@@ -5,7 +5,7 @@ require_relative "../test_helper"
 class ImageDescriptionServiceTest < Minitest::Test
   def setup
     super
-    @service = Ragdoll::Core::Services::ImageDescriptionService.new
+    @service = Ragdoll::ImageDescriptionService.new
     @image_path = File.join(__dir__, "test_image.png")
   end
 

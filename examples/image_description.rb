@@ -73,9 +73,9 @@ begin
   end
 
   service = if service_options.empty?
-              Ragdoll::Core::Services::ImageDescriptionService.new
+              Ragdoll::ImageDescriptionService.new
             else
-              Ragdoll::Core::Services::ImageDescriptionService.new(**service_options)
+              Ragdoll::ImageDescriptionService.new(**service_options)
             end
 
   puts "🤖 Generating description..."

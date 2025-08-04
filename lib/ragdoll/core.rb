@@ -7,14 +7,17 @@ $DEBUG_ME = true
 
 # require_relative "../extensions/openstruct_merge"  # File doesn't exist
 
-# Add app/models to the load path
+# Add app/models, app/jobs, and app/services to the load path
 $LOAD_PATH.unshift(File.expand_path("../../app/models", __dir__))
+$LOAD_PATH.unshift(File.expand_path("../../app/jobs", __dir__))
+$LOAD_PATH.unshift(File.expand_path("../../app/services", __dir__))
 
 require_relative "core/version"
 require_relative "core/errors"
 require_relative "core/model"
 require_relative "core/configuration"
-require_relative "core/configuration_service"
+# Require services from app/services/ragdoll
+require "ragdoll/configuration_service"
 require_relative "core/model_resolver"
 require_relative "core/database"
 require_relative "core/shrine_config"
@@ -29,13 +32,16 @@ require "ragdoll/image_content"
 require_relative "core/document_processor"
 require_relative "core/document_management"
 require_relative "core/text_chunker"
-require_relative "core/embedding_service"
-require_relative "core/text_generation_service"
+require "ragdoll/embedding_service"
+require "ragdoll/text_generation_service"
 require_relative "core/search_engine"
-require_relative "core/services/image_description_service"
-require_relative "core/jobs/generate_embeddings"
-require_relative "core/jobs/generate_summary"
-require_relative "core/jobs/extract_keywords"
+require "ragdoll/image_description_service"
+require "ragdoll/metadata_generator"
+# Require jobs from app/jobs/ragdoll
+require "ragdoll/generate_embeddings_job"
+require "ragdoll/generate_summary_job"
+require "ragdoll/extract_keywords_job"
+require "ragdoll/extract_text_job"
 require_relative "core/client"
 
 module Ragdoll

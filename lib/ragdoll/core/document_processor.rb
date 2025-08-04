@@ -3,7 +3,7 @@
 require "pdf-reader"
 require "docx"
 require "rmagick"
-require_relative "services/image_description_service"
+# Image description service is auto-loaded from app/services
 
 module Ragdoll
   module Core
@@ -278,7 +278,7 @@ module Ragdoll
         end
 
         puts "🤖 DocumentProcessor: Creating ImageDescriptionService and calling generate_description..."
-        desc = Services::ImageDescriptionService.new.generate_description(@file_path)
+        desc = Ragdoll::ImageDescriptionService.new.generate_description(@file_path)
 
         puts "📝 DocumentProcessor: Received description: '#{desc}'"
 

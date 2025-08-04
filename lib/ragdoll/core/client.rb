@@ -135,9 +135,9 @@ module Ragdoll
         # Queue background jobs for processing if content is available
         embeddings_queued = false
         if parsed[:content].present?
-          Ragdoll::Core::Jobs::GenerateEmbeddings.perform_later(doc_id)
-          Ragdoll::Core::Jobs::GenerateSummary.perform_later(doc_id)
-          Ragdoll::Core::Jobs::ExtractKeywords.perform_later(doc_id)
+          Ragdoll::GenerateEmbeddingsJob.perform_later(doc_id)
+          Ragdoll::GenerateSummaryJob.perform_later(doc_id)
+          Ragdoll::ExtractKeywordsJob.perform_later(doc_id)
           embeddings_queued = true
         end
 
@@ -168,9 +168,9 @@ module Ragdoll
                                                  })
 
         # Queue background job for embeddings
-        Ragdoll::Core::Jobs::GenerateEmbeddings.perform_later(doc_id,
-                                                              chunk_size: options[:chunk_size],
-                                                              chunk_overlap: options[:chunk_overlap])
+        Ragdoll::GenerateEmbeddingsJob.perform_later(doc_id,
+                                                     chunk_size: options[:chunk_size],
+                                                     chunk_overlap: options[:chunk_overlap])
 
         doc_id
       end

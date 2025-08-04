@@ -11,34 +11,34 @@ class EmbeddingServiceTest < Minitest::Test
   end
 
   def test_initialize_with_default_configuration
-    service = Ragdoll::Core::EmbeddingService.new
+    service = Ragdoll::EmbeddingService.new
 
     assert_nil service.instance_variable_get(:@client)
   end
 
   def test_initialize_with_custom_client
     mock_client = Object.new
-    service = Ragdoll::Core::EmbeddingService.new(client: mock_client)
+    service = Ragdoll::EmbeddingService.new(client: mock_client)
 
     # Instead of checking object equality on mock, check that client is set
     refute_nil service.instance_variable_get(:@client)
   end
 
   def test_generate_embedding_with_nil_text
-    service = Ragdoll::Core::EmbeddingService.new
+    service = Ragdoll::EmbeddingService.new
 
     assert_nil service.generate_embedding(nil)
   end
 
   def test_generate_embedding_with_empty_text
-    service = Ragdoll::Core::EmbeddingService.new
+    service = Ragdoll::EmbeddingService.new
 
     assert_nil service.generate_embedding("")
     assert_nil service.generate_embedding("   ")
   end
 
   def test_generate_embedding_without_client
-    service = Ragdoll::Core::EmbeddingService.new
+    service = Ragdoll::EmbeddingService.new
     result = service.generate_embedding("test text")
 
     assert_instance_of Array, result
@@ -52,7 +52,7 @@ class EmbeddingServiceTest < Minitest::Test
       { "embeddings" => [[0.1, 0.2, 0.3]] }
     end
 
-    service = Ragdoll::Core::EmbeddingService.new(client: mock_client)
+    service = Ragdoll::EmbeddingService.new(client: mock_client)
     result = service.generate_embedding("test text")
 
     assert_equal [0.1, 0.2, 0.3], result
@@ -64,7 +64,7 @@ class EmbeddingServiceTest < Minitest::Test
       { "data" => [{ "embedding" => [0.4, 0.5, 0.6] }] }
     end
 
-    service = Ragdoll::Core::EmbeddingService.new(client: mock_client)
+    service = Ragdoll::EmbeddingService.new(client: mock_client)
     result = service.generate_embedding("test text")
 
     assert_equal [0.4, 0.5, 0.6], result
@@ -76,7 +76,7 @@ class EmbeddingServiceTest < Minitest::Test
       { "invalid" => "response" }
     end
 
-    service = Ragdoll::Core::EmbeddingService.new(client: mock_client)
+    service = Ragdoll::EmbeddingService.new(client: mock_client)
 
     error = assert_raises(Ragdoll::Core::EmbeddingError) do
       service.generate_embedding("test text")
@@ -91,7 +91,7 @@ class EmbeddingServiceTest < Minitest::Test
       raise StandardError, "API error"
     end
 
-    service = Ragdoll::Core::EmbeddingService.new(client: mock_client)
+    service = Ragdoll::EmbeddingService.new(client: mock_client)
 
     error = assert_raises(Ragdoll::Core::EmbeddingError) do
       service.generate_embedding("test text")
@@ -102,19 +102,19 @@ class EmbeddingServiceTest < Minitest::Test
   end
 
   def test_generate_embeddings_batch_empty_array
-    service = Ragdoll::Core::EmbeddingService.new
+    service = Ragdoll::EmbeddingService.new
 
     assert_empty service.generate_embeddings_batch([])
   end
 
   def test_generate_embeddings_batch_with_empty_texts
-    service = Ragdoll::Core::EmbeddingService.new
+    service = Ragdoll::EmbeddingService.new
 
     assert_empty service.generate_embeddings_batch(["", nil, "   "])
   end
 
   def test_generate_embeddings_batch_without_client
-    service = Ragdoll::Core::EmbeddingService.new
+    service = Ragdoll::EmbeddingService.new
     result = service.generate_embeddings_batch(%w[text1 text2])
 
     assert_instance_of Array, result
@@ -131,14 +131,14 @@ class EmbeddingServiceTest < Minitest::Test
       { "embeddings" => [[0.1, 0.2], [0.3, 0.4]] }
     end
 
-    service = Ragdoll::Core::EmbeddingService.new(client: mock_client)
+    service = Ragdoll::EmbeddingService.new(client: mock_client)
     result = service.generate_embeddings_batch(%w[text1 text2])
 
     assert_equal [[0.1, 0.2], [0.3, 0.4]], result
   end
 
   def test_cosine_similarity_with_identical_vectors
-    service = Ragdoll::Core::EmbeddingService.new
+    service = Ragdoll::EmbeddingService.new
     vector = [1.0, 2.0, 3.0]
 
     similarity = service.cosine_similarity(vector, vector)
@@ -146,7 +146,7 @@ class EmbeddingServiceTest < Minitest::Test
   end
 
   def test_cosine_similarity_with_orthogonal_vectors
-    service = Ragdoll::Core::EmbeddingService.new
+    service = Ragdoll::EmbeddingService.new
     vector1 = [1.0, 0.0]
     vector2 = [0.0, 1.0]
 
@@ -155,7 +155,7 @@ class EmbeddingServiceTest < Minitest::Test
   end
 
   def test_cosine_similarity_with_opposite_vectors
-    service = Ragdoll::Core::EmbeddingService.new
+    service = Ragdoll::EmbeddingService.new
     vector1 = [1.0, 0.0]
     vector2 = [-1.0, 0.0]
 
@@ -164,7 +164,7 @@ class EmbeddingServiceTest < Minitest::Test
   end
 
   def test_cosine_similarity_with_nil_vectors
-    service = Ragdoll::Core::EmbeddingService.new
+    service = Ragdoll::EmbeddingService.new
 
     assert_equal 0.0, service.cosine_similarity(nil, [1.0, 2.0])
     assert_equal 0.0, service.cosine_similarity([1.0, 2.0], nil)
@@ -172,7 +172,7 @@ class EmbeddingServiceTest < Minitest::Test
   end
 
   def test_cosine_similarity_with_different_lengths
-    service = Ragdoll::Core::EmbeddingService.new
+    service = Ragdoll::EmbeddingService.new
     vector1 = [1.0, 2.0]
     vector2 = [1.0, 2.0, 3.0]
 
@@ -180,7 +180,7 @@ class EmbeddingServiceTest < Minitest::Test
   end
 
   def test_cosine_similarity_with_zero_magnitude
-    service = Ragdoll::Core::EmbeddingService.new
+    service = Ragdoll::EmbeddingService.new
     vector1 = [0.0, 0.0]
     vector2 = [1.0, 2.0]
 
@@ -189,13 +189,13 @@ class EmbeddingServiceTest < Minitest::Test
   end
 
   def test_clean_text_with_nil
-    service = Ragdoll::Core::EmbeddingService.new
+    service = Ragdoll::EmbeddingService.new
 
     assert_equal "", service.send(:clean_text, nil)
   end
 
   def test_clean_text_normalization
-    service = Ragdoll::Core::EmbeddingService.new
+    service = Ragdoll::EmbeddingService.new
     input = "  Multiple   spaces\n\n\nNewlines\t\tTabs  "
     expected = "Multiple spaces Newlines Tabs"
 
@@ -203,7 +203,7 @@ class EmbeddingServiceTest < Minitest::Test
   end
 
   def test_clean_text_truncation
-    service = Ragdoll::Core::EmbeddingService.new
+    service = Ragdoll::EmbeddingService.new
     long_text = "A" * 9000
     result = service.send(:clean_text, long_text)
 
@@ -220,9 +220,9 @@ class EmbeddingServiceTest < Minitest::Test
       }
     }
 
-    service = Ragdoll::Core::EmbeddingService.new
+    service = Ragdoll::EmbeddingService.new
     # Just verify it doesn't raise an error
-    assert_instance_of Ragdoll::Core::EmbeddingService, service
+    assert_instance_of Ragdoll::EmbeddingService, service
   end
 
   def test_configure_ruby_llm_unsupported_provider
@@ -230,8 +230,8 @@ class EmbeddingServiceTest < Minitest::Test
 
     # With our defensive implementation, unsupported providers just show a warning
     # but don't raise an error - this allows for graceful handling
-    service = Ragdoll::Core::EmbeddingService.new
-    assert_instance_of Ragdoll::Core::EmbeddingService, service
+    service = Ragdoll::EmbeddingService.new
+    assert_instance_of Ragdoll::EmbeddingService, service
   end
 
   def test_embedding_provider_fallback
@@ -242,7 +242,7 @@ class EmbeddingServiceTest < Minitest::Test
       openai: { api_key: "openai-key" }
     }
 
-    service = Ragdoll::Core::EmbeddingService.new
-    assert_instance_of Ragdoll::Core::EmbeddingService, service
+    service = Ragdoll::EmbeddingService.new
+    assert_instance_of Ragdoll::EmbeddingService, service
   end
 end
