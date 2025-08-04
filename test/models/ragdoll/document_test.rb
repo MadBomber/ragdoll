@@ -12,7 +12,7 @@ module Ragdoll
         end
 
         def test_create_document
-          document = Ragdoll::Core::Models::Document.create!(
+          document = Ragdoll::Document.create!(
             location: "/path/to/doc.txt",
             title: "Test Document",
             document_type: "text",
@@ -36,7 +36,7 @@ module Ragdoll
 
         def test_validations
           # Test required fields (only those without defaults)
-          document = Ragdoll::Core::Models::Document.new
+          document = Ragdoll::Document.new
           refute document.valid?
           # Use correct method for ActiveRecord errors
           if document.errors.respond_to?(:attribute_names)
@@ -51,7 +51,7 @@ module Ragdoll
         end
 
         def test_status_validation
-          document = Ragdoll::Core::Models::Document.new(
+          document = Ragdoll::Document.new(
             location: "/test",
             title: "title",
             document_type: "text",
@@ -67,7 +67,7 @@ module Ragdoll
         end
 
         def test_associations
-          document = Ragdoll::Core::Models::Document.create!(
+          document = Ragdoll::Document.create!(
             location: "/path/to/doc.txt",
             title: "Test Document",
             document_type: "text",
@@ -93,14 +93,14 @@ module Ragdoll
         end
 
         def test_scopes
-          doc1 = Ragdoll::Core::Models::Document.create!(
+          doc1 = Ragdoll::Document.create!(
             location: "/doc1.txt",
             title: "Doc 1",
             document_type: "text",
             status: "processed"
           )
 
-          doc2 = Ragdoll::Core::Models::Document.create!(
+          doc2 = Ragdoll::Document.create!(
             location: "/doc2.pdf",
             title: "Doc 2",
             document_type: "pdf",
@@ -108,18 +108,18 @@ module Ragdoll
           )
 
           # Test processed scope
-          processed_docs = Ragdoll::Core::Models::Document.processed
+          processed_docs = Ragdoll::Document.processed
           assert_equal 1, processed_docs.count
           assert_includes processed_docs, doc1
 
           # Test by_type scope
-          pdf_docs = Ragdoll::Core::Models::Document.by_type("pdf")
+          pdf_docs = Ragdoll::Document.by_type("pdf")
           assert_equal 1, pdf_docs.count
           assert_includes pdf_docs, doc2
         end
 
         def test_processed_query_method
-          document = Ragdoll::Core::Models::Document.create!(
+          document = Ragdoll::Document.create!(
             location: "/test.txt",
             title: "Test",
             document_type: "text",
@@ -133,7 +133,7 @@ module Ragdoll
         end
 
         def test_total_word_count
-          document = Ragdoll::Core::Models::Document.create!(
+          document = Ragdoll::Document.create!(
             location: "/test.txt",
             title: "Test",
             document_type: "text",
@@ -150,7 +150,7 @@ module Ragdoll
         end
 
         def test_total_character_count
-          document = Ragdoll::Core::Models::Document.create!(
+          document = Ragdoll::Document.create!(
             location: "/test.txt",
             title: "Test",
             document_type: "text",
@@ -167,7 +167,7 @@ module Ragdoll
         end
 
         def test_total_embedding_count
-          document = Ragdoll::Core::Models::Document.create!(
+          document = Ragdoll::Document.create!(
             location: "/test.txt",
             title: "Test",
             document_type: "text",
@@ -194,7 +194,7 @@ module Ragdoll
         end
 
         def test_to_hash
-          document = Ragdoll::Core::Models::Document.create!(
+          document = Ragdoll::Document.create!(
             location: "/test.txt",
             title: "Test Document",
             document_type: "text",
@@ -220,7 +220,7 @@ module Ragdoll
         end
 
         def test_search_content
-          Ragdoll::Core::Models::Document.create!(
+          Ragdoll::Document.create!(
             location: "/doc1.txt",
             title: "Machine Learning Doc",
             document_type: "text",
@@ -228,7 +228,7 @@ module Ragdoll
             metadata: { summary: "This document contains machine learning concepts" }
           )
 
-          Ragdoll::Core::Models::Document.create!(
+          Ragdoll::Document.create!(
             location: "/doc2.txt",
             title: "Cooking Guide",
             document_type: "text",
@@ -238,28 +238,28 @@ module Ragdoll
 
           # Test that search_content method exists and returns a relation
           # Note: Full-text search might not work in all test environments
-          results = Ragdoll::Core::Models::Document.search_content("machine")
+          results = Ragdoll::Document.search_content("machine")
           assert_respond_to results, :count
           assert_respond_to results, :to_a
 
           # Test with title search (simpler)
-          results = Ragdoll::Core::Models::Document.search_content("Machine")
+          results = Ragdoll::Document.search_content("Machine")
           assert_respond_to results, :count
 
           # Test empty query returns none
-          results = Ragdoll::Core::Models::Document.search_content("")
+          results = Ragdoll::Document.search_content("")
           assert_equal 0, results.count
         end
 
         def test_stats
-          doc1 = Ragdoll::Core::Models::Document.create!(
+          doc1 = Ragdoll::Document.create!(
             location: "/doc1.txt",
             title: "Doc 1",
             document_type: "text",
             status: "processed"
           )
 
-          Ragdoll::Core::Models::Document.create!(
+          Ragdoll::Document.create!(
             location: "/doc2.pdf",
             title: "Doc 2",
             document_type: "pdf",
@@ -279,7 +279,7 @@ module Ragdoll
             content: "chunk"
           )
 
-          stats = Ragdoll::Core::Models::Document.stats
+          stats = Ragdoll::Document.stats
 
           assert_equal 2, stats[:total_documents]
           assert_equal({ "processed" => 1, "pending" => 1 }, stats[:by_status])
@@ -290,7 +290,7 @@ module Ragdoll
 
         def test_extract_keywords_with_valid_query
           query = "This is a test query with some longer words"
-          keywords = Ragdoll::Core::Models::Document.extract_keywords(query: query)
+          keywords = Ragdoll::Document.extract_keywords(query: query)
 
           expected = %w[query longer words] # Only words > 4 characters
           assert_equal expected.sort, keywords.sort
@@ -298,30 +298,30 @@ module Ragdoll
 
         def test_extract_keywords_with_short_words
           query = "cat dog fish bird elephant"
-          keywords = Ragdoll::Core::Models::Document.extract_keywords(query: query)
+          keywords = Ragdoll::Document.extract_keywords(query: query)
 
           expected = ["elephant"] # Only word > 4 characters
           assert_equal expected, keywords
         end
 
         def test_extract_keywords_with_empty_query
-          keywords = Ragdoll::Core::Models::Document.extract_keywords(query: "")
+          keywords = Ragdoll::Document.extract_keywords(query: "")
           assert_empty keywords
         end
 
         def test_extract_keywords_with_nil_query
-          keywords = Ragdoll::Core::Models::Document.extract_keywords(query: nil)
+          keywords = Ragdoll::Document.extract_keywords(query: nil)
           assert_empty keywords
         end
 
         def test_extract_keywords_with_whitespace_only
-          keywords = Ragdoll::Core::Models::Document.extract_keywords(query: "   \t\n   ")
+          keywords = Ragdoll::Document.extract_keywords(query: "   \t\n   ")
           assert_empty keywords
         end
 
         def test_extract_keywords_removes_duplicates
           query = "machine learning artificial intelligence machine learning"
-          keywords = Ragdoll::Core::Models::Document.extract_keywords(query: query)
+          keywords = Ragdoll::Document.extract_keywords(query: query)
 
           expected = %w[machine learning artificial intelligence]
           assert_equal expected.length, keywords.uniq.length # Should not have duplicates
@@ -330,7 +330,7 @@ module Ragdoll
 
         def test_extract_keywords_handles_punctuation
           query = "machine-learning, artificial.intelligence! natural?language"
-          keywords = Ragdoll::Core::Models::Document.extract_keywords(query: query)
+          keywords = Ragdoll::Document.extract_keywords(query: query)
 
           # Should split on whitespace, keeping punctuation with words
           expected_to_include = ["machine-learning,", "artificial.intelligence!", "natural?language"]

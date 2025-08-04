@@ -29,7 +29,7 @@ module Ragdoll
         # Get file modification time
         file_modified_at = File.exist?(file_path) ? File.mtime(file_path) : Time.current
 
-        document = Models::Document.create!(
+        document = Ragdoll::Document.create!(
           location: File.expand_path(file_path),
           title: parsed[:title] || File.basename(file_path, File.extname(file_path)),
           content: parsed[:content],
@@ -49,7 +49,7 @@ module Ragdoll
       # Create document from uploaded file (Shrine compatible)
       def self.create_document_from_upload(uploaded_file, **options)
         # Create document first
-        document = Models::Document.create!(
+        document = Ragdoll::Document.create!(
           location: uploaded_file.original_filename || "uploaded_file",
           title: options[:title] || File.basename(uploaded_file.original_filename || "uploaded_file",
                                                   File.extname(uploaded_file.original_filename || "")),

@@ -33,5 +33,5 @@ Gem::Specification.new do |spec|
     "README.md",
     "Thorfile"
   ]
-  spec.require_paths = ["lib"]
+  spec.require_paths = ["lib", "app/models"]
 end

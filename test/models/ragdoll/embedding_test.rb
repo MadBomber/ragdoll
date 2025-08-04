@@ -10,14 +10,14 @@ module Ragdoll
           super
           return skip("Skipping database test in CI environment") if ci_environment?
 
-          @document = Ragdoll::Core::Models::Document.create!(
+          @document = Ragdoll::Document.create!(
             location: "/test.txt",
             title: "Test Document",
             document_type: "text",
             status: "processed"
           )
 
-          @text_content = Ragdoll::Core::Models::TextContent.create!(
+          @text_content = Ragdoll::TextContent.create!(
             document: @document,
             content: "Test content",
             embedding_model: "test-model"
@@ -26,7 +26,7 @@ module Ragdoll
 
         def test_create_embedding
           vector = Array.new(1536) { |i| (i / 1536.0) }
-          embedding = Ragdoll::Core::Models::Embedding.create!(
+          embedding = Ragdoll::Embedding.create!(
             embeddable: @text_content,
             chunk_index: 0,
             embedding_vector: vector,
@@ -43,7 +43,7 @@ module Ragdoll
 
         def test_validations
           # Test required fields
-          embedding = Ragdoll::Core::Models::Embedding.new
+          embedding = Ragdoll::Embedding.new
           refute embedding.valid?
           # Use correct method for ActiveRecord errors
           if embedding.errors.respond_to?(:attribute_names)
@@ -64,7 +64,7 @@ module Ragdoll
         def test_uniqueness_validation
           # Create first embedding
           vector1 = Array.new(1536) { |i| (i / 1536.0) }
-          Ragdoll::Core::Models::Embedding.create!(
+          Ragdoll::Embedding.create!(
             embeddable: @text_content,
             chunk_index: 0,
             embedding_vector: vector1,
@@ -73,7 +73,7 @@ module Ragdoll
 
           # Try to create duplicate
           vector2 = Array.new(1536) { |i| ((i + 100) / 1536.0) }
-          duplicate = Ragdoll::Core::Models::Embedding.new(
+          duplicate = Ragdoll::Embedding.new(
             embeddable: @text_content,
             chunk_index: 0,
             embedding_vector: vector2,
@@ -100,12 +100,12 @@ module Ragdoll
           assert_equal @text_content.id, embedding.embeddable_id
           # NOTE: ActiveRecord STI with polymorphic associations stores base class name
           # The actual object class is correct, but embeddable_type stores the base class
-          assert_equal "Ragdoll::Core::Models::Content", embedding.embeddable_type
+          assert_equal "Ragdoll::Content", embedding.embeddable_type
         end
 
         def test_scopes
           vector1 = Array.new(1536) { |i| (i / 1536.0) }
-          embedding1 = Ragdoll::Core::Models::Embedding.create!(
+          embedding1 = Ragdoll::Embedding.create!(
             embeddable: @text_content,
             chunk_index: 0,
             embedding_vector: vector1,
@@ -113,7 +113,7 @@ module Ragdoll
           )
 
           vector2 = Array.new(1536) { |i| ((i + 100) / 1536.0) }
-          Ragdoll::Core::Models::Embedding.create!(
+          Ragdoll::Embedding.create!(
             embeddable: @text_content,
             chunk_index: 1,
             embedding_vector: vector2,
@@ -121,17 +121,17 @@ module Ragdoll
           )
 
           # Test by_model scope (now works via polymorphic relationship)
-          return unless Ragdoll::Core::Models::Embedding.respond_to?(:by_model)
+          return unless Ragdoll::Embedding.respond_to?(:by_model)
 
           # Since we set up @text_content with 'test-model', all its embeddings will have that model
-          model_embeddings = Ragdoll::Core::Models::Embedding.by_model("test-model")
+          model_embeddings = Ragdoll::Embedding.by_model("test-model")
           assert_equal 2, model_embeddings.count # Both embeddings should match
           assert_includes model_embeddings, embedding1
         end
 
         def test_embedding_dimensions
           vector = Array.new(1536) { |i| (i / 1536.0) }
-          embedding = Ragdoll::Core::Models::Embedding.create!(
+          embedding = Ragdoll::Embedding.create!(
             embeddable: @text_content,
             chunk_index: 0,
             embedding_vector: vector,
@@ -146,7 +146,7 @@ module Ragdoll
 
         def test_mark_as_used
           vector = Array.new(1536) { |i| (i / 1536.0) }
-          embedding = Ragdoll::Core::Models::Embedding.create!(
+          embedding = Ragdoll::Embedding.create!(
             embeddable: @text_content,
             chunk_index: 0,
             embedding_vector: vector,
@@ -175,7 +175,7 @@ module Ragdoll
         def test_basic_embedding_creation_and_retrieval
           # Test the actual implementation without assuming methods that may not exist
           vector = Array.new(1536) { |i| (i / 1536.0) }
-          embedding = Ragdoll::Core::Models::Embedding.create!(
+          embedding = Ragdoll::Embedding.create!(
             embeddable: @text_content,
             chunk_index: 0,
             embedding_vector: vector,
@@ -187,7 +187,7 @@ module Ragdoll
           # Test basic attributes that definitely exist
           assert_equal embedding.embeddable_id, @text_content.id
           # NOTE: ActiveRecord STI with polymorphic associations stores base class name
-          assert_equal embedding.embeddable_type, "Ragdoll::Core::Models::Content"
+          assert_equal embedding.embeddable_type, "Ragdoll::Content"
           assert_equal "Test chunk", embedding.content
           assert_equal 0, embedding.chunk_index
           assert_equal vector, embedding.embedding_vector
@@ -198,7 +198,7 @@ module Ragdoll
         def test_search_similar_basic
           # Create embeddings
           vector1 = Array.new(1536) { |i| i.zero? ? 1.0 : 0.0 } # [1.0, 0.0, 0.0, ...]
-          Ragdoll::Core::Models::Embedding.create!(
+          Ragdoll::Embedding.create!(
             embeddable: @text_content,
             chunk_index: 0,
             embedding_vector: vector1,
@@ -206,7 +206,7 @@ module Ragdoll
           )
 
           vector2 = Array.new(1536) { |i| i == 1 ? 1.0 : 0.0 } # [0.0, 1.0, 0.0, ...]
-          Ragdoll::Core::Models::Embedding.create!(
+          Ragdoll::Embedding.create!(
             embeddable: @text_content,
             chunk_index: 1,
             embedding_vector: vector2,
@@ -214,7 +214,7 @@ module Ragdoll
           )
 
           # Test if search_similar method exists and works
-          return unless Ragdoll::Core::Models::Embedding.respond_to?(:search_similar)
+          return unless Ragdoll::Embedding.respond_to?(:search_similar)
 
           # Search with vector similar to embedding1
           query_vector = Array.new(1536) do |i|
@@ -224,14 +224,14 @@ module Ragdoll
               (i == 1 ? 0.1 : 0.0)
             end
           end
-          results = Ragdoll::Core::Models::Embedding.search_similar(query_vector, threshold: 0.5)
+          results = Ragdoll::Embedding.search_similar(query_vector, threshold: 0.5)
 
           assert results.is_a?(Array)
           # Results structure depends on implementation
         end
 
         def test_search_similar_with_filters
-          doc2 = Ragdoll::Core::Models::Document.create!(
+          doc2 = Ragdoll::Document.create!(
             location: "/doc2.txt",
             title: "Doc 2",
             document_type: "text",
@@ -244,7 +244,7 @@ module Ragdoll
           )
 
           vector1 = Array.new(1536) { |i| i.zero? ? 1.0 : 0.0 }
-          Ragdoll::Core::Models::Embedding.create!(
+          Ragdoll::Embedding.create!(
             embeddable: @text_content,
             chunk_index: 0,
             embedding_vector: vector1,
@@ -252,7 +252,7 @@ module Ragdoll
           )
 
           vector2 = Array.new(1536) { |i| i.zero? ? 1.0 : 0.0 }
-          Ragdoll::Core::Models::Embedding.create!(
+          Ragdoll::Embedding.create!(
             embeddable: text_content2,
             chunk_index: 0,
             embedding_vector: vector2,
@@ -260,18 +260,18 @@ module Ragdoll
           )
 
           # Test filtering by embeddable_id and embedding_model (correct field names)
-          return unless Ragdoll::Core::Models::Embedding.respond_to?(:search_similar)
+          return unless Ragdoll::Embedding.respond_to?(:search_similar)
 
           # Filter by embeddable_id
           query_vector = Array.new(1536) { |i| i.zero? ? 1.0 : 0.0 }
-          results = Ragdoll::Core::Models::Embedding.search_similar(
+          results = Ragdoll::Embedding.search_similar(
             query_vector,
             filters: { embeddable_id: @text_content.id }
           )
           assert results.is_a?(Array)
 
           # Filter by embedding_model (now accessed via polymorphic relationship)
-          results = Ragdoll::Core::Models::Embedding.search_similar(
+          results = Ragdoll::Embedding.search_similar(
             query_vector,
             filters: { embedding_model: "test-model" } # Use the model from text_content2
           )
@@ -280,7 +280,7 @@ module Ragdoll
 
         def test_serialization
           vector = Array.new(1536) { |i| (i / 1536.0) }
-          embedding = Ragdoll::Core::Models::Embedding.create!(
+          embedding = Ragdoll::Embedding.create!(
             embeddable: @text_content,
             chunk_index: 0,
             embedding_vector: vector,

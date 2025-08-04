@@ -137,7 +137,7 @@ module Ragdoll
     #   all_docs.each { |doc| puts doc.title }
     # @return [ActiveRecord::Relation] a relation of all documents.
     def documents
-      Ragdoll::Core::Models::Document.all
+      Ragdoll::Document.all
     end
     alias_method :docs, :documents
 

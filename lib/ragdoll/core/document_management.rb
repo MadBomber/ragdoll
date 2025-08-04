@@ -16,7 +16,7 @@ module Ragdoll
                              end
 
           # Check if document already exists with same location and file_modified_at
-          existing_document = Models::Document.find_by(
+          existing_document = Ragdoll::Document.find_by(
             location: absolute_location,
             file_modified_at: file_modified_at
           )
@@ -24,7 +24,7 @@ module Ragdoll
           # Return existing document ID if found (skip duplicate)
           return existing_document.id.to_s if existing_document
 
-          document = Models::Document.create!(
+          document = Ragdoll::Document.create!(
             location: absolute_location,
             title: metadata[:title] || metadata["title"] || extract_title_from_location(location),
             document_type: metadata[:document_type] || metadata["document_type"] || "text",
@@ -40,7 +40,7 @@ module Ragdoll
         end
 
         def get_document(id)
-          document = Models::Document.find_by(id: id)
+          document = Ragdoll::Document.find_by(id: id)
           return nil unless document
 
           hash = document.to_hash
@@ -49,7 +49,7 @@ module Ragdoll
         end
 
         def update_document(id, **updates)
-          document = Models::Document.find_by(id: id)
+          document = Ragdoll::Document.find_by(id: id)
           return nil unless document
 
           # Only update allowed fields
@@ -60,7 +60,7 @@ module Ragdoll
         end
 
         def delete_document(id)
-          document = Models::Document.find_by(id: id)
+          document = Ragdoll::Document.find_by(id: id)
           return nil unless document
 
           document.destroy!
@@ -71,11 +71,11 @@ module Ragdoll
           limit = options[:limit] || 100
           offset = options[:offset] || 0
 
-          Models::Document.offset(offset).limit(limit).recent.map(&:to_hash)
+          Ragdoll::Document.offset(offset).limit(limit).recent.map(&:to_hash)
         end
 
         def get_document_stats
-          Models::Document.stats
+          Ragdoll::Document.stats
         end
 
         # FIXME: should this be here?
@@ -86,11 +86,11 @@ module Ragdoll
                              metadata[:embeddable_type]
                            else
                              # Look up the actual STI type from the content record
-                             content = Models::Content.find(embeddable_id)
+                             content = Ragdoll::Content.find(embeddable_id)
                              content.class.name
                            end
           
-          Models::Embedding.create!(
+          Ragdoll::Embedding.create!(
             embeddable_id: embeddable_id,
             embeddable_type: embeddable_type,
             chunk_index: chunk_index,

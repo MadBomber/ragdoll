@@ -96,7 +96,7 @@ module Ragdoll
         query_embedding = @embedding_service.generate_embedding(query)
 
         # Perform hybrid search
-        results = Models::Document.hybrid_search(query, query_embedding: query_embedding, **options)
+        results = Ragdoll::Document.hybrid_search(query, query_embedding: query_embedding, **options)
 
         {
           query: query,
@@ -202,7 +202,7 @@ module Ragdoll
       end
 
       def document_status(id:)
-        document = Models::Document.find(id)
+        document = Ragdoll::Document.find(id)
         embeddings_count = document.all_embeddings.count
 
         {
@@ -252,7 +252,7 @@ module Ragdoll
 
       def search_analytics(days: 30)
         # This could be implemented with additional database queries
-        Models::Embedding.where("returned_at > ?", days.days.ago)
+        Ragdoll::Embedding.where("returned_at > ?", days.days.ago)
                          .group("DATE(returned_at)")
                          .count
       end

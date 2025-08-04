@@ -7,6 +7,9 @@ $DEBUG_ME = true
 
 # require_relative "../extensions/openstruct_merge"  # File doesn't exist
 
+# Add app/models to the load path
+$LOAD_PATH.unshift(File.expand_path("../../app/models", __dir__))
+
 require_relative "core/version"
 require_relative "core/errors"
 require_relative "core/model"
@@ -15,11 +18,14 @@ require_relative "core/configuration_service"
 require_relative "core/model_resolver"
 require_relative "core/database"
 require_relative "core/shrine_config"
-require_relative "core/models/document"
-require_relative "core/models/embedding"
-require_relative "core/models/text_content"
-require_relative "core/models/audio_content"
-require_relative "core/models/image_content"
+
+# Require models from app/models/ragdoll
+require "ragdoll/document"
+require "ragdoll/embedding"
+require "ragdoll/content"
+require "ragdoll/text_content"
+require "ragdoll/audio_content"
+require "ragdoll/image_content"
 require_relative "core/document_processor"
 require_relative "core/document_management"
 require_relative "core/text_chunker"

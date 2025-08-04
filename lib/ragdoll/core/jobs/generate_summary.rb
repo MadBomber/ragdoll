@@ -9,7 +9,7 @@ module Ragdoll
         queue_as :default
 
         def perform(document_id)
-          document = Models::Document.find(document_id)
+          document = Ragdoll::Document.find(document_id)
           return unless document.content.present?
           return if document.summary.present?
 

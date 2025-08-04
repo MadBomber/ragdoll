@@ -21,7 +21,7 @@ module Ragdoll
         return [] if query_embedding.nil?
 
         # Search using ActiveRecord models
-        Models::Embedding.search_similar(query_embedding,
+        Ragdoll::Embedding.search_similar(query_embedding,
                                          limit: limit,
                                          threshold: threshold,
                                          filters: filters)
@@ -43,7 +43,7 @@ module Ragdoll
         end
 
         # Search using ActiveRecord models
-        Models::Embedding.search_similar(query_embedding,
+        Ragdoll::Embedding.search_similar(query_embedding,
                                          limit: limit,
                                          threshold: threshold,
                                          filters: filters)

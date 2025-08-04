@@ -28,7 +28,7 @@ class SearchEngineTest < Minitest::Test
     @embedding_service.expect(:generate_embedding, vector, [query])
 
     # Create a document and text content for search
-    document = Ragdoll::Core::Models::Document.create!(
+    document = Ragdoll::Document.create!(
       location: "/test.txt",
       title: "Test",
       document_type: "text",
@@ -40,7 +40,7 @@ class SearchEngineTest < Minitest::Test
       embedding_model: "test-model"
     )
 
-    Ragdoll::Core::Models::Embedding.create!(
+    Ragdoll::Embedding.create!(
       embeddable: text_content,
       chunk_index: 0,
       embedding_vector: vector,
@@ -72,7 +72,7 @@ class SearchEngineTest < Minitest::Test
 
     # Create multiple documents and embeddings
     3.times do |i|
-      document = Ragdoll::Core::Models::Document.create!(
+      document = Ragdoll::Document.create!(
         location: "/test#{i}.txt",
         title: "Test #{i}",
         document_type: "text",
@@ -84,7 +84,7 @@ class SearchEngineTest < Minitest::Test
         embedding_model: "test-model"
       )
 
-      Ragdoll::Core::Models::Embedding.create!(
+      Ragdoll::Embedding.create!(
         embeddable: text_content,
         chunk_index: 0,
         embedding_vector: vector.map { |v| v + (i * 0.01) }, # Slight variations
@@ -128,7 +128,7 @@ class SearchEngineTest < Minitest::Test
     vector = Array.new(1536) { |i| (i / 1536.0) }
 
     # Create test embeddings
-    document = Ragdoll::Core::Models::Document.create!(
+    document = Ragdoll::Document.create!(
       location: "/test.txt",
       title: "Test",
       document_type: "text",
@@ -140,7 +140,7 @@ class SearchEngineTest < Minitest::Test
       embedding_model: "test-model"
     )
 
-    Ragdoll::Core::Models::Embedding.create!(
+    Ragdoll::Embedding.create!(
       embeddable: text_content,
       chunk_index: 0,
       embedding_vector: vector,
@@ -158,14 +158,14 @@ class SearchEngineTest < Minitest::Test
     @embedding_service.expect(:generate_embedding, vector, [query])
 
     # Create documents with different types
-    doc1 = Ragdoll::Core::Models::Document.create!(
+    doc1 = Ragdoll::Document.create!(
       location: "/test1.txt",
       title: "Test 1",
       document_type: "text",
       status: "processed"
     )
 
-    doc2 = Ragdoll::Core::Models::Document.create!(
+    doc2 = Ragdoll::Document.create!(
       location: "/test2.pdf",
       title: "Test 2",
       document_type: "pdf",
@@ -179,7 +179,7 @@ class SearchEngineTest < Minitest::Test
         embedding_model: "test-model"
       )
 
-      Ragdoll::Core::Models::Embedding.create!(
+      Ragdoll::Embedding.create!(
         embeddable: text_content,
         chunk_index: 0,
         embedding_vector: vector,
@@ -193,7 +193,7 @@ class SearchEngineTest < Minitest::Test
     assert_instance_of Array, result
     # All results should be from text documents
     result.each do |res|
-      document = Ragdoll::Core::Models::Document.find(res[:document_id])
+      document = Ragdoll::Document.find(res[:document_id])
       assert_equal "text", document.document_type
     end
   end

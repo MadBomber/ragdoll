@@ -21,7 +21,7 @@ class DocumentManagementTest < Minitest::Test
     doc_id = Ragdoll::Core::DocumentManagement.add_document(location, content, metadata)
 
     assert_match(/^\d+$/, doc_id)
-    document = Ragdoll::Core::Models::Document.find(doc_id)
+    document = Ragdoll::Document.find(doc_id)
     assert_equal "Test Document", document.title
     assert_equal "text", document.document_type
     assert_equal "Test Author", document.metadata["author"]
@@ -36,7 +36,7 @@ class DocumentManagementTest < Minitest::Test
     doc_id = Ragdoll::Core::DocumentManagement.add_document(location, content)
 
     assert_match(/^\d+$/, doc_id)
-    document = Ragdoll::Core::Models::Document.find(doc_id)
+    document = Ragdoll::Document.find(doc_id)
     assert_equal "document", document.title # extracted from filename
     assert_equal "text", document.document_type # default
     assert_equal content, document.content
@@ -91,7 +91,7 @@ class DocumentManagementTest < Minitest::Test
 
     assert_equal true, result
     assert_raises(ActiveRecord::RecordNotFound) do
-      Ragdoll::Core::Models::Document.find(document.id)
+      Ragdoll::Document.find(document.id)
     end
   end
 
@@ -159,12 +159,12 @@ class DocumentManagementTest < Minitest::Test
       Array.new(1536) { |i| (i / 1536.0) },
       {
         content: "test content",
-        embeddable_type: "Ragdoll::Core::Models::TextContent"
+        embeddable_type: "Ragdoll::TextContent"
       }
     )
 
     assert_match(/^\d+$/, embedding_id)
-    embedding = Ragdoll::Core::Models::Embedding.find(embedding_id)
+    embedding = Ragdoll::Embedding.find(embedding_id)
     assert_equal text_content.id, embedding.embeddable_id
     assert_equal 0, embedding.chunk_index
     assert_equal 1536, embedding.embedding_vector.length
@@ -175,7 +175,7 @@ class DocumentManagementTest < Minitest::Test
   def test_extract_title_from_location_private_method
     # Test the private method indirectly through add_document
     doc_id = Ragdoll::Core::DocumentManagement.add_document("/path/to/my_document.pdf", "content")
-    document = Ragdoll::Core::Models::Document.find(doc_id)
+    document = Ragdoll::Document.find(doc_id)
 
     assert_equal "my_document", document.title
   end
@@ -183,7 +183,7 @@ class DocumentManagementTest < Minitest::Test
   def test_handles_url_locations
     url = "http://example.com/document.pdf"
     doc_id = Ragdoll::Core::DocumentManagement.add_document(url, "content")
-    document = Ragdoll::Core::Models::Document.find(doc_id)
+    document = Ragdoll::Document.find(doc_id)
 
     assert_equal url, document.location # Should not be expanded for URLs
   end
@@ -191,7 +191,7 @@ class DocumentManagementTest < Minitest::Test
   def test_handles_ftp_locations
     ftp_url = "ftp://example.com/document.pdf"
     doc_id = Ragdoll::Core::DocumentManagement.add_document(ftp_url, "content")
-    document = Ragdoll::Core::Models::Document.find(doc_id)
+    document = Ragdoll::Document.find(doc_id)
 
     assert_equal ftp_url, document.location # Should not be expanded for FTP URLs
   end
@@ -202,7 +202,7 @@ class DocumentManagementTest < Minitest::Test
     # Generate unique location to avoid constraint violations
     unique_id = SecureRandom.hex(8)
 
-    Ragdoll::Core::Models::Document.create!({
+    Ragdoll::Document.create!({
       title: "Test Document",
       location: "/test/document_#{unique_id}.txt",
       document_type: "text",
