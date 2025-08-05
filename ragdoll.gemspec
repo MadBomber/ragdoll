@@ -34,4 +34,15 @@ Gem::Specification.new do |spec|
     "Thorfile"
   ]
   spec.require_paths = ["lib", "app/models"]
+
+  # Runtime dependencies
+  spec.add_dependency "activerecord"
+  spec.add_dependency "activejob"
+  spec.add_dependency "debug_me"
+  spec.add_dependency "docx"
+  spec.add_dependency "neighbor"
+  spec.add_dependency "pdf-reader"
+  spec.add_dependency "rmagick"
+  spec.add_dependency "ruby_llm"
+  spec.add_dependency "shrine"
 end

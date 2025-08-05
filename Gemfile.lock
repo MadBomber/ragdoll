@@ -1,7 +1,16 @@
 PATH
   remote: .
   specs:
-    ragdoll (0.1.3)
+    ragdoll (0.1.8)
+      activejob
+      activerecord
+      debug_me
+      docx
+      neighbor
+      pdf-reader
+      rmagick
+      ruby_llm
+      shrine
 
 GEM
   remote: https://rubygems.org/
