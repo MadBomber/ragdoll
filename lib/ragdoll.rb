@@ -196,6 +196,23 @@ module Ragdoll
       Ragdoll::Core.search_similar_content(*args, **kwargs)
     end
 
+    # Perform hybrid search combining semantic and full-text search.
+    # @param query [String] the search query string.
+    # @param semantic_weight [Float] weight for semantic search results (0.0 - 1.0).
+    # @param text_weight [Float] weight for full-text search results (0.0 - 1.0).
+    # @param options [Hash] additional search options, such as filters and limits.
+    # @example
+    #   results = Ragdoll.hybrid_search(
+    #     query: "machine learning",
+    #     semantic_weight: 0.7,
+    #     text_weight: 0.3
+    #   )
+    #   results.each { |result| puts result[:document_title] }
+    # @return [Array<Hash>] an array of search results combining semantic and text search.
+    def hybrid_search(*args, **kwargs)
+      Ragdoll::Core.hybrid_search(*args, **kwargs)
+    end
+
 
     ###############
     # Misc. Stuff #

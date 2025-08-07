@@ -18,9 +18,55 @@
   </table>
 </div>
 
-# Ragdoll::Core
+# Ragdoll
 
 Database-oriented multi-modal RAG (Retrieval-Augmented Generation) library built on ActiveRecord. Features PostgreSQL + pgvector for high-performance semantic search, polymorphic content architecture, and dual metadata design for sophisticated document analysis.
+
+## Overview
+
+Ragdoll is a database-first, multi-modal Retrieval-Augmented Generation (RAG) library for Ruby. It pairs PostgreSQL + pgvector with an ActiveRecord-driven schema to deliver fast, production-grade semantic search and clean data modeling. Today it ships with robust text processing; image and audio pipelines are scaffolded and actively being completed.
+
+The library emphasizes a dual-metadata design: LLM-derived semantic metadata for understanding content, and system file metadata for managing assets. With built-in analytics, background processing, and a high-level API, you can go from ingest to answer quickly—and scale confidently.
+
+### Why Ragdoll?
+
+- Database-first foundation on ActiveRecord (PostgreSQL + pgvector only) for performance and reliability
+- Multi-modal architecture (text today; image/audio next) via polymorphic content design
+- Dual metadata model separating semantic analysis from file properties
+- Provider-agnostic LLM integration via `ruby_llm` (OpenAI, Anthropic, Google)
+- Production-friendly: background jobs, connection pooling, indexing, and search analytics
+- Simple, ergonomic high-level API to keep your application code clean
+
+### Key Capabilities
+
+- Semantic search with vector similarity (cosine) across polymorphic content
+- Text ingestion, chunking, and embedding generation
+- LLM-powered structured metadata with schema validation
+- Search tracking and analytics (CTR, performance, similarity of queries)
+- Hybrid search (semantic + full-text) planned
+- Extensible model and configuration system
+
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [API Overview](#api-overview)
+- [Search and Retrieval](#search-and-retrieval)
+- [Search Analytics and Tracking](#search-analytics-and-tracking)
+- [System Operations](#system-operations)
+- [Configuration](#configuration)
+- [Current Implementation Status](#current-implementation-status)
+- [Architecture Highlights](#architecture-highlights)
+- [Text Document Processing](#text-document-processing-current)
+- [PostgreSQL + pgvector Configuration](#postgresql--pgvector-configuration)
+- [Performance Features](#performance-features)
+- [Installation](#installation)
+- [Requirements](#requirements)
+- [Use Cases](#use-cases)
+- [Environment Variables](#environment-variables)
+- [Troubleshooting](#troubleshooting)
+- [Related Projects](#related-projects)
+- [Key Design Principles](#key-design-principles)
+- [Contributing & Support](#contributing--support)
 
 ## Quick Start
 
@@ -28,7 +74,7 @@ Database-oriented multi-modal RAG (Retrieval-Augmented Generation) library built
 require 'ragdoll'
 
 # Configure with PostgreSQL + pgvector
-Ragdoll::Core.configure do |config|
+Ragdoll.configure do |config|
   # Database configuration (PostgreSQL only)
   config.database_config = {
     adapter: 'postgresql',
@@ -55,22 +101,22 @@ Ragdoll::Core.configure do |config|
 end
 
 # Add documents - returns detailed result
-result = Ragdoll::Core.add_document(path: 'research_paper.pdf')
+result = Ragdoll.add_document(path: 'research_paper.pdf')
 puts result[:message]  # "Document 'research_paper' added successfully with ID 123"
 doc_id = result[:document_id]
 
 # Check document status
-status = Ragdoll::Core.document_status(id: doc_id)
+status = Ragdoll.document_status(id: doc_id)
 puts status[:message]  # Shows processing status and embeddings count
 
 # Search across content
-results = Ragdoll::Core.search(query: 'neural networks')
+results = Ragdoll.search(query: 'neural networks')
 
 # Get detailed document information
-document = Ragdoll::Core.get_document(id: doc_id)
+document = Ragdoll.get_document(id: doc_id)
 ```
 
-## High-Level API
+## API Overview
 
 The `Ragdoll` module provides a convenient high-level API for common operations:
 
@@ -78,37 +124,37 @@ The `Ragdoll` module provides a convenient high-level API for common operations:
 
 ```ruby
 # Add single document - returns detailed result hash
-result = Ragdoll::Core.add_document(path: 'document.pdf')
+result = Ragdoll.add_document(path: 'document.pdf')
 puts result[:success]         # true
 puts result[:document_id]     # "123"
 puts result[:message]         # "Document 'document' added successfully with ID 123"
 puts result[:embeddings_queued] # true
 
 # Check document processing status
-status = Ragdoll::Core.document_status(id: result[:document_id])
+status = Ragdoll.document_status(id: result[:document_id])
 puts status[:status]          # "processed"
 puts status[:embeddings_count] # 15
 puts status[:embeddings_ready] # true
 puts status[:message]         # "Document processed successfully with 15 embeddings"
 
 # Get detailed document information
-document = Ragdoll::Core.get_document(id: result[:document_id])
+document = Ragdoll.get_document(id: result[:document_id])
 puts document[:title]         # "document"
 puts document[:status]        # "processed"
 puts document[:embeddings_count] # 15
 puts document[:content_length]   # 5000
 
 # Update document metadata
-Ragdoll::Core.update_document(id: result[:document_id], title: 'New Title')
+Ragdoll.update_document(id: result[:document_id], title: 'New Title')
 
 # Delete document
-Ragdoll::Core.delete_document(id: result[:document_id])
+Ragdoll.delete_document(id: result[:document_id])
 
 # List all documents
-documents = Ragdoll::Core.list_documents(limit: 10)
+documents = Ragdoll.list_documents(limit: 10)
 
 # System statistics
-stats = Ragdoll::Core.stats
+stats = Ragdoll.stats
 puts stats[:total_documents]  # 50
 puts stats[:total_embeddings] # 1250
 ```
@@ -117,22 +163,22 @@ puts stats[:total_embeddings] # 1250
 
 ```ruby
 # Semantic search across all content types
-results = Ragdoll::Core.search(query: 'artificial intelligence')
+results = Ragdoll.search(query: 'artificial intelligence')
 
 # Search with automatic tracking (default)
-results = Ragdoll::Core.search(
+results = Ragdoll.search(
   query: 'machine learning',
   session_id: 123,  # Optional: track user sessions
   user_id:    456   # Optional: track by user
 )
 
 # Search specific content types
-text_results = Ragdoll::Core.search(query: 'machine learning', content_type: 'text')
-image_results = Ragdoll::Core.search(query: 'neural network diagram', content_type: 'image')
-audio_results = Ragdoll::Core.search(query: 'AI discussion', content_type: 'audio')
+text_results = Ragdoll.search(query: 'machine learning', content_type: 'text')
+image_results = Ragdoll.search(query: 'neural network diagram', content_type: 'image')
+audio_results = Ragdoll.search(query: 'AI discussion', content_type: 'audio')
 
 # Advanced search with metadata filters
-results = Ragdoll::Core.search(
+results = Ragdoll.search(
   query: 'deep learning',
   classification: 'research',
   keywords: ['AI', 'neural networks'],
@@ -140,16 +186,16 @@ results = Ragdoll::Core.search(
 )
 
 # Get context for RAG applications
-context = Ragdoll::Core.get_context(query: 'machine learning', limit: 5)
+context = Ragdoll.get_context(query: 'machine learning', limit: 5)
 
 # Enhanced prompt with context
-enhanced = Ragdoll::Core.enhance_prompt(
+enhanced = Ragdoll.enhance_prompt(
   prompt: 'What is machine learning?',
   context_limit: 5
 )
 
 # Hybrid search combining semantic and full-text
-results = Ragdoll::Core.hybrid_search(
+results = Ragdoll.hybrid_search(
   query: 'neural networks',
   semantic_weight: 0.7,
   text_weight: 0.3
@@ -183,7 +229,7 @@ search_result = Ragdoll::SearchResult.first
 search_result.mark_as_clicked!
 
 # Disable tracking for specific searches if needed
-results = Ragdoll::Core.search(
+results = Ragdoll.search(
   query: 'private query',
   track_search: false
 )
@@ -193,24 +239,24 @@ results = Ragdoll::Core.search(
 
 ```ruby
 # Get system statistics
-stats = Ragdoll::Core.stats
+stats = Ragdoll.stats
 # Returns information about documents, content types, embeddings, etc.
 
 # Health check
-healthy = Ragdoll::Core.healthy?
+healthy = Ragdoll.healthy?
 
 # Get configuration
-config = Ragdoll::Core.configuration
+config = Ragdoll.configuration
 
 # Reset configuration (useful for testing)
-Ragdoll::Core.reset_configuration!
+Ragdoll.reset_configuration!
 ```
 
 ### Configuration
 
 ```ruby
 # Configure the system
-Ragdoll::Core.configure do |config|
+Ragdoll.configure do |config|
   # Database configuration (PostgreSQL only - REQUIRED)
   config.database_config = {
     adapter: 'postgresql',
@@ -305,15 +351,16 @@ Currently, Ragdoll processes text documents through:
 6. **Search**: Semantic search using cosine similarity with usage analytics
 
 ### Example Usage
+
 ```ruby
 # Add a text document
-result = Ragdoll::Core.add_document(path: 'document.pdf')
+result = Ragdoll.add_document(path: 'document.pdf')
 
 # Check processing status
-status = Ragdoll::Core.document_status(id: result[:document_id])
+status = Ragdoll.document_status(id: result[:document_id])
 
 # Search the content
-results = Ragdoll::Core.search(query: 'machine learning')
+results = Ragdoll.search(query: 'machine learning')
 ```
 
 ## PostgreSQL + pgvector Configuration
@@ -334,7 +381,7 @@ psql -d ragdoll_production -c "CREATE EXTENSION IF NOT EXISTS vector;"
 ### Configuration Example
 
 ```ruby
-Ragdoll::Core.configure do |config|
+Ragdoll.configure do |config|
   config.database_config = {
     adapter: 'postgresql',
     database: 'ragdoll_production',
@@ -378,10 +425,51 @@ gem 'ragdoll'
 - **PostgreSQL**: 12+ with pgvector extension (REQUIRED - no other databases supported)
 - **Dependencies**: activerecord, pg, pgvector, neighbor, ruby_llm, pdf-reader, docx, rubyzip, shrine, rmagick, opensearch-ruby, searchkick, ruby-progressbar
 
+## Use Cases
+
+- Internal knowledge bases and chat assistants grounded in your documents
+- Product documentation and support search with analytics and relevance feedback
+- Research corpora exploration (summaries, topics, similarity) across large text sets
+- Incident retrospectives and operational analytics with searchable write-ups
+- Media libraries preparing for text + image + audio pipelines (image/audio in progress)
+
+## Environment Variables
+
+Set the following as environment variables (do not commit secrets to source control):
+
+- `OPENAI_API_KEY` — required for OpenAI models
+- `OPENAI_ORGANIZATION` — optional, for OpenAI org scoping
+- `OPENAI_PROJECT` — optional, for OpenAI project scoping
+- `ANTHROPIC_API_KEY` — optional, for Anthropic models
+- `GOOGLE_API_KEY` — optional, for Google models
+- `DATABASE_PASSWORD` — your PostgreSQL password if not using peer auth
+
+## Troubleshooting
+
+### pgvector extension missing
+
+- Ensure the extension is enabled in your database:
+
+```bash
+psql -d ragdoll_production -c "CREATE EXTENSION IF NOT EXISTS vector;"
+```
+
+- If the command fails, verify PostgreSQL and pgvector are installed and that you’re connecting to the correct database.
+
+### Document stuck in "processing"
+
+- Confirm your API keys are set and valid.
+- Ensure `auto_migrate: true` in configuration (or run migrations if you manage schema yourself).
+- Check logs at the path configured by `logging_config[:log_filepath]` for errors.
+
 ## Related Projects
 
 - **ragdoll-cli**: Standalone CLI application using ragdoll
 - **ragdoll-rails**: Rails engine with web interface for ragdoll
+
+## Contributing & Support
+
+Contributions are welcome! If you find a bug or have a feature request, please open an issue or submit a pull request. For questions and feedback, open an issue in this repository.
 
 ## Key Design Principles
 
