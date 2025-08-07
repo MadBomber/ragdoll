@@ -8,6 +8,14 @@ module Ragdoll
     # The provider is optional.
     # Can be initialized with nil or empty string.
     Model = Data.define(:name) do
+      def initialize(name:)
+        # Handle case where a Model object is passed instead of a string
+        if name.is_a?(Model)
+          super(name: name.name)
+        else
+          super(name: name)
+        end
+      end
       # @return [Symbol, nil] the provider part of the name, or nil if not present.
       def provider
         return nil if name.nil? || name.empty?
@@ -29,6 +37,11 @@ module Ragdoll
       # @return [String] the original name string, or empty string if name is nil.
       def to_s
         name.nil? ? "" : name
+      end
+
+      # @return [Boolean] true if the name is nil or empty.
+      def empty?
+        name.nil? || name.empty?
       end
 
       # @return [Hash] a hash representation of the model.

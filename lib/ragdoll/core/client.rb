@@ -76,6 +76,7 @@ module Ragdoll
 
       # Semantic search++ should incorporate hybrid search
       def search(query:, **options)
+        # Pass through tracking options to the search engine
         results = search_similar_content(query: query, **options)
 
         {
@@ -92,11 +93,52 @@ module Ragdoll
 
       # Hybrid search combining semantic and full-text search
       def hybrid_search(query:, **options)
+        start_time = Time.current
+        
+        # Extract tracking options
+        session_id = options[:session_id]
+        user_id = options[:user_id]
+        track_search = options.fetch(:track_search, true)
+        
         # Generate embedding for the query
         query_embedding = @embedding_service.generate_embedding(query)
 
         # Perform hybrid search
         results = Ragdoll::Document.hybrid_search(query, query_embedding: query_embedding, **options)
+        
+        execution_time = ((Time.current - start_time) * 1000).round
+        
+        # Record search if tracking enabled
+        if track_search && query && !query.empty?
+          begin
+            # Format results for search recording - hybrid search returns different format
+            search_results = results.map do |result|
+              {
+                embedding_id: result[:embedding_id] || result[:id],
+                similarity: result[:similarity] || result[:score] || 0.0
+              }
+            end
+            
+            # Extract filters from options
+            filters = options.slice(:document_type, :status).compact
+            search_options = options.slice(:limit, :semantic_weight, :text_weight).compact
+            
+            Ragdoll::Search.record_search(
+              query: query,
+              query_embedding: query_embedding,
+              results: search_results,
+              search_type: "hybrid",
+              filters: filters,
+              options: search_options,
+              execution_time_ms: execution_time,
+              session_id: session_id,
+              user_id: user_id
+            )
+          rescue => e
+            # Log error but don't fail the search
+            puts "Warning: Hybrid search tracking failed: #{e.message}" if ENV["RAGDOLL_DEBUG"]
+          end
+        end
 
         {
           query: query,

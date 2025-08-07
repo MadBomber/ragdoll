@@ -38,6 +38,11 @@ module Ragdoll
           embedding_config = @model_resolver.resolve_embedding(:text)
           # Use just the model name for RubyLLM
           model = embedding_config.model.model
+          
+          # If model is nil or empty, use fallback
+          if model.nil? || model.empty?
+            return generate_fallback_embedding
+          end
 
           begin
             response = RubyLLM.embed(cleaned_text, model: model)
@@ -93,6 +98,11 @@ module Ragdoll
           embedding_config = @model_resolver.resolve_embedding(:text)
           # Use just the model name for RubyLLM
           model = embedding_config.model.model
+          
+          # If model is nil or empty, use fallback
+          if model.nil? || model.empty?
+            return cleaned_texts.map { generate_fallback_embedding }
+          end
 
           cleaned_texts.map do |text|
             response = RubyLLM.embed(text, model: model)
