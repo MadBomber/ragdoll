@@ -119,6 +119,13 @@ puts stats[:total_embeddings] # 1250
 # Semantic search across all content types
 results = Ragdoll::Core.search(query: 'artificial intelligence')
 
+# Search with automatic tracking (default)
+results = Ragdoll::Core.search(
+  query: 'machine learning',
+  session_id: 123,  # Optional: track user sessions
+  user_id:    456   # Optional: track by user
+)
+
 # Search specific content types
 text_results = Ragdoll::Core.search(query: 'machine learning', content_type: 'text')
 image_results = Ragdoll::Core.search(query: 'neural network diagram', content_type: 'image')
@@ -146,6 +153,39 @@ results = Ragdoll::Core.hybrid_search(
   query: 'neural networks',
   semantic_weight: 0.7,
   text_weight: 0.3
+)
+```
+
+### Search Analytics and Tracking
+
+Ragdoll automatically tracks all searches to provide comprehensive analytics and improve search relevance over time:
+
+```ruby
+# Get search analytics for the last 30 days
+analytics = Ragdoll::Search.search_analytics(days: 30)
+puts "Total searches: #{analytics[:total_searches]}"
+puts "Unique queries: #{analytics[:unique_queries]}"
+puts "Average execution time: #{analytics[:avg_execution_time]}ms"
+puts "Click-through rate: #{analytics[:click_through_rate]}%"
+
+# Find similar searches using vector similarity
+search = Ragdoll::Search.first
+similar_searches = search.nearest_neighbors(:query_embedding, distance: :cosine).limit(5)
+
+similar_searches.each do |similar|
+  puts "Query: #{similar.query}"
+  puts "Similarity: #{similar.neighbor_distance}"
+  puts "Results: #{similar.results_count}"
+end
+
+# Track user interactions (clicks on search results)
+search_result = Ragdoll::SearchResult.first
+search_result.mark_as_clicked!
+
+# Disable tracking for specific searches if needed
+results = Ragdoll::Core.search(
+  query: 'private query',
+  track_search: false
 )
 ```
 
@@ -218,6 +258,7 @@ end
 - **Database schema**: Multi-modal polymorphic architecture with PostgreSQL + pgvector
 - **Dual metadata architecture**: Separate LLM-generated content analysis and file properties
 - **Search functionality**: Semantic search with cosine similarity and usage analytics
+- **Search tracking system**: Comprehensive analytics with query embeddings, click-through tracking, and performance monitoring
 - **Document management**: Add, update, delete, list operations
 - **Background processing**: ActiveJob integration for async embedding generation
 - **LLM metadata generation**: AI-powered structured content analysis with schema validation
