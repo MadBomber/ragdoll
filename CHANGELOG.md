@@ -6,7 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+*Note: These features will be included in the next release (likely v0.1.9) featuring comprehensive search tracking and analytics capabilities.*
+
 ### Added
+- **Initial CHANGELOG**: Added comprehensive CHANGELOG.md following Keep a Changelog format
+  - Complete version history from git log analysis
+  - Feature status tracking (implemented vs planned)
+  - Migration guides and breaking changes documentation
+  - Structured release notes with proper categorization
 - **Search Tracking System**: Comprehensive analytics with query embeddings, click-through tracking, and performance monitoring
   - Automatic search recording with vector embeddings for similarity analysis
   - Click-through rate tracking and user engagement monitoring
@@ -15,12 +22,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Search similarity analysis using vector embeddings
   - Automatic cleanup of orphaned and unused searches
 - **Enhanced README**: Updated documentation with search tracking examples and analytics usage
+  - Comprehensive search analytics examples and usage patterns
+  - Updated API examples to use proper top-level Ragdoll methods
+  - Added search tracking configuration and usage examples
+- **API Method Consistency**: Added `hybrid_search` delegation to top-level Ragdoll namespace
+  - Complete documentation with examples and parameter descriptions
+  - Consistent API experience across all search methods
+  - Verified method availability at both Ragdoll and Ragdoll::Core levels
 
 ### Fixed
 - **Model Resolution Warning**: Fixed "undefined method 'empty?' for an instance of Ragdoll::Core::Model" warning
   - Added defensive `empty?` method to Model class
   - Enhanced constructor to handle polymorphic Model objects
   - Added nil/empty checks in embedding service
+
+### Changed
+- **Test Coverage**: Added coverage directory to .gitignore for cleaner repository state
+
+### Technical Details
+- Commits: `9186067`, `cb952d3`, `e902a5f`, `632527b` 
+- All changes maintain backward compatibility
+- No breaking API changes
 
 ## [0.1.8] - 2025-01-04
 
