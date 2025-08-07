@@ -20,10 +20,10 @@ module Ragdoll
         @config.embedding_model(content_type)
       when :summary, :keywords
         # Check for task-specific model, fall back to default
-        task_model = @config.models.text_generation[task_type]
-        task_model || @config.models.text_generation[:default]
+        task_model = @config.models[:text_generation][task_type]
+        task_model || @config.models[:text_generation][:default]
       else
-        @config.models.text_generation[:default]
+        @config.models[:text_generation][:default]
       end
     end
 
