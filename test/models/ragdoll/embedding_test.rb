@@ -101,6 +101,10 @@ module Ragdoll
           # NOTE: ActiveRecord STI with polymorphic associations stores base class name
           # The actual object class is correct, but embeddable_type stores the base class
           assert_equal "Ragdoll::Content", embedding.embeddable_type
+
+          # Test new search associations
+          assert_equal 0, embedding.search_results.count
+          assert_equal 0, embedding.searches.count
         end
 
         def test_scopes
@@ -146,9 +150,11 @@ module Ragdoll
 
         def test_mark_as_used
           vector = Array.new(1536) { |i| (i / 1536.0) }
+          # Use a unique chunk index to avoid conflicts with other tests
+          unique_index = Time.current.to_i % 10000
           embedding = Ragdoll::Embedding.create!(
             embeddable: @text_content,
-            chunk_index: 0,
+            chunk_index: unique_index,
             embedding_vector: vector,
             content: "chunk"
           )
@@ -295,6 +301,37 @@ module Ragdoll
           assert_in_delta vector[0], embedding.embedding_vector[0], 0.001
           assert_in_delta vector[100], embedding.embedding_vector[100], 0.001
           assert_in_delta vector[1000], embedding.embedding_vector[1000], 0.001
+        end
+
+        def test_search_associations_after_search_creation
+          vector = Array.new(1536) { |i| (i / 1536.0) }
+          embedding = Ragdoll::Embedding.create!(
+            embeddable: @text_content,
+            chunk_index: 0,
+            embedding_vector: vector,
+            content: "test content"
+          )
+
+          # Create a search and search result
+          search = Ragdoll::Search.create!(
+            query: "test query",
+            query_embedding: vector,
+            search_type: "semantic",
+            results_count: 1
+          )
+
+          search_result = Ragdoll::SearchResult.create!(
+            search: search,
+            embedding: embedding,
+            similarity_score: 0.85,
+            result_rank: 1
+          )
+
+          # Test associations work correctly
+          assert_equal 1, embedding.search_results.count
+          assert_equal 1, embedding.searches.count
+          assert_includes embedding.search_results, search_result
+          assert_includes embedding.searches, search
         end
       end
     end

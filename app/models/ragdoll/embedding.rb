@@ -11,6 +11,8 @@ module Ragdoll
     has_neighbors :embedding_vector
 
     belongs_to :embeddable, polymorphic: true
+    has_many :search_results, class_name: "Ragdoll::SearchResult", dependent: :destroy
+    has_many :searches, through: :search_results
 
     validates :embeddable_id,    presence: true
     validates :embeddable_type,  presence: true

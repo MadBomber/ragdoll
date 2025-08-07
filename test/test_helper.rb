@@ -3,16 +3,10 @@
 # Suppress bundler/rubygems warnings
 $VERBOSE = nil
 
+# Set flag to indicate we're running tests
+ENV["RUNNING_TESTS"] = "true"
+
 require "simplecov"
-
-SimpleCov.start do
-  add_filter "/test/"
-  track_files "lib/**/*.rb"
-  minimum_coverage 0 # Temporarily disable coverage requirement
-
-  add_group "Core", "lib/ragdoll/core"
-  add_group "Models", "lib/ragdoll/core/models"
-end
 
 # Load undercover after SimpleCov to avoid circular requires
 # Only load in specific test environments to avoid conflicts
@@ -237,6 +231,8 @@ module Minitest
       if !ci_environment? && ActiveRecord::Base.connected?
         # Delete child tables first, then parent tables (using current schema)
         tables_to_clean = %w[
+          ragdoll_search_results
+          ragdoll_searches
           ragdoll_embeddings
           ragdoll_contents
           ragdoll_documents

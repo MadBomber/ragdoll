@@ -53,6 +53,9 @@ class SearchEngineTest < Minitest::Test
     assert result.length.positive?
     assert result.first[:content]
     assert result.first[:similarity]
+    
+    # Note: The search engine doesn't automatically record searches
+    # That would be handled by the calling code if desired
   end
 
   def test_search_documents_with_nil_embedding

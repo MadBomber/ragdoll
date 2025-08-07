@@ -8,9 +8,9 @@ namespace :db do
     require_relative "../ragdoll-core"
 
     config = Ragdoll::Core.configuration
-    puts "Creating database with config: #{config.database_config.inspect}"
+    puts "Creating database with config: #{config.database.inspect}"
 
-    case config.database_config[:adapter]
+    case config.database[:adapter]
     when "postgresql"
       puts "PostgreSQL database setup - running as superuser to create database and role..."
       
@@ -20,8 +20,8 @@ namespace :db do
         database: 'postgres', # Connect to postgres database initially
         username: ENV.fetch('POSTGRES_SUPERUSER', 'postgres'),
         password: ENV['POSTGRES_SUPERUSER_PASSWORD'],
-        host: config.database_config[:host] || 'localhost',
-        port: config.database_config[:port] || 5432
+        host: config.database[:host] || 'localhost',
+        port: config.database[:port] || 5432
       )
       
       # Run individual SQL commands to avoid transaction block issues
@@ -62,8 +62,8 @@ namespace :db do
         database: 'ragdoll_development',
         username: ENV.fetch('POSTGRES_SUPERUSER', 'postgres'),
         password: ENV['POSTGRES_SUPERUSER_PASSWORD'],
-        host: config.database_config[:host] || 'localhost',
-        port: config.database_config[:port] || 5432
+        host: config.database[:host] || 'localhost',
+        port: config.database[:port] || 5432
       )
       
       ActiveRecord::Base.connection.execute <<-SQL
@@ -94,11 +94,11 @@ namespace :db do
     require_relative "../ragdoll-core"
 
     config = Ragdoll::Core.configuration
-    puts "Dropping database with config: #{config.database_config.inspect}"
+    puts "Dropping database with config: #{config.database.inspect}"
 
-    case config.database_config[:adapter]
+    case config.database[:adapter]
     when "postgresql", "mysql2"
-      puts "For #{config.database_config[:adapter]}, please drop the database manually on your server"
+      puts "For #{config.database[:adapter]}, please drop the database manually on your server"
     end
 
     puts "Database drop completed"
@@ -216,9 +216,9 @@ namespace :db do
 
     config = Ragdoll::Core.configuration
 
-    case config.database_config[:adapter]
+    case config.database[:adapter]
     when "postgresql"
-      db_config = config.database_config
+      db_config = config.database
       psql_cmd = "psql"
       psql_cmd += " -h #{db_config[:host]}" if db_config[:host]
       psql_cmd += " -p #{db_config[:port]}" if db_config[:port]
@@ -227,7 +227,7 @@ namespace :db do
       puts "Opening PostgreSQL console..."
       system(psql_cmd)
     when "mysql2"
-      db_config = config.database_config
+      db_config = config.database
       mysql_cmd = "mysql"
       mysql_cmd += " -h #{db_config[:host]}" if db_config[:host]
       mysql_cmd += " -P #{db_config[:port]}" if db_config[:port]
@@ -237,7 +237,7 @@ namespace :db do
       puts "Opening MySQL console..."
       system(mysql_cmd)
     else
-      puts "Console not supported for adapter: #{config.database_config[:adapter]}"
+      puts "Console not supported for adapter: #{config.database[:adapter]}"
     end
   end
 

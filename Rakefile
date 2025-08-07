@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require "simplecov"
-SimpleCov.start
-
 # Suppress bundler/rubygems warnings
 $VERBOSE = nil
 
