@@ -7,11 +7,13 @@
 require "bundler/setup"
 require_relative "../lib/ragdoll"
 
-# Configure ragdoll-core
-Ragdoll::Core.configure do |config|
-  config.database_config = {
+# Configure Ragdoll using high-level API
+Ragdoll.configure do |config|
+  # Database configuration (PostgreSQL required)
+  # Use a custom database name for this example
+  config.database = {
     adapter: "postgresql",
-    database: "ragdoll_summary_example",
+    database: ENV.fetch("RAGDOLL_DATABASE_NAME", "ragdoll_development"),
     username: "ragdoll",
     password: ENV["RAGDOLL_DATABASE_PASSWORD"],
     host: "localhost",
@@ -19,20 +21,12 @@ Ragdoll::Core.configure do |config|
     auto_migrate: true
   }
 
-  # Configure models for summary and keyword generation
-  config.models[:summary] = "openai/gpt-4o-mini"
-  config.models[:keywords] = "openai/gpt-4o-mini"
+  # Models and LLM providers are configured via environment variables:
+  # OPENAI_API_KEY, OLLAMA_ENDPOINT, etc.
+  # Models default to gpt-4o for text generation tasks
 
-  # Configure Ruby LLM providers
-  config.ruby_llm_config[:openai][:api_key] = ENV["OPENAI_API_KEY"]
-
-  # Enable summarization
-  config.summarization_config[:enable] = true
-  config.summarization_config[:max_length] = 300
+  # Summarization is enabled by default
 end
-
-# Initialize the database
-Ragdoll::Core::Database.setup
 
 puts "=== Summary and Keywords Example ==="
 
@@ -47,50 +41,53 @@ ml_content = <<~TEXT
   with the advent of big data, improved algorithms, and increased computational power.
 TEXT
 
-# Create a document and generate summary and keywords
+# Create a document using high-level API
 puts "\n1. Creating document with text content..."
-document = Ragdoll::Core::Models::Document.create!(
-  location: "machine_learning_intro.txt",
-  title: "Introduction to Machine Learning",
-  document_type: "text",
-  status: "pending",
-  file_modified_at: Time.current
-)
 
-# Set the content which will create a text_content record
-document.content = ml_content
-document.save!
+# Create a temporary text file
+require "tempfile"
+text_file = Tempfile.new(["machine_learning_intro", ".txt"])
+text_file.write(ml_content)
+text_file.rewind
 
-puts "Document ID: #{document.id}"
-puts "Content length: #{document.total_character_count} characters"
-
-# Generate metadata including summary and keywords
-puts "\n2. Generating summary and keywords..."
 begin
-  document.generate_metadata!
-  document.reload
-
-  puts "Summary generated: #{document.metadata['summary'].present?}"
-  puts "Keywords generated: #{document.metadata['keywords'].present?}"
-rescue StandardError => e
-  puts "Note: Metadata generation requires LLM configuration: #{e.message}"
-
-  # Manually set example metadata for demonstration
-  document.update!(
-    metadata: {
-      summary: "Machine learning is a data analysis method that automates model building through AI, enabling systems to learn from data and make decisions with minimal human intervention.",
-      keywords: "machine learning, artificial intelligence, data analysis, algorithms, training data, predictions, automation, computer vision, recommendation systems",
-      classification: "educational",
-      tags: ["AI", "technology", "data science"]
-    }
-  )
+  # Add document using high-level API
+  result = Ragdoll.add_document(path: text_file.path)
+  
+  if result[:success]
+    doc_id = result[:document_id]
+    puts "✅ Document added successfully"
+    puts "Document ID: #{doc_id}"
+    puts "Content length: #{result[:content_length]} characters"
+    puts "Title: #{result[:title]}"
+  else
+    puts "❌ Failed to add document: #{result[:error]}"
+  end
+ensure
+  text_file.close
+  text_file.unlink
 end
 
-puts "\n3. Generated Summary:"
-puts document.metadata['summary']
-
-puts "\n4. Extracted Keywords:"
-puts document.metadata['keywords']
+# Wait a moment for processing
+puts "\n2. Checking document processing status..."
+if doc_id
+  status = Ragdoll.document_status(id: doc_id)
+  puts "Document status: #{status[:status]}"
+  puts "Embeddings ready: #{status[:embeddings_ready]}"
+  
+  # Get document details to see metadata
+  doc_details = Ragdoll.get_document(id: doc_id)
+  if doc_details && doc_details[:metadata]
+    puts "\n3. Generated Summary:"
+    puts doc_details[:metadata]['summary'] || "Summary not yet generated"
+    
+    puts "\n4. Extracted Keywords:"
+    puts doc_details[:metadata]['keywords'] || "Keywords not yet generated"
+  else
+    puts "\nNote: Metadata (summary and keywords) are generated during document processing."
+    puts "In a real application, you would wait for processing to complete."
+  end
+end
 
 # Example 2: Create another document
 puts "\n5. Creating second document..."
@@ -104,102 +101,100 @@ ai_content = <<~TEXT
   key areas of AI research and development.
 TEXT
 
-document2 = Ragdoll::Core::Models::Document.create!(
-  location: "ai_overview.txt",
-  title: "Artificial Intelligence Overview",
-  document_type: "text",
-  status: "pending",
-  file_modified_at: Time.current
-)
+# Create second temporary text file
+ai_file = Tempfile.new(["ai_overview", ".txt"])
+ai_file.write(ai_content)
+ai_file.rewind
 
-document2.content = ai_content
-document2.save!
-
-# Manually set metadata for second document
-document2.update!(
-  metadata: {
-    summary: "Artificial intelligence simulates human intelligence in machines for learning and problem-solving, with successful applications in game playing, medical diagnosis, and various AI research areas.",
-    keywords: "artificial intelligence, AI, neural networks, deep learning, natural language processing, computer vision, machine learning, medical diagnosis",
-    classification: "technical",
-    tags: ["AI", "technology", "research"]
-  }
-)
-
-puts "Second Document - AI Overview:"
-puts "Summary: #{document2.metadata['summary']}"
-puts "Keywords: #{document2.metadata['keywords']}"
-
-# Demonstrate keyword management (note: keywords now stored in metadata)
-puts "\n6. Keyword Management:"
-current_keywords = document.metadata['keywords']&.split(',')&.map(&:strip) || []
-puts "Current keywords: #{current_keywords}"
-
-# Add new keywords to metadata
-new_keywords = current_keywords + ["supervised learning", "unsupervised learning"]
-document.update!(
-  metadata: document.metadata.merge('keywords' => new_keywords.uniq.join(', '))
-)
-puts "After adding keywords: #{document.metadata['keywords']}"
-
-# Demonstrate faceted search
-puts "\n7. Faceted Search Capabilities:"
-all_keywords = Ragdoll::Core::Models::Document.all_keywords
-puts "All available keywords: #{all_keywords.first(10).join(', ')}..."
-
-keyword_frequencies = Ragdoll::Core::Models::Document.keyword_frequencies
-puts "Top keyword frequencies:"
-keyword_frequencies.first(5).each do |keyword, count|
-  puts "  #{keyword}: #{count}"
-end
-
-# Search by keywords (searching in metadata)
-puts "\n8. Search by Keywords:"
-search_results = Ragdoll::Core::Models::Document.faceted_search(
-  query: nil,
-  keywords: %w[learning intelligence]
-)
-puts "Documents with 'learning' and 'intelligence' keywords: #{search_results.count}"
-
-# Full-text search on metadata fields (summary and keywords)
-puts "\n9. Full-text Search (on metadata fields):"
-search_results = Ragdoll::Core::Models::Document.search_content("machine learning")
-puts "Search results for 'machine learning': #{search_results.count}"
-
-# Combined search
-puts "\n10. Combined Faceted Search:"
-combined_results = Ragdoll::Core::Models::Document.faceted_search(
-  query: "artificial",
-  keywords: ["intelligence"],
-  limit: 10
-)
-puts "Combined search results: #{combined_results.count}"
-combined_results.each do |doc|
-  metadata_keywords = doc.metadata['keywords']&.split(',')&.map(&:strip) || []
-  puts "  - #{doc.title} (#{metadata_keywords.length} keywords)"
-end
-
-# Document hash representation
-puts "\n11. Document Hash with Metadata:"
-hash = document.to_hash
-puts "Hash keys: #{hash.keys}"
-puts "Metadata present: #{hash[:metadata].present?}"
-puts "Summary in metadata: #{hash[:metadata]['summary'].present?}"
-puts "Keywords in metadata: #{hash[:metadata]['keywords'].present?}"
-
-# Show metadata structure
-puts "\nMetadata structure:"
-document.metadata.each do |key, value|
-  if value.is_a?(String) && value.length > 50
-    puts "  #{key}: #{value[0..50]}..."
+begin
+  # Add second document using high-level API
+  result2 = Ragdoll.add_document(path: ai_file.path)
+  
+  if result2[:success]
+    doc2_id = result2[:document_id]
+    puts "✅ Second document added successfully"
+    puts "Document ID: #{doc2_id}"
+    puts "Title: #{result2[:title]}"
+    
+    # Get document details
+    doc2_details = Ragdoll.get_document(id: doc2_id)
+    if doc2_details && doc2_details[:metadata]
+      puts "Summary: #{doc2_details[:metadata]['summary'] || 'Summary not yet generated'}"
+      puts "Keywords: #{doc2_details[:metadata]['keywords'] || 'Keywords not yet generated'}"
+    end
   else
-    puts "  #{key}: #{value}"
+    puts "❌ Failed to add second document: #{result2[:error]}"
   end
+ensure
+  ai_file.close
+  ai_file.unlink
+end
+
+# Demonstrate search functionality
+puts "\n6. Search functionality..."
+
+# Search across documents
+puts "Searching for 'machine learning':"
+begin
+  search_results = Ragdoll.search(query: "machine learning", limit: 5)
+  
+  if search_results[:results].any?
+    puts "Found #{search_results[:total_results]} results:"
+    search_results[:results].each_with_index do |result, index|
+      puts "  #{index + 1}. #{result[:document_title]} (Score: #{result[:similarity]&.round(3)})"
+    end
+  else
+    puts "No results found (documents may still be processing)"
+  end
+rescue => e
+  puts "Search failed: #{e.message}"
+end
+
+puts "\nSearching for 'artificial intelligence':"
+begin
+  search_results = Ragdoll.search(query: "artificial intelligence", limit: 5)
+  
+  if search_results[:results].any?
+    puts "Found #{search_results[:total_results]} results:"
+    search_results[:results].each_with_index do |result, index|
+      puts "  #{index + 1}. #{result[:document_title]} (Score: #{result[:similarity]&.round(3)})"
+    end
+  else
+    puts "No results found (documents may still be processing)"
+  end
+rescue => e
+  puts "Search failed: #{e.message}"
+end
+
+# List all documents
+puts "\n7. Listing all documents:"
+begin
+  documents = Ragdoll.list_documents
+  puts "Total documents: #{documents.count}"
+  
+  documents.each do |doc|
+    puts "- #{doc[:title]} (ID: #{doc[:id]}, Status: #{doc[:status]})"
+  end
+rescue => e
+  puts "Failed to list documents: #{e.message}"
 end
 
 puts "\n=== Summary and Keywords Integration Complete ==="
-puts "\nKey changes in current architecture:"
-puts "1. Summary and keywords are now stored in the metadata JSON column"
-puts "2. Content is managed through STI content models (TextContent, etc.)"
-puts "3. Metadata generation requires LLM configuration and generate_metadata! call"
-puts "4. Search functionality uses PostgreSQL full-text search on metadata fields"
-puts "5. Faceted search enables filtering by metadata keywords, classification, and tags"
+puts "\nKey features demonstrated:"
+puts "1. Automatic document processing with summary and keyword extraction"
+puts "2. High-level API for document management and search"
+puts "3. Metadata storage in structured JSON format"
+puts "4. Semantic search across document content and metadata"
+puts "5. Document status tracking and processing feedback"
+
+puts "\nHigh-level API methods used:"
+puts "- Ragdoll.configure        # System configuration"
+puts "- Ragdoll.add_document     # Add documents with automatic processing"
+puts "- Ragdoll.document_status  # Check processing status"
+puts "- Ragdoll.get_document     # Retrieve document details and metadata"
+puts "- Ragdoll.search           # Semantic search across documents"
+puts "- Ragdoll.list_documents   # List all documents"
+
+puts "\nNote: Summary and keyword generation requires:"
+puts "- LLM configuration (OPENAI_API_KEY environment variable)"
+puts "- Document processing time (happens asynchronously)"

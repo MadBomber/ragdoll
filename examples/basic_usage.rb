@@ -14,9 +14,10 @@ puts "\n1. Configuring Ragdoll..."
 
 Ragdoll.configure do |config|
   # Database configuration (PostgreSQL required)
-  config.database_config = {
+  # Use the default ragdoll_development database or set RAGDOLL_DATABASE_NAME
+  config.database = {
     adapter: "postgresql",
-    database: "ragdoll_basic_example",
+    database: ENV.fetch("RAGDOLL_DATABASE_NAME", "ragdoll_development"),
     username: "ragdoll",
     password: ENV["RAGDOLL_DATABASE_PASSWORD"],
     host: "localhost",
@@ -24,26 +25,21 @@ Ragdoll.configure do |config|
     auto_migrate: true
   }
   
-  # Configure LLM providers
-  config.ruby_llm_config[:openai][:api_key] = ENV["OPENAI_API_KEY"]
-  config.ruby_llm_config[:ollama][:endpoint] = ENV.fetch("OLLAMA_ENDPOINT", "http://localhost:11434/v1")
+  # Note: LLM providers are configured via environment variables:
+  # OPENAI_API_KEY, OLLAMA_ENDPOINT, etc.
+  # The configuration will automatically use these environment variables
   
-  # Configure embedding models
-  config.models[:embedding][:text] = "text-embedding-3-small"
-  config.models[:default] = "openai/gpt-4o-mini"
+  # Models are configured via environment variables (with sensible defaults):
+  # RAGDOLL_DEFAULT_TEXT_MODEL, RAGDOLL_TEXT_EMBEDDING_MODEL, etc.
+  # Defaults: text models use gpt-4o, embeddings use text-embedding-3-small
   
-  # Enable summarization
-  config.summarization_config[:enable] = true
-  config.summarization_config[:max_length] = 200
-  
-  # Search configuration
-  config.search[:similarity_threshold] = 0.7
-  config.search[:max_results] = 10
+  # Configuration settings use defaults from environment variables
+  # Summarization enabled by default, search threshold defaults to 0.7
 end
 
 puts "✅ Configuration complete"
-puts "Database: #{Ragdoll.config.database_config[:database]}"
-puts "Default model: #{Ragdoll.config.models[:default]}"
+puts "Database: #{Ragdoll.config.database[:database]}"
+puts "Default model: #{Ragdoll.config.models[:text_generation][:default]}"
 
 # Example 2: Check system health
 puts "\n2. Checking system health..."
@@ -81,7 +77,7 @@ ensure
   text_file.unlink
 end
 
-# Add another document with custom title
+# Add another document (title and metadata extracted automatically)
 markdown_file = Tempfile.new(["guide", ".md"])
 markdown_file.write(<<~MARKDOWN)
   # RAG System Guide
@@ -102,11 +98,7 @@ MARKDOWN
 markdown_file.rewind
 
 begin
-  result2 = Ragdoll.add_document(
-    path: markdown_file.path,
-    title: "RAG System Guide",
-    metadata: { category: "documentation", tags: ["RAG", "guide", "AI"] }
-  )
+  result2 = Ragdoll.add_document(path: markdown_file.path)
   
   if result2[:success]
     puts "✅ Second document added successfully"
@@ -131,7 +123,7 @@ end
 puts "\n5. Document processing status..."
 
 if doc_id
-  status = Ragdoll.document_status(doc_id)
+  status = Ragdoll.document_status(id: doc_id)
   puts "Document #{doc_id} status: #{status[:status]}"
   
   if status[:status] != "processed"
@@ -160,7 +152,7 @@ search_queries.each do |query|
     if results[:results].any?
       puts "Found #{results[:results].count} results:"
       results[:results].each_with_index do |result, index|
-        puts "  #{index + 1}. #{result[:document_title]} (Score: #{result[:similarity_score]&.round(3)})"
+        puts "  #{index + 1}. #{result[:document_title]} (Score: #{result[:similarity]&.round(3)})"
         puts "     #{result[:content][0..100]}..."
       end
     else
@@ -176,13 +168,13 @@ puts "\n7. Enhanced search with context..."
 
 begin
   enhanced_result = Ragdoll.enhance_prompt(
-    query: "How does document processing work?",
-    max_results: 2
+    prompt: "How does document processing work?",
+    context_limit: 2
   )
   
   puts "Enhanced prompt with context:"
   puts enhanced_result[:enhanced_prompt][0..200] + "..."
-  puts "\nContext sources: #{enhanced_result[:sources].count}"
+  puts "\nContext sources: #{enhanced_result[:context_sources].count}"
 rescue StandardError => e
   puts "Enhanced search failed: #{e.message}"
 end
@@ -191,7 +183,7 @@ end
 puts "\n8. Document details..."
 
 if doc_id
-  doc_details = Ragdoll.get_document(doc_id)
+  doc_details = Ragdoll.get_document(id: doc_id)
   
   if doc_details
     puts "Document: #{doc_details[:title]}"
@@ -237,6 +229,10 @@ else
 end
 
 puts "\n=== Basic Usage Complete ==="
+puts "\nPrerequisites:"
+puts "1. PostgreSQL database with 'ragdoll' user and 'ragdoll_development' database"  
+puts "2. RAGDOLL_DATABASE_PASSWORD environment variable set"
+puts "3. OPENAI_API_KEY environment variable set for LLM features"
 puts "\nNext steps:"
 puts "1. Configure your database connection and LLM providers"
 puts "2. Add more documents using Ragdoll.add_document or Ragdoll.add_directory"

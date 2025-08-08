@@ -8,11 +8,13 @@ require "bundler/setup"
 require_relative "../lib/ragdoll"
 require "tempfile"
 
-# Configure ragdoll-core
-Ragdoll::Core.configure do |config|
-  config.database_config = {
+# Configure Ragdoll using high-level API
+Ragdoll.configure do |config|
+  # Database configuration (PostgreSQL required)
+  # Use the default ragdoll_development database or set RAGDOLL_DATABASE_NAME
+  config.database = {
     adapter: "postgresql",
-    database: "ragdoll_multimodal_example",
+    database: ENV.fetch("RAGDOLL_DATABASE_NAME", "ragdoll_development"),
     username: "ragdoll",
     password: ENV["RAGDOLL_DATABASE_PASSWORD"],
     host: "localhost",
@@ -20,223 +22,180 @@ Ragdoll::Core.configure do |config|
     auto_migrate: true
   }
 
-  # Configure embedding models for different content types
-  config.models[:embedding][:text] = "text-embedding-3-small"
-  config.models[:embedding][:image] = "clip-vit-large-patch14"
-  config.models[:embedding][:audio] = "whisper-embedding-v1"
+  # Embedding models are configured via environment variables with defaults:
+  # RAGDOLL_TEXT_EMBEDDING_MODEL (default: openai/text-embedding-3-small)
+  # RAGDOLL_IMAGE_EMBEDDING_MODEL (default: openai/clip-vit-base-patch32)
+  # RAGDOLL_AUDIO_EMBEDDING_MODEL (default: openai/whisper-1)
 
-  # Configure Ruby LLM providers
-  config.ruby_llm_config[:openai][:api_key] = ENV["OPENAI_API_KEY"]
-  config.ruby_llm_config[:ollama][:endpoint] = ENV.fetch("OLLAMA_ENDPOINT", "http://localhost:11434/v1")
+  # LLM providers configured via environment variables:
+  # OPENAI_API_KEY, OLLAMA_ENDPOINT
 end
-
-# Initialize the database
-Ragdoll::Core::Database.setup
 
 puts "=== Multi-Modal Content Example ==="
 
-# Example 1: Create a document with text content
-puts "\n1. Creating document with text content..."
+# Example 1: Create a text document using high-level API
+puts "\n1. Creating text document..."
 
-document = Ragdoll::Core::Models::Document.create!(
-  location: "example_text.txt",
-  title: "Multi-Modal Example Document",
-  document_type: "mixed",
-  status: "pending",
-  file_modified_at: Time.current
-)
-
-# Add text content
-text_content = document.text_contents.create!(
-  content: "This is a comprehensive example of multi-modal document processing. The document contains text, images, and audio content that can be processed together.",
-  embedding_model: "text-embedding-3-small",
-  metadata: { source: "manual_entry" }
-)
-
-puts "Document ID: #{document.id}"
-puts "Text content ID: #{text_content.id}"
-puts "Text word count: #{text_content.word_count}"
-
-# Example 2: Add image content with description
-puts "\n2. Adding image content..."
-
-image_content = document.image_contents.create!(
-  content: "A diagram showing the multi-modal architecture with text, image, and audio processing pipelines converging into a unified embedding space.",
-  embedding_model: "clip-vit-large-patch14",
-  metadata: {
-    alt_text: "Multi-modal architecture diagram",
-    width: 800,
-    height: 600,
-    content_type: "image/png"
-  }
-)
-
-# Simulate setting image file data (in real usage, this would be actual image data)
-image_content.image_data = "/path/to/architecture_diagram.png"
-image_content.save!
-
-puts "Image content ID: #{image_content.id}"
-puts "Image has description: #{image_content.description.present?}"
-puts "Image dimensions: #{image_content.image_dimensions}"
-
-# Example 3: Add audio content with transcript
-puts "\n3. Adding audio content..."
-
-audio_content = document.audio_contents.create!(
-  content: "Welcome to the multi-modal content processing example. This audio explains how different content types work together in the ragdoll system.",
-  embedding_model: "whisper-embedding-v1",
-  duration: 45.5,
-  sample_rate: 44100,
-  metadata: {
-    codec: "mp3",
-    bitrate: 128000,
-    channels: 2,
-    content_type: "audio/mpeg"
-  }
-)
-
-puts "Audio content ID: #{audio_content.id}"
-puts "Audio duration: #{audio_content.duration_formatted}"
-puts "Audio has transcript: #{audio_content.transcript.present?}"
-
-# Example 4: Explore the multi-modal document structure
-puts "\n4. Multi-modal document structure..."
-
-document.reload
-puts "Document type: #{document.document_type}"
-puts "Content types: #{document.content_types.join(', ')}"
-puts "Is multi-modal: #{document.multi_modal?}"
-puts "Primary content type: #{document.primary_content_type}"
-
-puts "\nContent summary:"
-puts "- Text contents: #{document.text_contents.count}"
-puts "- Image contents: #{document.image_contents.count}"
-puts "- Audio contents: #{document.audio_contents.count}"
-puts "- Total contents: #{document.contents.count}"
-
-# Example 5: Generate embeddings for all content types
-puts "\n5. Generating embeddings for all content..."
+# Create a temporary text file
+text_file = Tempfile.new(["multimodal_text", ".txt"])
+text_file.write("This is a comprehensive example of multi-modal document processing. The document contains text content that demonstrates Ragdoll's ability to process and embed textual information for semantic search and retrieval.")
+text_file.rewind
 
 begin
-  puts "Generating text embeddings..."
-  text_content.generate_embeddings!
-
-  puts "Generating image embeddings..."
-  image_content.generate_embeddings!
-
-  puts "Generating audio embeddings..."
-  audio_content.generate_embeddings!
-
-  puts "All embeddings generated successfully!"
-rescue StandardError => e
-  puts "Note: Embedding generation may fail without proper LLM configuration: #{e.message}"
+  # Add document using high-level API
+  text_result = Ragdoll.add_document(path: text_file.path)
+  
+  if text_result[:success]
+    text_doc_id = text_result[:document_id]
+    puts "✅ Text document added successfully"
+    puts "Document ID: #{text_doc_id}"
+    puts "Title: #{text_result[:title]}"
+    puts "Content length: #{text_result[:content_length]} characters"
+  else
+    puts "❌ Failed to add text document: #{text_result[:error]}"
+  end
+ensure
+  text_file.close
+  text_file.unlink
 end
 
-# Example 6: Working with content-specific methods
-puts "\n6. Content-specific operations..."
+# Example 2: Add image document using high-level API
+puts "\n2. Adding image document..."
 
-# Text content operations
-puts "\nText content operations:"
-puts "- Character count: #{text_content.character_count}"
-puts "- Word count: #{text_content.word_count}"
-puts "- Chunk size: #{text_content.chunk_size}"
-puts "- Overlap: #{text_content.overlap}"
-
-if text_content.content.present?
-  chunks = text_content.chunks
-  puts "- Number of chunks: #{chunks.length}"
-  puts "- First chunk preview: #{chunks.first[:content][0..50]}..." if chunks.any?
+# Use the existing example image if it exists
+image_path = File.join(File.dirname(__FILE__), "gen_jack.jpeg")
+if File.exist?(image_path)
+  begin
+    image_result = Ragdoll.add_document(path: image_path)
+    
+    if image_result[:success]
+      image_doc_id = image_result[:document_id]
+      puts "✅ Image document added successfully"
+      puts "Document ID: #{image_doc_id}"
+      puts "Title: #{image_result[:title]}"
+      puts "Document type: #{image_result[:document_type]}"
+    else
+      puts "❌ Failed to add image document: #{image_result[:error]}"
+    end
+  rescue => e
+    puts "❌ Error adding image: #{e.message}"
+  end
+else
+  puts "ℹ️  No example image found at #{image_path}"
+  puts "   In a real application, you would add image files using:"
+  puts "   Ragdoll.add_document(path: '/path/to/image.jpg')"
 end
 
-# Image content operations
-puts "\nImage content operations:"
-puts "- Description length: #{image_content.description&.length || 0} characters"
-puts "- Alt text: #{image_content.alt_text}"
-puts "- Image attached: #{image_content.image_attached?}"
-puts "- Content for embedding: #{image_content.content_for_embedding[0..50]}..."
+# Example 3: Add audio content (if available)
+puts "\n3. Audio content processing..."
 
-# Audio content operations
-puts "\nAudio content operations:"
-puts "- Transcript length: #{audio_content.transcript&.length || 0} characters"
-puts "- Duration: #{audio_content.duration} seconds (#{audio_content.duration_formatted})"
-puts "- Sample rate: #{audio_content.sample_rate} Hz"
-puts "- Channels: #{audio_content.channels}"
-puts "- Codec: #{audio_content.codec}"
+# Audio files would be processed similarly to text and images
+puts "ℹ️  Audio files can be added using:"
+puts "   Ragdoll.add_document(path: '/path/to/audio.mp3')"
+puts "   Ragdoll.add_document(path: '/path/to/audio.wav')"
+puts "\n   Audio processing includes:"
+puts "   • Transcription using speech-to-text models"
+puts "   • Audio embedding generation"
+puts "   • Metadata extraction (duration, format, etc.)"
 
-# Example 7: Multi-modal search and retrieval
-puts "\n7. Multi-modal search capabilities..."
+# Example 4: Working with multi-modal documents
+puts "\n4. Multi-modal document capabilities..."
 
-# Get all embeddings across content types
-all_embeddings = document.all_embeddings
-puts "Total embeddings across all content types: #{all_embeddings.count}"
+puts "✅ Ragdoll supports multiple content types:"
+puts "• Text files (.txt, .md, .html, .pdf, .docx)"
+puts "• Image files (.jpg, .png, .gif, .webp)"  
+puts "• Audio files (.mp3, .wav, .m4a)"
+puts "• Mixed documents containing multiple content types"
 
-# Get embeddings by content type
-text_embeddings = document.all_embeddings(content_type: :text)
-image_embeddings = document.all_embeddings(content_type: :image)
-audio_embeddings = document.all_embeddings(content_type: :audio)
+# Example 5: Search across all content types
+puts "\n5. Multi-modal search capabilities..."
 
-puts "Embeddings by type:"
-puts "- Text: #{text_embeddings.count}"
-puts "- Image: #{image_embeddings.count}"
-puts "- Audio: #{audio_embeddings.count}"
-
-# Combined content for full-text search
-combined_content = document.content
-puts "\nCombined content preview: #{combined_content[0..100]}..."
-
-# Example 8: Document statistics and metadata
-puts "\n8. Document statistics..."
-
-document.update!(status: "processed")
-
-stats = {
-  document_id: document.id,
-  total_contents: document.contents.count,
-  content_types: document.content_types,
-  total_word_count: document.total_word_count,
-  total_character_count: document.total_character_count,
-  total_embedding_count: document.total_embedding_count,
-  embeddings_by_type: document.embeddings_by_type
-}
-
-puts "Document statistics:"
-stats.each do |key, value|
-  puts "- #{key}: #{value.is_a?(Array) ? value.join(', ') : value}"
+if defined?(text_doc_id)
+  puts "Searching for text content..."
+  begin
+    search_results = Ragdoll.search(query: "multi-modal processing", limit: 3)
+    puts "Found #{search_results[:total_results]} results"
+    
+    if search_results[:results].any?
+      search_results[:results].each_with_index do |result, index|
+        puts "  #{index + 1}. #{result[:document_title]} (Score: #{result[:similarity]&.round(3)})"
+      end
+    else
+      puts "No results found (documents may still be processing)"
+    end
+  rescue => e
+    puts "Search failed: #{e.message}"
+  end
 end
 
-# Example 9: Content model statistics
-puts "\n9. Content model statistics..."
+# Example 6: Document status and processing
+puts "\n6. Document processing status..."
 
-text_stats = Ragdoll::Core::Models::TextContent.stats
-image_stats = Ragdoll::Core::Models::ImageContent.stats
-audio_stats = Ragdoll::Core::Models::AudioContent.stats
-
-puts "\nSystem-wide content statistics:"
-puts "Text content stats: #{text_stats}"
-puts "Image content stats: #{image_stats}"
-puts "Audio content stats: #{audio_stats}"
-
-# Example 10: Document hash representation
-puts "\n10. Document hash representation..."
-
-document_hash = document.to_hash(include_content: true)
-puts "\nDocument hash keys: #{document_hash.keys.join(', ')}"
-puts "Content summary in hash: #{document_hash[:content_summary]}"
-
-# Show content details
-if document_hash[:content_details]
-  details = document_hash[:content_details]
-  puts "\nContent details:"
-  puts "- Text contents: #{details[:text_content]&.length || 0}"
-  puts "- Image descriptions: #{details[:image_descriptions]&.length || 0}"
-  puts "- Audio transcripts: #{details[:audio_transcripts]&.length || 0}"
+if defined?(text_doc_id)
+  begin
+    status = Ragdoll.document_status(id: text_doc_id)
+    puts "Text document status: #{status[:status]}"
+    puts "Embeddings ready: #{status[:embeddings_ready]}"
+    puts "Embeddings count: #{status[:embeddings_count]}"
+  rescue => e
+    puts "Status check failed: #{e.message}"
+  end
 end
+
+# Example 7: System statistics for multi-modal content
+puts "\n7. System statistics..."
+
+begin
+  stats = Ragdoll.stats
+  puts "System Statistics:"
+  puts "- Total documents: #{stats[:total_documents]}"
+  puts "- Documents by type: #{stats[:by_type]}"
+  puts "- Total embeddings: #{stats[:total_embeddings]}"
+  
+  if stats[:content_types]
+    puts "- Content types processed: #{stats[:content_types].keys.join(', ')}"
+  end
+rescue => e
+  puts "Stats unavailable: #{e.message}"
+end
+
+# Example 8: Multi-modal document capabilities summary
+puts "\n8. Multi-modal capabilities summary..."
+
+puts "✅ Ragdoll's multi-modal features:"
+puts "\n📄 Text Processing:"
+puts "• Document parsing (PDF, DOCX, TXT, MD, HTML)"
+puts "• Text chunking and embedding generation"
+puts "• Full-text search and semantic similarity"
+
+puts "\n🖼️  Image Processing:"
+puts "• Image format support (JPEG, PNG, GIF, WebP)"
+puts "• Automatic image description generation"
+puts "• Visual content embedding for similarity search"
+
+puts "\n🎵 Audio Processing:"
+puts "• Audio format support (MP3, WAV, M4A)"
+puts "• Speech-to-text transcription"
+puts "• Audio content embedding and search"
+
+puts "\n🔍 Unified Search:"
+puts "• Cross-modal semantic search"
+puts "• Content type filtering and hybrid search"
+puts "• Combined embeddings for comprehensive results"
+
 
 puts "\n=== Multi-Modal Content Integration Complete ==="
 puts "\nKey takeaways:"
 puts "1. Documents can contain multiple content types (text, image, audio)"
-puts "2. Each content type has specialized methods and metadata"
-puts "3. Content is stored using STI (Single Table Inheritance) in ragdoll_contents table"
-puts "4. Embeddings are generated per content type with appropriate models"
-puts "5. Multi-modal documents support unified search across all content types"
-puts "6. Content-specific operations enable specialized processing workflows"
+puts "2. Each content type has specialized processing and embedding models"
+puts "3. Ragdoll automatically detects file types and applies appropriate processing"
+puts "4. All content types support unified semantic search"
+puts "5. Multi-modal documents enable comprehensive information retrieval"
+puts "6. The high-level API abstracts away complexity while providing full functionality"
+
+puts "\nHigh-level API methods used in this example:"
+puts "- Ragdoll.configure        # Configure the system"
+puts "- Ragdoll.add_document     # Add documents of any supported type"
+puts "- Ragdoll.search           # Search across all content types"
+puts "- Ragdoll.document_status  # Check processing status"
+puts "- Ragdoll.stats           # Get system statistics"
