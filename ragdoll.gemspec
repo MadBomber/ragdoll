@@ -39,6 +39,7 @@ Gem::Specification.new do |spec|
   # Runtime dependencies
   spec.add_dependency "activerecord"
   spec.add_dependency "activejob"
+  spec.add_dependency "debug_me"
   spec.add_dependency "docx"
   spec.add_dependency "neighbor"
   spec.add_dependency "opensearch-ruby"
@@ -56,7 +57,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "annotate"
   spec.add_development_dependency "bundler"
   spec.add_development_dependency "database_cleaner-active_record"
-  spec.add_development_dependency "debug_me"
   spec.add_development_dependency "minitest"
   spec.add_development_dependency "minitest-reporters"
   spec.add_development_dependency "rake"

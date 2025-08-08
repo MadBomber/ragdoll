@@ -4,6 +4,7 @@ PATH
     ragdoll (0.1.9)
       activejob
       activerecord
+      debug_me
       docx
       neighbor
       opensearch-ruby
@@ -234,7 +235,6 @@ DEPENDENCIES
   annotate
   bundler
   database_cleaner-active_record
-  debug_me
   minitest
   minitest-reporters
   ragdoll!
