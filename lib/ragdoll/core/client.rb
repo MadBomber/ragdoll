@@ -49,7 +49,15 @@ module Ragdoll
 
       # Get relevant context without prompt enhancement
       def get_context(query:, limit: 10, **options)
-        results = search_similar_content(query: query, limit: limit, **options)
+        search_response = search_similar_content(query: query, limit: limit, **options)
+        
+        # Handle both old format (array) and new format (hash with results/statistics)
+        if search_response.is_a?(Hash) && search_response.key?(:results)
+          results = search_response[:results]
+        else
+          # Fallback for old format
+          results = search_response || []
+        end
 
         context_chunks = results.map do |result|
           {
@@ -77,13 +85,30 @@ module Ragdoll
       # Semantic search++ should incorporate hybrid search
       def search(query:, **options)
         # Pass through tracking options to the search engine
-        results = search_similar_content(query: query, **options)
-
-        {
-          query: query,
-          results: results,
-          total_results: results.length
-        }
+        search_response = search_similar_content(query: query, **options)
+        
+        # Handle both old format (array) and new format (hash with results/statistics)
+        if search_response.is_a?(Hash) && search_response.key?(:results)
+          results = search_response[:results]
+          statistics = search_response[:statistics]
+          execution_time_ms = search_response[:execution_time_ms]
+          
+          {
+            query: query,
+            results: results,
+            total_results: results.length,
+            statistics: statistics,
+            execution_time_ms: execution_time_ms
+          }
+        else
+          # Fallback for old format
+          results = search_response || []
+          {
+            query: query,
+            results: results,
+            total_results: results.length
+          }
+        end
       end
 
       # Search similar content (core functionality)

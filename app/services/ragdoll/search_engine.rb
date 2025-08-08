@@ -49,11 +49,24 @@ module Ragdoll
         return [] if query_embedding.nil?
       end
 
-      # Search using ActiveRecord models
-      results = Ragdoll::Embedding.search_similar(query_embedding,
-                                                 limit: limit,
-                                                 threshold: threshold,
-                                                 filters: filters)
+      # Search using ActiveRecord models with statistics
+      # Try enhanced search first, fall back to original if it fails
+      begin
+        search_response = Ragdoll::Embedding.search_similar_with_stats(query_embedding,
+                                                                      limit: limit,
+                                                                      threshold: threshold,
+                                                                      filters: filters)
+        results = search_response[:results]
+        statistics = search_response[:statistics]
+      rescue NoMethodError, PG::SyntaxError => e
+        # Fall back to original search method if enhanced version fails
+        puts "Warning: Enhanced search failed (#{e.message}), using fallback" if ENV["RAGDOLL_DEBUG"]
+        results = Ragdoll::Embedding.search_similar(query_embedding,
+                                                   limit: limit,
+                                                   threshold: threshold,
+                                                   filters: filters)
+        statistics = nil
+      end
       
       execution_time = ((Time.current - start_time) * 1000).round
       
@@ -85,7 +98,12 @@ module Ragdoll
         end
       end
 
-      results
+      # Return results with statistics for better user feedback
+      {
+        results: results,
+        statistics: statistics,
+        execution_time_ms: execution_time
+      }
     end
   end
 end

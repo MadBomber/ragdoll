@@ -74,6 +74,24 @@ module Ragdoll
       search_with_pgvector(query_embedding, scope, limit, threshold)
     end
 
+    # Enhanced search that returns both results and similarity statistics
+    def self.search_similar_with_stats(query_embedding, limit: 20, threshold: 0.8, filters: {})
+      # Apply filters
+      scope = all
+      scope = scope.where(embeddable_id: filters[:embeddable_id]) if filters[:embeddable_id]
+      scope = scope.where(embeddable_type: filters[:embeddable_type]) if filters[:embeddable_type]
+      scope = scope.by_model(filters[:embedding_model]) if filters[:embedding_model]
+
+      # Document-level filters require joining through embeddable (STI Content) to documents
+      if filters[:document_type]
+        scope = scope.joins("JOIN ragdoll_contents ON ragdoll_contents.id = ragdoll_embeddings.embeddable_id")
+                     .joins("JOIN ragdoll_documents ON ragdoll_documents.id = ragdoll_contents.document_id")
+                     .where("ragdoll_documents.document_type = ?", filters[:document_type])
+      end
+
+      search_with_pgvector_stats(query_embedding, scope, limit, threshold)
+    end
+
     # Fast search using pgvector with neighbor gem
     def self.search_with_pgvector(query_embedding, scope, limit, threshold)
       # Use pgvector for similarity search
@@ -103,6 +121,60 @@ module Ragdoll
       results = results.sort_by { |r| -r[:combined_score] }.take(limit)
       mark_embeddings_as_used(results)
       results
+    end
+
+    # Enhanced search with statistics
+    def self.search_with_pgvector_stats(query_embedding, scope, limit, threshold)
+      # Use pgvector for similarity search - get more results to analyze
+      # Note: We convert to array immediately to avoid SQL conflicts with count operations
+      neighbor_results = scope
+                         .includes(:embeddable)
+                         .nearest_neighbors(:embedding_vector, query_embedding, distance: "cosine")
+                         .limit([limit * 3, 50].max) # Get enough for statistics
+                         .to_a # Convert to array to avoid SQL conflicts
+
+      results = []
+      all_similarities = []
+      highest_similarity = 0.0
+      lowest_similarity = 1.0
+      total_checked = neighbor_results.length
+
+      neighbor_results.each do |embedding|
+        # Calculate cosine similarity (neighbor returns distance, we want similarity)
+        similarity = 1.0 - embedding.neighbor_distance
+        all_similarities << similarity
+
+        highest_similarity = similarity if similarity > highest_similarity
+        lowest_similarity = similarity if similarity < lowest_similarity
+
+        next if similarity < threshold
+
+        usage_score = calculate_usage_score(embedding)
+        combined_score = similarity + usage_score
+
+        results << build_result_hash(embedding, query_embedding, similarity, highest_similarity,
+                                     usage_score, combined_score)
+      end
+
+      # Sort by combined score and limit
+      results = results.sort_by { |r| -r[:combined_score] }.take(limit)
+      mark_embeddings_as_used(results)
+      
+      # Calculate statistics
+      stats = {
+        total_embeddings_checked: total_checked,
+        threshold_used: threshold,
+        highest_similarity: highest_similarity,
+        lowest_similarity: lowest_similarity,
+        average_similarity: all_similarities.empty? ? 0.0 : (all_similarities.sum / all_similarities.length),
+        similarities_above_threshold: all_similarities.count { |s| s >= threshold },
+        total_similarities_calculated: all_similarities.length
+      }
+
+      {
+        results: results,
+        statistics: stats
+      }
     end
 
     private
