@@ -3,6 +3,8 @@
 require "pdf-reader"
 require "docx"
 require "rmagick"
+require "yaml"
+require "date"
 # Image description service is auto-loaded from app/services
 
 module Ragdoll
@@ -137,6 +139,11 @@ module Ragdoll
         raise ParseError, "Unsupported PDF feature: #{e.message}"
       end
 
+      # Add filepath-based title as fallback if no title was found
+      if metadata[:title].nil? || (metadata[:title].is_a?(String) && metadata[:title].strip.empty?)
+        metadata[:title] = extract_title_from_filepath
+      end
+
       {
         content: content.strip,
         metadata: metadata,
@@ -192,6 +199,11 @@ module Ragdoll
         raise ParseError, "#{__LINE__} Failed to parse DOCX: #{e.message}"
       end
 
+      # Add filepath-based title as fallback if no title was found
+      if metadata[:title].nil? || (metadata[:title].is_a?(String) && metadata[:title].strip.empty?)
+        metadata[:title] = extract_title_from_filepath
+      end
+
       {
         content: content.strip,
         metadata: metadata,
@@ -212,6 +224,20 @@ module Ragdoll
                       else "text"
                       end
 
+      # Parse YAML front matter for markdown files
+      if document_type == "markdown" && content.start_with?("---\n")
+        front_matter, body_content = parse_yaml_front_matter(content)
+        if front_matter
+          metadata.merge!(front_matter)
+          content = body_content
+        end
+      end
+
+      # Add filepath-based title as fallback if no title was found
+      if metadata[:title].nil? || (metadata[:title].is_a?(String) && metadata[:title].strip.empty?)
+        metadata[:title] = extract_title_from_filepath
+      end
+
       {
         content: content,
         metadata: metadata,
@@ -225,15 +251,40 @@ module Ragdoll
         encoding: "ISO-8859-1"
       }
 
+      # Try to parse front matter with different encoding too
+      if document_type == "markdown" && content.start_with?("---\n")
+        front_matter, body_content = parse_yaml_front_matter(content)
+        if front_matter
+          metadata.merge!(front_matter)
+          content = body_content
+        end
+      end
+
+      # Add filepath-based title as fallback if no title was found
+      if metadata[:title].nil? || (metadata[:title].is_a?(String) && metadata[:title].strip.empty?)
+        metadata[:title] = extract_title_from_filepath
+      end
+
       {
         content: content,
         metadata: metadata,
-        document_type: "text"
+        document_type: document_type.nil? ? "text" : document_type
       }
     end
 
     def parse_html
       content = File.read(@file_path, encoding: "UTF-8")
+
+      # Extract title from H1 tag if present
+      h1_match = content.match(%r{<h1[^>]*>(.*?)</h1>}mi)
+      title = nil
+      if h1_match
+        # Clean up the H1 content by removing any HTML tags and normalizing whitespace
+        title = h1_match[1]
+                  .gsub(/<[^>]+>/, " ")  # Remove any nested HTML tags
+                  .gsub(/\s+/, " ")      # Normalize whitespace
+                  .strip
+      end
 
       # Basic HTML tag stripping (for more advanced parsing, consider using Nokogiri)
       clean_content = content
@@ -247,6 +298,13 @@ module Ragdoll
         file_size: File.size(@file_path),
         original_format: "html"
       }
+
+      # Add title to metadata if found, otherwise use filepath fallback
+      if title && !title.empty?
+        metadata[:title] = title
+      else
+        metadata[:title] = extract_title_from_filepath
+      end
 
       {
         content: clean_content,
@@ -285,6 +343,9 @@ module Ragdoll
 
       # Use AI-generated description or fallback placeholder
       content = desc && !desc.empty? ? desc : "Image file: #{File.basename(@file_path)}"
+
+      # Add filepath-based title as fallback
+      metadata[:title] = extract_title_from_filepath
 
       puts "✅ DocumentProcessor: Image parsing complete. Content: '#{content[0..100]}...'"
 
@@ -336,6 +397,68 @@ module Ragdoll
       when ".ico" then "image/x-icon"
       when ".tiff", ".tif" then "image/tiff"
       else "application/octet-stream"
+      end
+    end
+
+    private
+
+    # Extract a meaningful title from the file path as a fallback
+    # @param file_path [String] the full file path
+    # @return [String] a cleaned title derived from the filename
+    def extract_title_from_filepath(file_path = @file_path)
+      filename = File.basename(file_path, File.extname(file_path))
+      
+      # Clean up common patterns in filenames to make them more readable
+      title = filename
+               .gsub(/[-_]+/, ' ')           # Replace hyphens and underscores with spaces
+               .gsub(/([a-z])([A-Z])/, '\1 \2') # Add space before capital letters (camelCase)
+               .gsub(/\s+/, ' ')             # Normalize multiple spaces
+               .strip
+      
+      # Capitalize words for better readability
+      title.split(' ').map(&:capitalize).join(' ')
+    end
+
+    # Parse YAML front matter from markdown content
+    # @param content [String] the full content of the markdown file
+    # @return [Array] returns [front_matter_hash, body_content] or [nil, original_content]
+    def parse_yaml_front_matter(content)
+      # Check if content starts with YAML front matter delimiter
+      return [nil, content] unless content.start_with?("---\n")
+
+      # Find the closing delimiter
+      lines = content.lines
+      closing_index = nil
+      
+      lines.each_with_index do |line, index|
+        next if index == 0 # Skip the opening ---
+        if line.strip == "---"
+          closing_index = index
+          break
+        end
+      end
+
+      # No closing delimiter found
+      return [nil, content] unless closing_index
+
+      # Extract YAML content and body
+      yaml_lines = lines[1...closing_index]
+      body_lines = lines[(closing_index + 1)..-1]
+
+      yaml_content = yaml_lines.join
+      body_content = body_lines&.join || ""
+
+      # Parse YAML
+      begin
+        # Allow Time objects for date fields in YAML front matter
+        front_matter = YAML.safe_load(yaml_content, permitted_classes: [Time, Date])
+        # Convert string keys to symbols for consistency
+        front_matter = front_matter.transform_keys(&:to_sym) if front_matter.is_a?(Hash)
+        [front_matter, body_content.strip]
+      rescue YAML::SyntaxError, Psych::DisallowedClass => e
+        # If YAML parsing fails, return original content
+        Rails.logger.warn "Warning: Failed to parse YAML front matter: #{e.message}" if defined?(Rails)
+        [nil, content]
       end
     end
   end
