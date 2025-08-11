@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    ragdoll (0.1.9)
+    ragdoll (0.1.10)
       activejob
       activerecord
       debug_me
