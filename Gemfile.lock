@@ -151,7 +151,7 @@ GEM
     racc (1.8.1)
     rainbow (3.1.1)
     rake (13.3.0)
-    regexp_parser (2.11.0)
+    regexp_parser (2.11.1)
     rmagick (6.1.2)
       observer (~> 0.1)
       pkg-config (~> 1.4)
@@ -178,7 +178,7 @@ GEM
       rubocop (>= 1.72.1)
     ruby-progressbar (1.13.0)
     ruby-rc4 (0.1.5)
-    ruby_llm (1.5.1)
+    ruby_llm (1.6.0)
       base64
       event_stream_parser (~> 1)
       faraday (>= 1.10.0)
