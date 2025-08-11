@@ -202,6 +202,53 @@ results = Ragdoll.hybrid_search(
 )
 ```
 
+### Keywords Search
+
+Ragdoll supports powerful keywords-based search that can be used standalone or combined with semantic search. The keywords system uses PostgreSQL array operations for high performance and supports both partial matching (overlap) and exact matching (contains all).
+
+```ruby
+# Keywords-only search (overlap - documents containing any of the keywords)
+results = Ragdoll::Document.search_by_keywords(['machine', 'learning', 'ai'])
+
+# Results are sorted by match count (documents with more keyword matches rank higher)
+results.each do |doc|
+  puts "#{doc.title}: #{doc.keywords_match_count} matches"
+end
+
+# Exact keywords search (contains all - documents must have ALL keywords)
+results = Ragdoll::Document.search_by_keywords_all(['ruby', 'programming'])
+
+# Results are sorted by focus (fewer total keywords = more focused document)
+results.each do |doc|
+  puts "#{doc.title}: #{doc.total_keywords_count} total keywords"
+end
+
+# Combined semantic + keywords search for best results
+results = Ragdoll.search(
+  query: 'artificial intelligence applications',
+  keywords: ['ai', 'machine learning', 'neural networks'],
+  limit: 10
+)
+
+# Keywords search with options
+results = Ragdoll::Document.search_by_keywords(
+  ['web', 'javascript', 'frontend'],
+  limit: 20
+)
+
+# Case-insensitive keyword matching (automatically normalized)
+results = Ragdoll::Document.search_by_keywords(['Python', 'DATA-SCIENCE', 'ai'])
+# Will match documents with keywords: ['python', 'data-science', 'ai']
+```
+
+**Keywords Search Features:**
+- **High Performance**: Uses PostgreSQL GIN indexes for fast array operations
+- **Flexible Matching**: Supports both overlap (`&&`) and contains (`@>`) operators
+- **Smart Scoring**: Results ordered by match count or document focus
+- **Case Insensitive**: Automatic keyword normalization
+- **Integration Ready**: Works seamlessly with semantic search
+- **Inspired by `find_matching_entries.rb`**: Optimized for PostgreSQL arrays
+
 ### Search Analytics and Tracking
 
 Ragdoll automatically tracks all searches to provide comprehensive analytics and improve search relevance over time:
