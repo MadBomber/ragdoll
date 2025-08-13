@@ -220,7 +220,7 @@ module Ragdoll
         end
 
         def test_search_content
-          Ragdoll::Document.create!(
+          doc1 = Ragdoll::Document.create!(
             location: "/doc1.txt",
             title: "Machine Learning Doc",
             document_type: "text",
@@ -228,7 +228,7 @@ module Ragdoll
             metadata: { summary: "This document contains machine learning concepts" }
           )
 
-          Ragdoll::Document.create!(
+          doc2 = Ragdoll::Document.create!(
             location: "/doc2.txt",
             title: "Cooking Guide",
             document_type: "text",
@@ -236,17 +236,28 @@ module Ragdoll
             metadata: { summary: "This is about cooking recipes" }
           )
 
-          # Test that search_content method exists and returns a relation
-          # Note: Full-text search might not work in all test environments
+          # Single-word search "machine"
           results = Ragdoll::Document.search_content("machine")
           assert_respond_to results, :count
-          assert_respond_to results, :to_a
+          assert_equal 1, results.count
+          assert_equal doc1.id, results.first.id
+          assert_in_delta 1.0, results.first.fulltext_similarity.to_f, 0.0001
 
-          # Test with title search (simpler)
+          # Case-insensitive search
           results = Ragdoll::Document.search_content("Machine")
-          assert_respond_to results, :count
+          assert_equal 1, results.count
+          assert_equal doc1.id, results.first.id
 
-          # Test empty query returns none
+          # Multi-word search "machine cooking"
+          results = Ragdoll::Document.search_content("machine cooking")
+          assert_equal 2, results.count
+          # Both docs match one of two words (similarity 0.5), doc2 is newer so appears first
+          assert_equal [doc2.id, doc1.id], results.map(&:id)
+          results.each do |rec|
+            assert_in_delta 0.5, rec.fulltext_similarity.to_f, 0.0001
+          end
+
+          # Empty query returns none
           results = Ragdoll::Document.search_content("")
           assert_equal 0, results.count
         end

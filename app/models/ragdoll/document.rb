@@ -257,15 +257,53 @@ module Ragdoll
       puts "Metadata generation failed: #{e.message}"
     end
 
-    # PostgreSQL full-text search on metadata fields
+    # PostgreSQL full-text search on metadata fields with per-word match-ratio [0.0..1.0]
     def self.search_content(query, **options)
       return none if query.blank?
 
-      # Use PostgreSQL's built-in full-text search across metadata fields
-      where(
-        "to_tsvector('english', COALESCE(title, '') || ' ' || COALESCE(metadata->>'summary', '') || ' ' || COALESCE(metadata->>'keywords', '') || ' ' || COALESCE(metadata->>'description', '')) @@ plainto_tsquery('english', ?)",
-        query
-      ).limit(options[:limit] || 20)
+      # Split into unique alphanumeric words
+      words = query.downcase.scan(/[[:alnum:]]+/).uniq
+      return none if words.empty?
+
+      limit = options[:limit] || 20
+
+      # Use precomputed tsvector column if it exists, otherwise build on the fly
+      if column_names.include?("search_vector")
+        tsvector = "#{table_name}.search_vector"
+      else
+        # Build tsvector from title and metadata fields
+        text_expr = 
+          "COALESCE(title, '') || ' ' || " \
+          "COALESCE(metadata->>'summary', '') || ' ' || " \
+          "COALESCE(metadata->>'keywords', '') || ' ' || " \
+          "COALESCE(metadata->>'description', '')"
+        tsvector = "to_tsvector('english', #{text_expr})"
+      end
+
+      # Prepare sanitized tsquery terms
+      tsqueries = words.map do |word|
+        sanitize_sql_array(["plainto_tsquery('english', ?)", word])
+      end
+
+      # Combine per-word tsqueries with OR so PostgreSQL can use the GIN index
+      combined_tsquery = tsqueries.join(' || ')
+
+      # Score each match (1 if present, 0 if not), sum them
+      score_terms = tsqueries.map { |tsq| "(#{tsvector} @@ #{tsq})::int" }
+      score_sum   = score_terms.join(' + ')
+
+      # Similarity ratio: fraction of query words present
+      similarity_sql = "(#{score_sum})::float / #{words.size}"
+
+      # Filter using an index-friendly predicate and restrict to processed docs
+      where_clause = "#{tsvector} @@ (#{combined_tsquery}) AND #{table_name}.status = 'processed'"
+
+      # Materialize to array to avoid COUNT/SELECT alias conflicts in some AR versions
+      select("#{table_name}.*, #{similarity_sql} AS fulltext_similarity")
+        .where(where_clause)
+        .order(Arel.sql("fulltext_similarity DESC, updated_at DESC"))
+        .limit(limit)
+        .to_a
     end
 
     # Search documents by keywords using PostgreSQL array operations
