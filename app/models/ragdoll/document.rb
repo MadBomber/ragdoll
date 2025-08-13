@@ -266,6 +266,7 @@ module Ragdoll
       return none if words.empty?
 
       limit = options[:limit] || 20
+      threshold = options[:threshold] || 0.0
 
       # Use precomputed tsvector column if it exists, otherwise build on the fly
       if column_names.include?("search_vector")
@@ -297,6 +298,11 @@ module Ragdoll
 
       # Filter using an index-friendly predicate and restrict to processed docs
       where_clause = "#{tsvector} @@ (#{combined_tsquery}) AND #{table_name}.status = 'processed'"
+      
+      # Add threshold filtering if specified
+      if threshold > 0.0
+        where_clause += " AND #{similarity_sql} >= #{threshold}"
+      end
 
       # Materialize to array to avoid COUNT/SELECT alias conflicts in some AR versions
       select("#{table_name}.*, #{similarity_sql} AS fulltext_similarity")
