@@ -296,17 +296,31 @@ module Ragdoll
       # Similarity ratio: fraction of query words present
       similarity_sql = "(#{score_sum})::float / #{words.size}"
 
-      # Filter using an index-friendly predicate and restrict to processed docs
-      where_clause = "#{tsvector} @@ (#{combined_tsquery}) AND #{table_name}.status = 'processed'"
+      # Start with basic search query
+      query = select("#{table_name}.*, #{similarity_sql} AS fulltext_similarity")
+      
+      # Build where conditions
+      conditions = ["#{tsvector} @@ (#{combined_tsquery})"]
+      
+      # Add status filter (default to processed unless overridden)
+      status = options[:status] || 'processed'
+      conditions << "#{table_name}.status = '#{status}'"
+      
+      # Add document type filter if specified
+      if options[:document_type].present?
+        conditions << sanitize_sql_array(["#{table_name}.document_type = ?", options[:document_type]])
+      end
       
       # Add threshold filtering if specified
       if threshold > 0.0
-        where_clause += " AND #{similarity_sql} >= #{threshold}"
+        conditions << "#{similarity_sql} >= #{threshold}"
       end
+      
+      # Combine all conditions
+      where_clause = conditions.join(' AND ')
 
       # Materialize to array to avoid COUNT/SELECT alias conflicts in some AR versions
-      select("#{table_name}.*, #{similarity_sql} AS fulltext_similarity")
-        .where(where_clause)
+      query.where(where_clause)
         .order(Arel.sql("fulltext_similarity DESC, updated_at DESC"))
         .limit(limit)
         .to_a
