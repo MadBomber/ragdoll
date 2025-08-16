@@ -29,19 +29,22 @@ class CreateRagdollContents < ActiveRecord::Migration[7.0]
 
       t.timestamps null: false,
         comment: "Standard creation and update timestamps"
-
-      ###########
-      # Indexes #
-      ###########
-
-      t.index :embedding_model,
-        comment: "Index for filtering by embedding model"
-
-      t.index :type,
-        comment: "Index for filtering by content type"
-
-      t.index "to_tsvector('english', COALESCE(content, ''))", using: :gin, name: "index_ragdoll_contents_on_fulltext_search",
-        comment: "Full-text search index for text content"
     end
+
+    ###########
+    # Indexes #
+    ###########
+
+    add_index :ragdoll_contents, :embedding_model,
+      comment: "Index for filtering by embedding model"
+
+    add_index :ragdoll_contents, :type,
+      comment: "Index for filtering by content type"
+
+    execute <<-SQL
+      CREATE INDEX index_ragdoll_contents_on_fulltext_search
+      ON ragdoll_contents
+      USING gin(to_tsvector('english', COALESCE(content, '')))
+    SQL
   end
 end
