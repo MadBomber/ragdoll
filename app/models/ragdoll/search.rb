@@ -14,7 +14,7 @@ module Ragdoll
     has_many :embeddings, through: :search_results
 
     validates :query, presence: true
-    validates :query_embedding, presence: true
+    validates :query_embedding, presence: false, allow_nil: true
     validates :search_type, presence: true, inclusion: { in: %w[semantic hybrid fulltext] }
     validates :results_count, presence: true, numericality: { greater_than_or_equal_to: 0 }
 
