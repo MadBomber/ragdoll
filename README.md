@@ -22,6 +22,8 @@
 
 Database-oriented multi-modal RAG (Retrieval-Augmented Generation) library built on ActiveRecord. Features PostgreSQL + pgvector for high-performance semantic search, polymorphic content architecture, and dual metadata design for sophisticated document analysis.
 
+RAG does not have to be hard.  Every week its getting simpler.  The frontier LLM providers are starting to encorporate RAG services.  For example OpenAI offers a vector search service.  See: [https://0x1eef.github.io/posts/an-introduction-to-rag-with-llm.rb/](https://0x1eef.github.io/posts/an-introduction-to-rag-with-llm.rb/)
+
 ## Overview
 
 Ragdoll is a database-first, multi-modal Retrieval-Augmented Generation (RAG) library for Ruby. It pairs PostgreSQL + pgvector with an ActiveRecord-driven schema to deliver fast, production-grade semantic search and clean data modeling. Today it ships with robust text processing; image and audio pipelines are scaffolded and actively being completed.
