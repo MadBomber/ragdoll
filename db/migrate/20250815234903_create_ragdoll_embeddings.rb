@@ -3,7 +3,7 @@ class CreateRagdollEmbeddings < ActiveRecord::Migration[7.0]
     create_table :ragdoll_embeddings,
       comment: "Polymorphic vector embeddings storage for semantic similarity search" do |t|
 
-        t.references :embeddable, polymorphic: true, null: false,
+      t.references :embeddable, polymorphic: true, null: false,
         comment: "Polymorphic reference to embeddable content"
 
       t.text :content, null: false, default: "",
@@ -26,16 +26,19 @@ class CreateRagdollEmbeddings < ActiveRecord::Migration[7.0]
 
       t.timestamps null: false,
         comment: "Standard creation and update timestamps"
-
-      ###########
-      # Indexes #
-      ###########
-
-      t.index %i[embeddable_type embeddable_id],
-        comment: "Index for finding embeddings by embeddable content"
-
-      t.index :embedding_vector, using: :ivfflat, opclass: :vector_cosine_ops, name: "index_ragdoll_embeddings_on_embedding_vector_cosine",
-        comment: "IVFFlat index for fast cosine similarity search"
     end
+
+    ###########
+    # Indexes #
+    ###########
+
+    add_index :ragdoll_embeddings, [:embeddable_type, :embeddable_id],
+      comment: "Index for finding embeddings by embeddable content"
+
+    add_index :ragdoll_embeddings, :embedding_vector, 
+      using: :ivfflat, 
+      opclass: :vector_cosine_ops, 
+      name: "index_ragdoll_embeddings_on_embedding_vector_cosine",
+      comment: "IVFFlat index for fast cosine similarity search"
   end
 end

@@ -41,33 +41,37 @@ class CreateRagdollSearches < ActiveRecord::Migration[7.0]
 
       t.timestamps null: false,
         comment: "Standard creation and update timestamps"
-
-      ###########
-      # Indexes #
-      ###########
-
-      t.index :query_embedding, using: :ivfflat, opclass: :vector_cosine_ops, 
-        name: "index_ragdoll_searches_on_query_embedding_cosine",
-        comment: "IVFFlat index for finding similar search queries"
-
-      t.index :search_type,
-        comment: "Index for filtering by search type"
-
-      t.index :session_id,
-        comment: "Index for grouping searches by session"
-
-      t.index :user_id,
-        comment: "Index for filtering searches by user"
-
-      t.index :created_at,
-        comment: "Index for chronological search history"
-
-      t.index :results_count,
-        comment: "Index for analyzing search effectiveness"
-
-      t.index "to_tsvector('english', query)", using: :gin, 
-        name: "index_ragdoll_searches_on_fulltext_query",
-        comment: "Full-text search index for finding searches by query text"
     end
+
+    ###########
+    # Indexes #
+    ###########
+
+    add_index :ragdoll_searches, :query_embedding, 
+      using: :ivfflat, 
+      opclass: :vector_cosine_ops, 
+      name: "index_ragdoll_searches_on_query_embedding_cosine",
+      comment: "IVFFlat index for finding similar search queries"
+
+    add_index :ragdoll_searches, :search_type,
+      comment: "Index for filtering by search type"
+
+    add_index :ragdoll_searches, :session_id,
+      comment: "Index for grouping searches by session"
+
+    add_index :ragdoll_searches, :user_id,
+      comment: "Index for filtering searches by user"
+
+    add_index :ragdoll_searches, :created_at,
+      comment: "Index for chronological search history"
+
+    add_index :ragdoll_searches, :results_count,
+      comment: "Index for analyzing search effectiveness"
+
+    execute <<-SQL
+      CREATE INDEX index_ragdoll_searches_on_fulltext_query
+      ON ragdoll_searches
+      USING gin(to_tsvector('english', query))
+    SQL
   end
 end

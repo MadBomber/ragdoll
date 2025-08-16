@@ -24,26 +24,26 @@ class CreateRagdollSearchResults < ActiveRecord::Migration[7.0]
 
       t.timestamps null: false,
         comment: "Standard creation and update timestamps"
-
-      ###########
-      # Indexes #
-      ###########
-
-      t.index [:search_id, :result_rank],
-        name: "idx_search_results_search_rank",
-        comment: "Index for retrieving results in ranked order"
-
-      t.index [:embedding_id, :similarity_score],
-        name: "idx_search_results_embedding_score", 
-        comment: "Index for analyzing embedding performance"
-
-      t.index :similarity_score,
-        name: "idx_search_results_similarity",
-        comment: "Index for similarity score analysis"
-
-      t.index [:clicked, :clicked_at],
-        name: "idx_search_results_clicks",
-        comment: "Index for click-through analysis"
     end
+
+    ###########
+    # Indexes #
+    ###########
+
+    add_index :ragdoll_search_results, [:search_id, :result_rank],
+      name: "idx_search_results_search_rank",
+      comment: "Index for retrieving results in ranked order"
+
+    add_index :ragdoll_search_results, [:embedding_id, :similarity_score],
+      name: "idx_search_results_embedding_score", 
+      comment: "Index for analyzing embedding performance"
+
+    add_index :ragdoll_search_results, :similarity_score,
+      name: "idx_search_results_similarity",
+      comment: "Index for similarity score analysis"
+
+    add_index :ragdoll_search_results, [:clicked, :clicked_at],
+      name: "idx_search_results_clicks",
+      comment: "Index for click-through analysis"
   end
 end

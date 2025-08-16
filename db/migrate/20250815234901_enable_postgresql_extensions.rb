@@ -1,8 +1,5 @@
 class EnablePostgresqlExtensions < ActiveRecord::Migration[7.0]
   def up
-    # This migration is now handled by the db:create rake task
-    # Just ensure required extensions are available
-    
     # Vector similarity search (required for embeddings)
     execute "CREATE EXTENSION IF NOT EXISTS vector"
     
@@ -15,9 +12,11 @@ class EnablePostgresqlExtensions < ActiveRecord::Migration[7.0]
   end
 
   def down
-    execute <<-SQL
-      DROP DATABASE IF EXISTS ragdoll_development;
-      DROP ROLE IF EXISTS ragdoll;
-    SQL
+    # Extensions are typically not dropped as they might be used by other databases
+    # If you really need to drop them, uncomment the following:
+    # execute "DROP EXTENSION IF EXISTS vector"
+    # execute "DROP EXTENSION IF EXISTS unaccent"
+    # execute "DROP EXTENSION IF EXISTS pg_trgm"
+    # execute "DROP EXTENSION IF EXISTS \"uuid-ossp\""
   end
 end

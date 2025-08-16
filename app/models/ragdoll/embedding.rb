@@ -64,10 +64,26 @@ module Ragdoll
       scope = scope.by_model(filters[:embedding_model]) if filters[:embedding_model]
 
       # Document-level filters require joining through embeddable (STI Content) to documents
-      if filters[:document_type]
+      needs_document_join = filters[:document_type] || filters[:keywords]
+      
+      if needs_document_join
         scope = scope.joins("JOIN ragdoll_contents ON ragdoll_contents.id = ragdoll_embeddings.embeddable_id")
                      .joins("JOIN ragdoll_documents ON ragdoll_documents.id = ragdoll_contents.document_id")
-                     .where("ragdoll_documents.document_type = ?", filters[:document_type])
+      end
+
+      if filters[:document_type]
+        scope = scope.where("ragdoll_documents.document_type = ?", filters[:document_type])
+      end
+
+      # Keywords filtering using PostgreSQL array operations
+      if filters[:keywords] && filters[:keywords].any?
+        normalized_keywords = Array(filters[:keywords]).map(&:to_s).map(&:downcase).reject(&:empty?)
+        if normalized_keywords.any?
+          # Use PostgreSQL array overlap operator with proper array literal
+          quoted_keywords = normalized_keywords.map { |k| "\"#{k}\"" }.join(',')
+          array_literal = "'{#{quoted_keywords}}'::text[]"
+          scope = scope.where("ragdoll_documents.keywords && #{array_literal}")
+        end
       end
 
       # Use pgvector for similarity search
@@ -83,10 +99,26 @@ module Ragdoll
       scope = scope.by_model(filters[:embedding_model]) if filters[:embedding_model]
 
       # Document-level filters require joining through embeddable (STI Content) to documents
-      if filters[:document_type]
+      needs_document_join = filters[:document_type] || filters[:keywords]
+      
+      if needs_document_join
         scope = scope.joins("JOIN ragdoll_contents ON ragdoll_contents.id = ragdoll_embeddings.embeddable_id")
                      .joins("JOIN ragdoll_documents ON ragdoll_documents.id = ragdoll_contents.document_id")
-                     .where("ragdoll_documents.document_type = ?", filters[:document_type])
+      end
+
+      if filters[:document_type]
+        scope = scope.where("ragdoll_documents.document_type = ?", filters[:document_type])
+      end
+
+      # Keywords filtering using PostgreSQL array operations
+      if filters[:keywords] && filters[:keywords].any?
+        normalized_keywords = Array(filters[:keywords]).map(&:to_s).map(&:downcase).reject(&:empty?)
+        if normalized_keywords.any?
+          # Use PostgreSQL array overlap operator with proper array literal
+          quoted_keywords = normalized_keywords.map { |k| "\"#{k}\"" }.join(',')
+          array_literal = "'{#{quoted_keywords}}'::text[]"
+          scope = scope.where("ragdoll_documents.keywords && #{array_literal}")
+        end
       end
 
       search_with_pgvector_stats(query_embedding, scope, limit, threshold)

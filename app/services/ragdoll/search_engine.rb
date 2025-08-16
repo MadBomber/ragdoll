@@ -33,6 +33,10 @@ module Ragdoll
       threshold = options[:threshold] || search_config[:similarity_threshold]
       filters = options[:filters] || {}
       
+      # Extract keywords option and normalize
+      keywords = options[:keywords] || []
+      keywords = Array(keywords).map(&:to_s).reject(&:empty?)
+      
       # Extract tracking options
       session_id = options[:session_id]
       user_id = options[:user_id]
@@ -47,6 +51,11 @@ module Ragdoll
         query_string = query_or_embedding
         query_embedding = @embedding_service.generate_embedding(query_string)
         return [] if query_embedding.nil?
+      end
+
+      # Add keywords to filters if provided
+      if keywords.any?
+        filters[:keywords] = keywords
       end
 
       # Search using ActiveRecord models with statistics
@@ -81,13 +90,15 @@ module Ragdoll
             }
           end
           
+          search_type = keywords.any? ? "semantic_with_keywords" : "semantic"
+          
           Ragdoll::Search.record_search(
             query: query_string,
             query_embedding: query_embedding,
             results: search_results,
-            search_type: "semantic",
+            search_type: search_type,
             filters: filters,
-            options: { limit: limit, threshold: threshold },
+            options: { limit: limit, threshold: threshold, keywords: keywords },
             execution_time_ms: execution_time,
             session_id: session_id,
             user_id: user_id

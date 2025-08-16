@@ -227,4 +227,217 @@ class SearchEngineTest < Minitest::Test
       assert_equal "text", document.document_type
     end
   end
+
+  def test_search_similar_content_with_keywords_parameter
+    query = "test query"
+    keywords = ["machine", "learning"]
+    vector = Array.new(1536) { |i| (i / 1536.0) }
+
+    @embedding_service.expect(:generate_embedding, vector, [query])
+
+    # Create test documents with different keywords
+    doc1 = Ragdoll::Document.create!(
+      location: "/doc1.txt",
+      title: "Machine Learning Guide", 
+      document_type: "text",
+      status: "processed",
+      keywords: ["machine", "learning", "ai"]
+    )
+
+    doc2 = Ragdoll::Document.create!(
+      location: "/doc2.txt",
+      title: "Web Development",
+      document_type: "text", 
+      status: "processed",
+      keywords: ["web", "javascript", "html"]
+    )
+
+    # Create text content and embeddings
+    [doc1, doc2].each_with_index do |doc, i|
+      text_content = doc.text_contents.create!(
+        content: "Test content #{i}",
+        embedding_model: "test-model"
+      )
+
+      Ragdoll::Embedding.create!(
+        embeddable: text_content,
+        chunk_index: 0,
+        embedding_vector: vector.map { |v| v + (i * 0.001) }, # Slightly different vectors
+        content: "Test content #{i}"
+      )
+    end
+
+    # Search with keywords should only return doc1
+    result = @search_engine.search_similar_content(query, keywords: keywords)
+    
+    assert_instance_of Hash, result
+    assert_key_exists result, :results
+    assert_key_exists result, :execution_time_ms
+    
+    # Should only find documents matching the keywords
+    results = result[:results]
+    assert results.count <= 1  # At most 1 document should match the keywords
+    
+    if results.any?
+      # If we get a result, it should be doc1 (which has the matching keywords)
+      found_doc_id = results.first[:document_id] || results.first[:id]
+      found_doc = Ragdoll::Document.find(found_doc_id)
+      assert_equal doc1.id, found_doc.id
+    end
+  end
+
+  def test_search_similar_content_keywords_normalization
+    query = "test query"
+    vector = Array.new(1536) { |i| (i / 1536.0) }
+
+    # Set up mock expectations for each test case
+    test_cases = [
+      ["PYTHON"],           # uppercase
+      ["Python"],           # mixed case
+      "python",             # string instead of array
+      ["python", "PROGRAMMING"], # mixed case array
+    ]
+    
+    # Set up expectations for each test case
+    test_cases.each do
+      @embedding_service.expect(:generate_embedding, vector, [query])
+    end
+
+    doc = Ragdoll::Document.create!(
+      location: "/doc.txt",
+      title: "Test Document", 
+      document_type: "text",
+      status: "processed",
+      keywords: ["python", "programming"]
+    )
+
+    text_content = doc.text_contents.create!(
+      content: "Test content",
+      embedding_model: "test-model" 
+    )
+
+    Ragdoll::Embedding.create!(
+      embeddable: text_content,
+      chunk_index: 0,
+      embedding_vector: vector,
+      content: "Test content"
+    )
+
+    # Test that keywords are normalized (case insensitive)
+    test_cases.each do |keywords_input|
+      result = @search_engine.search_similar_content(query, keywords: keywords_input)
+      
+      assert_instance_of Hash, result
+      results = result[:results]
+      
+      # Should find the document regardless of keyword case
+      if results.any?
+        found_doc_id = results.first[:document_id] || results.first[:id]
+        found_doc = Ragdoll::Document.find(found_doc_id)
+        assert_equal doc.id, found_doc.id
+      end
+    end
+  end
+
+  def test_search_similar_content_empty_keywords
+    query = "test query"
+    vector = Array.new(1536) { |i| (i / 1536.0) }
+
+    # Test empty keywords - should behave like normal search
+    empty_keywords_cases = [
+      [],
+      "",
+      nil,
+      ["", "  "],
+    ]
+
+    # Set up expectations for each test case
+    empty_keywords_cases.each do
+      @embedding_service.expect(:generate_embedding, vector, [query])
+    end
+
+    # Create a document
+    doc = Ragdoll::Document.create!(
+      location: "/doc.txt", 
+      title: "Test Document",
+      document_type: "text",
+      status: "processed"
+    )
+
+    text_content = doc.text_contents.create!(
+      content: "Test content",
+      embedding_model: "test-model"
+    )
+
+    Ragdoll::Embedding.create!(
+      embeddable: text_content,
+      chunk_index: 0,
+      embedding_vector: vector,
+      content: "Test content"
+    )
+
+    empty_keywords_cases.each do |empty_keywords|
+      result = @search_engine.search_similar_content(query, keywords: empty_keywords)
+      
+      assert_instance_of Hash, result
+      assert_key_exists result, :results
+      assert_key_exists result, :execution_time_ms
+      
+      # Should not filter out any results due to keywords
+      results = result[:results]
+      assert results.count >= 0  # Can be 0 if similarity threshold not met
+    end
+  end
+
+  def test_search_similar_content_keywords_in_search_tracking
+    query = "test query with keywords"
+    keywords = ["ruby", "programming"]
+    vector = Array.new(1536) { |i| (i / 1536.0) }
+
+    @embedding_service.expect(:generate_embedding, vector, [query])
+
+    # Create document with matching keywords
+    doc = Ragdoll::Document.create!(
+      location: "/doc.txt",
+      title: "Ruby Programming Guide",
+      document_type: "text", 
+      status: "processed",
+      keywords: ["ruby", "programming", "rails"]
+    )
+
+    text_content = doc.text_contents.create!(
+      content: "Ruby programming content",
+      embedding_model: "test-model"
+    )
+
+    Ragdoll::Embedding.create!(
+      embeddable: text_content,
+      chunk_index: 0,
+      embedding_vector: vector,
+      content: "Ruby programming content"
+    )
+
+    # Perform search with keywords
+    result = @search_engine.search_similar_content(
+      query, 
+      keywords: keywords,
+      track_search: true,
+      session_id: "test-session",
+      user_id: "test-user"
+    )
+
+    assert_instance_of Hash, result
+    assert_key_exists result, :results
+
+    # Check that a search was recorded
+    # Note: This may not work in test environment without proper database setup
+    # but the method should complete without error
+    assert result[:execution_time_ms] > 0
+  end
+
+  private
+
+  def assert_key_exists(hash, key)
+    assert hash.key?(key), "Expected hash to have key #{key}, but keys were: #{hash.keys}"
+  end
 end

@@ -90,10 +90,10 @@ module Ragdoll
         # Drop all tables in correct order (respecting foreign key constraints)
         # Order: dependent tables first, then parent tables
         tables_to_drop = %w[
+          ragdoll_search_results
+          ragdoll_searches
           ragdoll_embeddings
-          ragdoll_text_contents
-          ragdoll_image_contents
-          ragdoll_audio_contents
+          ragdoll_contents
           ragdoll_documents
           schema_migrations
         ]
@@ -107,6 +107,11 @@ module Ragdoll
               ActiveRecord::Base.connection.drop_table(table)
             end
           end
+        end
+
+        # Also drop any functions/triggers that might exist
+        if ActiveRecord::Base.connection.adapter_name.downcase.include?("postgresql")
+          ActiveRecord::Base.connection.execute("DROP FUNCTION IF EXISTS ragdoll_documents_vector_update() CASCADE")
         end
 
         migrate!

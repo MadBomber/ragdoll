@@ -142,10 +142,12 @@ module Ragdoll
     def keywords_array
       return [] unless keywords.present?
 
+      # After migration, keywords is now a PostgreSQL array
       case keywords
       when Array
-        keywords
+        keywords.map(&:to_s).map(&:strip).reject(&:empty?)
       when String
+        # Fallback for any remaining string data (shouldn't happen after migration)
         keywords.split(",").map(&:strip).reject(&:empty?)
       else
         []
@@ -153,17 +155,23 @@ module Ragdoll
     end
 
     def add_keyword(keyword)
+      return if keyword.blank?
+      
       current_keywords = keywords_array
-      return if current_keywords.include?(keyword.strip)
+      normalized_keyword = keyword.to_s.strip.downcase
+      return if current_keywords.map(&:downcase).include?(normalized_keyword)
 
-      current_keywords << keyword.strip
-      self.keywords = current_keywords.join(", ")
+      current_keywords << normalized_keyword
+      self.keywords = current_keywords
     end
 
     def remove_keyword(keyword)
+      return if keyword.blank?
+      
       current_keywords = keywords_array
-      current_keywords.delete(keyword.strip)
-      self.keywords = current_keywords.join(", ")
+      normalized_keyword = keyword.to_s.strip.downcase
+      current_keywords.reject! { |k| k.downcase == normalized_keyword }
+      self.keywords = current_keywords
     end
 
     # Metadata accessors for common fields
@@ -249,15 +257,110 @@ module Ragdoll
       puts "Metadata generation failed: #{e.message}"
     end
 
-    # PostgreSQL full-text search on metadata fields
+    # PostgreSQL full-text search on metadata fields with per-word match-ratio [0.0..1.0]
     def self.search_content(query, **options)
       return none if query.blank?
 
-      # Use PostgreSQL's built-in full-text search across metadata fields
-      where(
-        "to_tsvector('english', COALESCE(title, '') || ' ' || COALESCE(metadata->>'summary', '') || ' ' || COALESCE(metadata->>'keywords', '') || ' ' || COALESCE(metadata->>'description', '')) @@ plainto_tsquery('english', ?)",
-        query
-      ).limit(options[:limit] || 20)
+      # Split into unique alphanumeric words
+      words = query.downcase.scan(/[[:alnum:]]+/).uniq
+      return none if words.empty?
+
+      limit = options[:limit] || 20
+      threshold = options[:threshold] || 0.0
+
+      # Use precomputed tsvector column if it exists, otherwise build on the fly
+      if column_names.include?("search_vector")
+        tsvector = "#{table_name}.search_vector"
+      else
+        # Build tsvector from title and metadata fields
+        text_expr = 
+          "COALESCE(title, '') || ' ' || " \
+          "COALESCE(metadata->>'summary', '') || ' ' || " \
+          "COALESCE(metadata->>'keywords', '') || ' ' || " \
+          "COALESCE(metadata->>'description', '')"
+        tsvector = "to_tsvector('english', #{text_expr})"
+      end
+
+      # Prepare sanitized tsquery terms
+      tsqueries = words.map do |word|
+        sanitize_sql_array(["plainto_tsquery('english', ?)", word])
+      end
+
+      # Combine per-word tsqueries with OR so PostgreSQL can use the GIN index
+      combined_tsquery = tsqueries.join(' || ')
+
+      # Score each match (1 if present, 0 if not), sum them
+      score_terms = tsqueries.map { |tsq| "(#{tsvector} @@ #{tsq})::int" }
+      score_sum   = score_terms.join(' + ')
+
+      # Similarity ratio: fraction of query words present
+      similarity_sql = "(#{score_sum})::float / #{words.size}"
+
+      # Start with basic search query
+      query = select("#{table_name}.*, #{similarity_sql} AS fulltext_similarity")
+      
+      # Build where conditions
+      conditions = ["#{tsvector} @@ (#{combined_tsquery})"]
+      
+      # Add status filter (default to processed unless overridden)
+      status = options[:status] || 'processed'
+      conditions << "#{table_name}.status = '#{status}'"
+      
+      # Add document type filter if specified
+      if options[:document_type].present?
+        conditions << sanitize_sql_array(["#{table_name}.document_type = ?", options[:document_type]])
+      end
+      
+      # Add threshold filtering if specified
+      if threshold > 0.0
+        conditions << "#{similarity_sql} >= #{threshold}"
+      end
+      
+      # Combine all conditions
+      where_clause = conditions.join(' AND ')
+
+      # Materialize to array to avoid COUNT/SELECT alias conflicts in some AR versions
+      query.where(where_clause)
+        .order(Arel.sql("fulltext_similarity DESC, updated_at DESC"))
+        .limit(limit)
+        .to_a
+    end
+
+    # Search documents by keywords using PostgreSQL array operations
+    # Returns documents that match keywords with scoring based on match count
+    # Inspired by find_matching_entries.rb algorithm but optimized for PostgreSQL arrays
+    def self.search_by_keywords(keywords_array, **options)
+      return where("1 = 0") if keywords_array.blank?
+
+      # Normalize keywords to lowercase strings array
+      normalized_keywords = Array(keywords_array).map(&:to_s).map(&:downcase).reject(&:empty?)
+      return where("1 = 0") if normalized_keywords.empty?
+
+      limit = options[:limit] || 20
+      
+      # Use PostgreSQL array overlap operator with proper array literal
+      quoted_keywords = normalized_keywords.map { |k| "\"#{k}\"" }.join(',')
+      array_literal = "'{#{quoted_keywords}}'::text[]"
+      where("keywords && #{array_literal}")
+        .order("created_at DESC")
+        .limit(limit)
+    end
+
+    # Find documents that contain ALL specified keywords (exact array matching)
+    def self.search_by_keywords_all(keywords_array, **options)
+      return where("1 = 0") if keywords_array.blank?
+
+      normalized_keywords = Array(keywords_array).map(&:to_s).map(&:downcase).reject(&:empty?)
+      return where("1 = 0") if normalized_keywords.empty?
+
+      limit = options[:limit] || 20
+      
+      # Use PostgreSQL array contains operator with proper array literal
+      quoted_keywords = normalized_keywords.map { |k| "\"#{k}\"" }.join(',')
+      array_literal = "'{#{quoted_keywords}}'::text[]"
+      where("keywords @> #{array_literal}")
+        .order("created_at DESC")
+        .limit(limit)
     end
 
     # Faceted search by metadata fields

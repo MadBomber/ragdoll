@@ -49,8 +49,10 @@ task :setup_test_db do
     puts "Warning: Could not install pgvector extension: #{e.message}"
   end
 
-  # Run migrations
-  Ragdoll::Core::Database.setup(test_db_config.merge(auto_migrate: true, logger: nil))
+  # Reset and run migrations (drops all tables and re-runs migrations)
+  # This ensures clean state for tests regardless of previous migration versions
+  Ragdoll::Core::Database.setup(test_db_config.merge(auto_migrate: false, logger: nil))
+  Ragdoll::Core::Database.reset!
   puts "Test database setup complete"
 end
 

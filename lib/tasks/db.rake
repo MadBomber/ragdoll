@@ -25,22 +25,17 @@ namespace :db do
       )
       
       # Run individual SQL commands to avoid transaction block issues
-      begin
-        ActiveRecord::Base.connection.execute("DROP DATABASE IF EXISTS ragdoll_development")
-      rescue => e
-        puts "Note: #{e.message}" if e.message.include?("does not exist")
-      end
-      
-      begin
-        ActiveRecord::Base.connection.execute("DROP ROLE IF EXISTS ragdoll")
-      rescue => e
-        puts "Note: #{e.message}" if e.message.include?("does not exist")
-      end
+      # Note: Removed the DROP DATABASE/ROLE here since that should be done via db:drop task
       
       begin
         ActiveRecord::Base.connection.execute("CREATE ROLE ragdoll WITH LOGIN CREATEDB")
+        puts "Role 'ragdoll' created successfully"
       rescue => e
-        puts "Note: Role already exists, continuing..." if e.message.include?("already exists")
+        if e.message.include?("already exists")
+          puts "Note: Role 'ragdoll' already exists, continuing..."
+        else
+          raise e
+        end
       end
       
       begin
@@ -50,8 +45,16 @@ namespace :db do
             ENCODING = 'UTF8'
             CONNECTION LIMIT = -1
         SQL
+        puts "Database 'ragdoll_development' created successfully"
       rescue => e
-        puts "Note: Database already exists, continuing..." if e.message.include?("already exists")
+        if e.message.include?("already exists")
+          puts "ERROR: Database 'ragdoll_development' already exists!"
+          puts "Please run 'rake db:drop' first to remove the existing database, then run 'rake db:create' again."
+          puts "Or use 'rake db:reset' to drop, create, and migrate in one step."
+          exit 1
+        else
+          raise e
+        end
       end
       
       ActiveRecord::Base.connection.execute("GRANT ALL PRIVILEGES ON DATABASE ragdoll_development TO ragdoll")
@@ -97,8 +100,53 @@ namespace :db do
     puts "Dropping database with config: #{config.database.inspect}"
 
     case config.database[:adapter]
-    when "postgresql", "mysql2"
-      puts "For #{config.database[:adapter]}, please drop the database manually on your server"
+    when "postgresql"
+      puts "PostgreSQL database drop - running as superuser to drop database and role..."
+      
+      # Connect as superuser to drop database and role
+      ActiveRecord::Base.establish_connection(
+        adapter: 'postgresql',
+        database: 'postgres', # Connect to postgres database initially
+        username: ENV.fetch('POSTGRES_SUPERUSER', 'postgres'),
+        password: ENV['POSTGRES_SUPERUSER_PASSWORD'],
+        host: config.database[:host] || 'localhost',
+        port: config.database[:port] || 5432
+      )
+      
+      # Drop the database if it exists
+      begin
+        ActiveRecord::Base.connection.execute("DROP DATABASE IF EXISTS ragdoll_development")
+        puts "Database 'ragdoll_development' dropped successfully"
+      rescue => e
+        puts "Error dropping database: #{e.message}"
+      end
+      
+      # Optionally drop the role (commented out by default to preserve user)
+      # begin
+      #   ActiveRecord::Base.connection.execute("DROP ROLE IF EXISTS ragdoll")
+      #   puts "Role 'ragdoll' dropped successfully"
+      # rescue => e
+      #   puts "Error dropping role: #{e.message}"
+      # end
+      
+    when "mysql2"
+      puts "MySQL database drop - connecting to drop database..."
+      
+      # Connect without specifying database
+      ActiveRecord::Base.establish_connection(
+        adapter: 'mysql2',
+        username: config.database[:username],
+        password: config.database[:password],
+        host: config.database[:host] || 'localhost',
+        port: config.database[:port] || 3306
+      )
+      
+      begin
+        ActiveRecord::Base.connection.execute("DROP DATABASE IF EXISTS #{config.database[:database]}")
+        puts "Database '#{config.database[:database]}' dropped successfully"
+      rescue => e
+        puts "Error dropping database: #{e.message}"
+      end
     end
 
     puts "Database drop completed"

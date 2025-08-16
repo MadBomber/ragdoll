@@ -6,7 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
-*Note: These features will be included in the next release (likely v0.1.9) featuring comprehensive search tracking and analytics capabilities.*
+## [0.1.10] - 2025-01-15
+
+### Changed
+- Continued improvements to search performance and accuracy
+
+### Added
+- **Hybrid Search**: Complete implementation combining semantic and full-text search capabilities
+  - Configurable weights for semantic vs text search (default: 70% semantic, 30% text)
+  - Deduplication of results by document ID
+  - Combined scoring system for unified result ranking
+- **Full-text Search**: PostgreSQL full-text search with tsvector indexing
+  - Per-word match ratio scoring (0.0 to 1.0)
+  - GIN index for high-performance text search
+  - Search across title, summary, keywords, and description fields
+- **Enhanced Search API**: Complete search type delegation at top-level Ragdoll namespace
+  - `Ragdoll.hybrid_search` method for combined semantic and text search
+  - `Ragdoll::Document.search_content` for full-text search capabilities
+  - Consistent parameter handling across all search methods
+
+### Changed
+- **Search Architecture**: Unified search interface supporting semantic, fulltext, and hybrid modes
+- **Database Schema**: Added search_vector column with GIN indexing for full-text search performance
+
+### Technical Details
+- Full-text search uses PostgreSQL's built-in tsvector capabilities
+- Hybrid search combines cosine similarity (semantic) with text match ratios
+- Results are ranked by weighted combined scores
+- All search methods maintain backward compatibility
+
+## [0.1.9] - 2025-01-10
 
 ### Added
 - **Initial CHANGELOG**: Added comprehensive CHANGELOG.md following Keep a Changelog format
@@ -40,7 +69,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Test Coverage**: Added coverage directory to .gitignore for cleaner repository state
 
 ### Technical Details
-- Commits: `9186067`, `cb952d3`, `e902a5f`, `632527b` 
+- Commits: `9186067`, `cb952d3`, `e902a5f`, `632527b`
 - All changes maintain backward compatibility
 - No breaking API changes
 
@@ -141,6 +170,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Database Schema**: Multi-modal polymorphic architecture with PostgreSQL + pgvector
 - **Dual Metadata Architecture**: Separate LLM-generated content analysis and file properties
 - **Search Functionality**: Semantic search with cosine similarity and usage analytics
+- **Hybrid Search**: Complete implementation combining semantic and full-text search with configurable weights
+- **Full-text Search**: PostgreSQL tsvector-based text search with GIN indexing
 - **Search Tracking System**: Comprehensive analytics with query embeddings, click-through tracking, and performance monitoring
 - **Document Management**: Add, update, delete, list operations
 - **Background Processing**: ActiveJob integration for async embedding generation
@@ -150,7 +181,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### 🚧 In Development
 - **Image Processing**: Framework exists but vision AI integration needs completion
 - **Audio Processing**: Framework exists but speech-to-text integration needs completion
-- **Hybrid Search**: Combining semantic and full-text search capabilities
 
 ### 📋 Planned Features
 - **Multi-modal Search**: Search across text, image, and audio content types
@@ -160,6 +190,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ---
 
 ## Migration Guide
+
+### From 0.1.9 to 0.1.10
+- **New Search Methods**: `Ragdoll.hybrid_search` and `Ragdoll::Document.search_content` methods now available
+- **Database Migration**: New search_vector column added to documents table with GIN index for full-text search
+- **API Enhancement**: All search methods now support unified parameter interface
+- **Backward Compatibility**: Existing `Ragdoll.search` method unchanged, continues to work as before
+- **CLI Integration**: ragdoll-cli now requires ragdoll >= 0.1.10 for hybrid and full-text search support
+
+### From 0.1.8 to 0.1.9
+- **CHANGELOG Addition**: Comprehensive changelog and feature tracking added
+- **API Method Consistency**: `hybrid_search` method properly delegated to top-level namespace
+- **No Breaking Changes**: All existing functionality remains compatible
 
 ### From 0.1.7 to 0.1.8
 - New search tracking tables will be automatically created via migrations
