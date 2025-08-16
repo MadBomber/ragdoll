@@ -1,120 +1,161 @@
-Full‑Text Search Improvement Plan
+# Full-Text Search Improvement Plan
 
-Overview (current baseline)
-- A tsvector column (search_vector) exists (or is being added) with a GIN index and a trigger to keep it updated.
-- search_content(query, limit: N)
-  - Splits the query into unique alphanumeric terms.
-  - Uses an index‑friendly predicate: search_vector @@ (q1 || q2 || ...).
-  - Computes per‑word similarity ratio: matched_terms_count / total_terms.
-  - Orders by similarity DESC, then updated_at DESC.
-  - Filters to status = 'processed'.
+## Overview (Current State)
+- ✅ A tsvector column (`search_vector`) exists with a GIN index and trigger to keep it updated
+- ✅ PostgreSQL extensions enabled: vector, unaccent, pg_trgm, uuid-ossp
+- ✅ Keywords stored as PostgreSQL array with GIN index
+- ✅ Basic full-text search using `search_content(query, limit: N)` method
+- Current search uses simple OR logic with per-word similarity ratio
 
-Goals
-- Reduce write‑time overhead, improve read performance and ranking quality, and simplify maintenance.
+## Goals
+Reduce write-time overhead, improve read performance and ranking quality, and simplify maintenance.
 
-1) Replace trigger with a generated (stored) search_vector column (PostgreSQL 12+)
-- Why: Avoid trigger overhead and keep the vector consistent automatically. Generated stored columns are computed by the database and persisted on disk.
-- Plan (zero/minimal downtime, using concurrent index where possible):
-  1. Add a new generated column with weights per field (optional), STORED.
-  2. Create a GIN index concurrently on the new column.
-  3. Swap consumers to the new column name (or rename columns).
-  4. Drop the old trigger, function, and index.
+## Remaining Improvements
 
-Example migration (Rails, PG >= 12):
-  class AddGeneratedSearchVector < ActiveRecord::Migration[7.0]
-    disable_ddl_transaction!
+### 1. Replace Trigger with Generated (Stored) Column (PostgreSQL 12+)
+**Why:** Avoid trigger overhead and keep the vector consistent automatically. Generated stored columns are computed by the database and persisted on disk.
 
-    def up
-      execute <<~SQL
-        ALTER TABLE ragdoll_documents
-        ADD COLUMN search_vector_v2 tsvector
-        GENERATED ALWAYS AS (
-          setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
-          setweight(to_tsvector('english', coalesce(metadata->>'summary', '')), 'B') ||
-          setweight(to_tsvector('english', coalesce(metadata->>'keywords', '')), 'B') ||
-          setweight(to_tsvector('english', coalesce(metadata->>'description', '')), 'C')
-        ) STORED;
-      SQL
+**Plan (zero/minimal downtime):**
+1. Add a new generated column with weights per field
+2. Create a GIN index concurrently on the new column
+3. Swap consumers to the new column (or rename columns)
+4. Drop the old trigger, function, and index
 
-      add_index :ragdoll_documents, :search_vector_v2, using: :gin, algorithm: :concurrently, name: 'index_ragdoll_docs_search_vector_v2_gin'
+**Example Migration:**
+```ruby
+class AddGeneratedSearchVector < ActiveRecord::Migration[7.0]
+  disable_ddl_transaction!
 
-      # Optional: switch application code to use `search_vector_v2`.
-      # After verifying reads are working, drop old trigger/index/column and rename:
-      # remove_index :ragdoll_documents, name: 'index_ragdoll_documents_on_search_vector'
-      # execute "DROP TRIGGER IF EXISTS ragdoll_search_vector_update ON ragdoll_documents;"
-      # execute "DROP FUNCTION IF EXISTS ragdoll_documents_vector_update();"
-      # remove_column :ragdoll_documents, :search_vector
-      # rename_column :ragdoll_documents, :search_vector_v2, :search_vector
-      # add_index :ragdoll_documents, :search_vector, using: :gin, algorithm: :concurrently
-    end
+  def up
+    execute <<~SQL
+      ALTER TABLE ragdoll_documents
+      ADD COLUMN search_vector_v2 tsvector
+      GENERATED ALWAYS AS (
+        setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+        setweight(to_tsvector('english', coalesce(metadata->>'summary', '')), 'B') ||
+        setweight(to_tsvector('english', coalesce(metadata->>'keywords', '')), 'B') ||
+        setweight(to_tsvector('english', coalesce(metadata->>'description', '')), 'C')
+      ) STORED;
+    SQL
 
-    def down
-      remove_index :ragdoll_documents, name: 'index_ragdoll_docs_search_vector_v2_gin'
-      remove_column :ragdoll_documents, :search_vector_v2
-    end
+    add_index :ragdoll_documents, :search_vector_v2, using: :gin, 
+              algorithm: :concurrently, 
+              name: 'index_ragdoll_docs_search_vector_v2_gin'
+
+    # After verifying, drop old trigger/index/column and rename
   end
 
-2) Partial GIN index on processed documents
-- Why: The query filters on status = 'processed'. A partial index reduces index size and speeds up scans.
-- Migration:
-  add_index :ragdoll_documents, :search_vector, using: :gin, algorithm: :concurrently,
-            name: 'index_ragdoll_docs_search_vector_processed_gin',
-            where: "status = 'processed'"
+  def down
+    remove_index :ragdoll_documents, name: 'index_ragdoll_docs_search_vector_v2_gin'
+    remove_column :ragdoll_documents, :search_vector_v2
+  end
+end
+```
 
-3) Optional: adopt websearch_to_tsquery for more natural queries
-- Why: Supports quoted phrases, implicit AND/OR, and minus operator (e.g., "foo bar -baz").
-- How: Use websearch_to_tsquery('english', :query) for the WHERE predicate.
-- Scoring: If keeping the per‑term ratio, you can still split the original query into terms for similarity calculation while using websearch_to_tsquery for filtering. Alternatively, switch to ts_rank_cd and/or weighted tsvectors for ranking.
+### 2. Partial GIN Index on Processed Documents
+**Why:** The query filters on `status = 'processed'`. A partial index reduces index size and speeds up scans.
 
-Example predicate swap:
-  where("#{table_name}.search_vector @@ websearch_to_tsquery('english', ?)", query)
+**Migration:**
+```ruby
+add_index :ragdoll_documents, :search_vector, 
+          using: :gin, 
+          algorithm: :concurrently,
+          name: 'index_ragdoll_docs_search_vector_processed_gin',
+          where: "status = 'processed'"
+```
 
-4) Improve ranking quality with weights and ts_rank
-- Why: Rank title hits higher than description/summary, and leverage PostgreSQL’s ranking.
-- How: In the generated column, set weights: title 'A', summary/keywords 'B', description 'C' (as shown above). Then compute and select ts_rank_cd(search_vector, tsquery) as a secondary/primary score.
-- Combine with similarity ratio or fully replace it, depending on UX requirements.
+### 3. Adopt websearch_to_tsquery for Natural Queries
+**Why:** Supports quoted phrases, implicit AND/OR, and minus operator (e.g., "foo bar -baz").
 
-5) Unaccent and normalization
-- Why: Accented character insensitivity improves recall. Lowercasing is already handled.
-- How: Enable unaccent extension and wrap fields: to_tsvector('english', unaccent(...)). For a generated column, apply unaccent in its expression. Note: This requires creating the extension and may slightly increase compute cost.
+**Implementation:**
+```ruby
+# In Document model
+where("#{table_name}.search_vector @@ websearch_to_tsquery('english', ?)", query)
+```
 
-Migration snippet:
-  enable_extension 'unaccent'
-  # then use unaccent(...) in the generated column expression and reindex
+**Note:** If keeping the per-term ratio, split the original query for similarity calculation while using `websearch_to_tsquery` for filtering.
 
-6) Keyword array search improvements
-- Use parameter binding instead of constructing array literals by string concatenation (safer and cleaner):
+### 4. Improve Ranking with Weights and ts_rank
+**Why:** Rank title hits higher than description/summary, leverage PostgreSQL's native ranking.
 
-  # Any overlap
-  where('keywords && ?::text[]', normalized_keywords)
+**Implementation:**
+- Use weighted tsvector (see item #1)
+- Replace or combine with current similarity ratio:
 
-  # Contains all
-  where('keywords @> ?::text[]', normalized_keywords)
+```ruby
+select("*, ts_rank_cd(search_vector, websearch_to_tsquery('english', ?)) as rank", query)
+  .where("search_vector @@ websearch_to_tsquery('english', ?)", query)
+  .order("rank DESC, updated_at DESC")
+```
 
-- Index: Add a GIN index on keywords to accelerate these queries:
-  add_index :ragdoll_documents, :keywords, using: :gin, algorithm: :concurrently
+### 5. Apply Unaccent for Accent-Insensitive Search
+**Why:** Better international support (café matches cafe). Extension is already enabled but not used.
 
-7) Internationalization / language dictionary selection
-- If documents may not be English, consider per‑document dictionaries.
-- Options:
-  - Store a language code per document and build language‑specific vectors (requires dynamic dictionary in generated column;
-    if not feasible, consider a generic/simple dictionary or multiple columns per language).
+**Implementation:**
+```ruby
+# In generated column expression
+GENERATED ALWAYS AS (
+  setweight(to_tsvector('english', unaccent(coalesce(title, ''))), 'A') ||
+  setweight(to_tsvector('english', unaccent(coalesce(metadata->>'summary', ''))), 'B')
+  -- etc.
+) STORED
+```
 
-8) Operational maintenance
-- Periodic VACUUM (AUTO is usually fine) and ANALYZE; monitor pg_stat_statements for search queries.
-- Keep an eye on dead tuples due to frequent updates if triggers remain.
+### 6. Enhanced Keyword Array Search
+**Current:** Keywords array with GIN index exists
 
-9) Benchmarking guidance
-- Use EXPLAIN (ANALYZE, BUFFERS) before and after each change.
-- Test on representative data sizes; measure:
+**Improvement:** Use proper parameter binding:
+```ruby
+# Any overlap
+where('keywords && ?::text[]', normalized_keywords)
+
+# Contains all
+where('keywords @> ?::text[]', normalized_keywords)
+```
+
+### 7. Internationalization / Language Support
+**For multi-language documents:**
+- Store language code per document
+- Consider language-specific dictionaries or use 'simple' dictionary for universal support
+- Option: Multiple search vectors per language
+
+### 8. Operational Maintenance
+- Monitor with `pg_stat_statements` for search query performance
+- Regular `VACUUM ANALYZE` (auto-vacuum usually sufficient)
+- Watch for index bloat with frequent updates
+
+### 9. Benchmarking Guidance
+**Before and after each change:**
+- Use `EXPLAIN (ANALYZE, BUFFERS)`
+- Measure:
   - Planning and execution time
   - Shared hit vs read ratios
-  - Rows examined vs rows returned
-  - Index usage (Bitmap Index Scan expected for GIN)
+  - Rows examined vs returned
+  - Index usage (expect Bitmap Index Scan for GIN)
 
-10) Instrumentation
-- Log search timings and returned counts per query.
-- Sample a subset of queries with EXPLAIN to detect regressions early.
+### 10. Instrumentation
+- Log search timings and result counts
+- Sample queries with EXPLAIN for regression detection
+- Consider adding to SearchEngine service:
+  ```ruby
+  Rails.logger.info "[SEARCH] Query: #{query}, Results: #{results.count}, Time: #{elapsed}ms"
+  ```
 
-Implementation notes
-- Each step above can be deployed independently. Start with the partial index (2), then move to the generated column (1), then consider ranking and query parser refinements (3/4/5) based on product requirements.
+## Implementation Priority
+
+**High Priority (Quick Wins):**
+1. Partial index on processed documents (#2) - Easy, immediate benefit
+2. websearch_to_tsquery (#3) - Better UX, minimal code change
+
+**Medium Priority (Performance):**
+3. Generated column with weights (#1) - Eliminates trigger overhead
+4. ts_rank integration (#4) - Better ranking quality
+
+**Low Priority (Nice to Have):**
+5. Unaccent support (#5) - For international content
+6. Multi-language support (#7) - As needed
+
+## Notes
+- Each improvement can be deployed independently
+- Start with partial index for immediate gains
+- Test on representative data volumes before production deployment
