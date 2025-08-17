@@ -99,8 +99,6 @@ module Ragdoll
       else
         parse_text # Default to text parsing for unknown formats
       end
-    rescue StandardError => e # StandardError => e
-      raise ParseError, "#{__LINE__} Failed to parse #{@file_path}: #{e.message}"
     end
 
     private
@@ -108,6 +106,12 @@ module Ragdoll
     def parse_pdf
       content = ""
       metadata = {}
+
+      # Add file-based metadata for duplicate detection
+      if File.exist?(@file_path)
+        metadata[:file_size] = File.size(@file_path)
+        metadata[:file_hash] = calculate_file_hash(@file_path)
+      end
 
       begin
         PDF::Reader.open(@file_path) do |reader|
@@ -144,6 +148,10 @@ module Ragdoll
         metadata[:title] = extract_title_from_filepath
       end
 
+      # Add content hash for duplicate detection
+      # Ensure content is UTF-8 encoded before checking presence
+      metadata[:content_hash] = calculate_content_hash(content) if content && content.length > 0
+
       {
         content: content.strip,
         metadata: metadata,
@@ -154,6 +162,12 @@ module Ragdoll
     def parse_docx
       content = ""
       metadata = {}
+
+      # Add file-based metadata for duplicate detection
+      if File.exist?(@file_path)
+        metadata[:file_size] = File.size(@file_path)
+        metadata[:file_hash] = calculate_file_hash(@file_path)
+      end
 
       begin
         doc = Docx::Document.open(@file_path)
@@ -204,6 +218,10 @@ module Ragdoll
         metadata[:title] = extract_title_from_filepath
       end
 
+      # Add content hash for duplicate detection
+      # Ensure content is UTF-8 encoded before checking presence
+      metadata[:content_hash] = calculate_content_hash(content) if content && content.length > 0
+
       {
         content: content.strip,
         metadata: metadata,
@@ -212,17 +230,29 @@ module Ragdoll
     end
 
     def parse_text
-      content = File.read(@file_path, encoding: "UTF-8")
-      metadata = {
-        file_size: File.size(@file_path),
-        encoding: "UTF-8"
-      }
-
+      # Determine document type first (before any IO operations)
       document_type = case @file_extension
                       when ".md", ".markdown" then "markdown"
                       when ".txt" then "text"
                       else "text"
                       end
+
+      begin
+        content = File.read(@file_path, encoding: "UTF-8")
+        encoding = "UTF-8"
+      rescue Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError
+        # Try with different encoding - read as ISO-8859-1 and force encoding to UTF-8
+        content = File.read(@file_path, encoding: "ISO-8859-1").encode("UTF-8", invalid: :replace, undef: :replace, replace: "?")
+        encoding = "ISO-8859-1"
+      rescue Errno::ENOENT, Errno::EACCES => e
+        raise ParseError, "Failed to read file #{@file_path}: #{e.message}"
+      end
+
+      metadata = {
+        file_size: File.size(@file_path),
+        file_hash: calculate_file_hash(@file_path),
+        encoding: encoding
+      }
 
       # Parse YAML front matter for markdown files
       if document_type == "markdown" && content.start_with?("---\n")
@@ -238,37 +268,14 @@ module Ragdoll
         metadata[:title] = extract_title_from_filepath
       end
 
+      # Add content hash for duplicate detection
+      # Ensure content is UTF-8 encoded before checking presence
+      metadata[:content_hash] = calculate_content_hash(content) if content && content.length > 0
+
       {
         content: content,
         metadata: metadata,
         document_type: document_type
-      }
-    rescue Encoding::InvalidByteSequenceError
-      # Try with different encoding
-      content = File.read(@file_path, encoding: "ISO-8859-1")
-      metadata = {
-        file_size: File.size(@file_path),
-        encoding: "ISO-8859-1"
-      }
-
-      # Try to parse front matter with different encoding too
-      if document_type == "markdown" && content.start_with?("---\n")
-        front_matter, body_content = parse_yaml_front_matter(content)
-        if front_matter
-          metadata.merge!(front_matter)
-          content = body_content
-        end
-      end
-
-      # Add filepath-based title as fallback if no title was found
-      if metadata[:title].nil? || (metadata[:title].is_a?(String) && metadata[:title].strip.empty?)
-        metadata[:title] = extract_title_from_filepath
-      end
-
-      {
-        content: content,
-        metadata: metadata,
-        document_type: document_type.nil? ? "text" : document_type
       }
     end
 
@@ -296,6 +303,7 @@ module Ragdoll
 
       metadata = {
         file_size: File.size(@file_path),
+        file_hash: calculate_file_hash(@file_path),
         original_format: "html"
       }
 
@@ -305,6 +313,9 @@ module Ragdoll
       else
         metadata[:title] = extract_title_from_filepath
       end
+
+      # Add content hash for duplicate detection
+      metadata[:content_hash] = calculate_content_hash(clean_content) if clean_content.present?
 
       {
         content: clean_content,
@@ -318,6 +329,7 @@ module Ragdoll
 
       metadata = {
         file_size: File.size(@file_path),
+        file_hash: calculate_file_hash(@file_path),
         file_type: @file_extension.sub(".", ""),
         original_filename: File.basename(@file_path)
       }
@@ -346,6 +358,10 @@ module Ragdoll
 
       # Add filepath-based title as fallback
       metadata[:title] = extract_title_from_filepath
+
+      # Add content hash for duplicate detection
+      # Ensure content is UTF-8 encoded before checking presence
+      metadata[:content_hash] = calculate_content_hash(content) if content && content.length > 0
 
       puts "✅ DocumentProcessor: Image parsing complete. Content: '#{content[0..100]}...'"
 
@@ -460,6 +476,26 @@ module Ragdoll
         Rails.logger.warn "Warning: Failed to parse YAML front matter: #{e.message}" if defined?(Rails)
         [nil, content]
       end
+    end
+
+    # Calculate SHA256 hash of file content for duplicate detection
+    def calculate_file_hash(file_path)
+      require 'digest'
+      Digest::SHA256.file(file_path).hexdigest
+    rescue StandardError => e
+      Rails.logger.warn "Failed to calculate file hash for #{file_path}: #{e.message}" if defined?(Rails)
+      puts "Warning: Failed to calculate file hash for #{file_path}: #{e.message}"
+      nil
+    end
+
+    # Calculate SHA256 hash of text content for duplicate detection
+    def calculate_content_hash(content)
+      require 'digest'
+      Digest::SHA256.hexdigest(content)
+    rescue StandardError => e
+      Rails.logger.warn "Failed to calculate content hash: #{e.message}" if defined?(Rails)
+      puts "Warning: Failed to calculate content hash: #{e.message}"
+      nil
     end
   end
 end
