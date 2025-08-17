@@ -132,6 +132,10 @@ puts result[:document_id]     # "123"
 puts result[:message]         # "Document 'document' added successfully with ID 123"
 puts result[:embeddings_queued] # true
 
+# Add document with force option to override duplicate detection
+result = Ragdoll.add_document(path: 'document.pdf', force: true)
+# Creates new document even if duplicate exists
+
 # Check document processing status
 status = Ragdoll.document_status(id: result[:document_id])
 puts status[:status]          # "processed"
@@ -160,6 +164,37 @@ stats = Ragdoll.stats
 puts stats[:total_documents]  # 50
 puts stats[:total_embeddings] # 1250
 ```
+
+### Duplicate Detection
+
+Ragdoll includes sophisticated duplicate detection to prevent redundant document processing:
+
+```ruby
+# Automatic duplicate detection (default behavior)
+result1 = Ragdoll.add_document(path: 'research.pdf')
+result2 = Ragdoll.add_document(path: 'research.pdf')
+# result2 returns the same document_id as result1 (duplicate detected)
+
+# Force adding a duplicate document
+result3 = Ragdoll.add_document(path: 'research.pdf', force: true)
+# Creates a new document with modified location identifier
+
+# Duplicate detection criteria:
+# 1. Exact location/path match
+# 2. File modification time (for files)
+# 3. File content hash (SHA256)
+# 4. Content hash for text
+# 5. File size and metadata similarity
+# 6. Document title and type matching
+```
+
+**Duplicate Detection Features:**
+- **Multi-level detection**: Checks location, file hash, content hash, and metadata
+- **Smart similarity**: Detects duplicates even with minor differences (5% content tolerance)
+- **File integrity**: SHA256 hashing for reliable file comparison
+- **URL support**: Content-based detection for web documents
+- **Force option**: Override detection when needed
+- **Performance optimized**: Database indexes for fast lookups
 
 ### Search and Retrieval
 
@@ -348,13 +383,14 @@ end
 ## Current Implementation Status
 
 ### ✅ **Fully Implemented**
-- **Text document processing**: PDF, DOCX, HTML, Markdown, plain text files
+- **Text document processing**: PDF, DOCX, HTML, Markdown, plain text files with encoding fallback
 - **Embedding generation**: Text chunking and vector embedding creation
 - **Database schema**: Multi-modal polymorphic architecture with PostgreSQL + pgvector
 - **Dual metadata architecture**: Separate LLM-generated content analysis and file properties
 - **Search functionality**: Semantic search with cosine similarity and usage analytics
 - **Search tracking system**: Comprehensive analytics with query embeddings, click-through tracking, and performance monitoring
 - **Document management**: Add, update, delete, list operations
+- **Duplicate detection**: Multi-level duplicate prevention with file hash, content hash, and metadata comparison
 - **Background processing**: ActiveJob integration for async embedding generation
 - **LLM metadata generation**: AI-powered structured content analysis with schema validation
 - **Logging**: Configurable file-based logging with multiple levels
