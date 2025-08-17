@@ -184,7 +184,7 @@ module Ragdoll
       end
 
       # Document management
-      def add_document(path:)
+      def add_document(path:, force: false)
         # Parse the document
         parsed = Ragdoll::DocumentProcessor.parse(path)
 
@@ -197,7 +197,7 @@ module Ragdoll
                                                    title: title,
                                                    document_type: parsed[:document_type],
                                                    **parsed[:metadata]
-                                                 })
+                                                 }, force: force)
 
         # Queue background jobs for processing if content is available
         embeddings_queued = false

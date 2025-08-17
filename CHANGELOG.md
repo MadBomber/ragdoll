@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.1.11] - 2025-01-17
+
+### Added
+- **Force Option for Document Addition**: New `force` parameter in document management to override duplicate detection
+  - Allows forced document addition even when duplicate titles exist
+  - Enables overwriting existing documents when needed
+  
+### Fixed
+- **Search Query Embedding**: Made `query_embedding` parameter optional in search methods
+  - Improved flexibility for search operations that don't require embeddings
+  - Better error handling for search queries without embeddings
+
+### Changed
+- **Database Setup**: Enhanced database role handling and setup procedures
+  - Improved database connection configuration
+  - Better handling of database roles and permissions
+  
+### Removed
+- **Obsolete Migrations**: Removed outdated RagdollDocuments migration files
+  - Cleaned up legacy migration structure
+  - Streamlined database migration path
+
 ## [0.1.10] - 2025-01-15
 
 ### Changed

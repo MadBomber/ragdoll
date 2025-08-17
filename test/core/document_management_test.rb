@@ -2,6 +2,7 @@
 
 require_relative "../test_helper"
 require "securerandom"
+require "digest"
 
 class DocumentManagementTest < Minitest::Test
   def setup
@@ -194,6 +195,65 @@ class DocumentManagementTest < Minitest::Test
     document = Ragdoll::Document.find(doc_id)
 
     assert_equal ftp_url, document.location # Should not be expanded for FTP URLs
+  end
+
+  def test_duplicate_detection_prevents_duplicate_by_location_and_time
+    location = "/path/to/duplicate_test.txt"
+    content = "This is test content"
+    # Use a unique location for this test to avoid conflicts with other tests
+    unique_location = "#{location}_#{SecureRandom.hex(4)}"
+
+    # Stub file operations for non-existent file
+    File.stub(:exist?, false) do
+      # Create first document
+      doc_id1 = Ragdoll::DocumentManagement.add_document(unique_location, content, {}, force: false)
+      
+      # Try to add the same document again - should return existing document ID  
+      doc_id2 = Ragdoll::DocumentManagement.add_document(unique_location, content, {}, force: false)
+      
+      assert_equal doc_id1, doc_id2, "Should return existing document ID for duplicate"
+      assert_equal 1, Ragdoll::Document.where(location: File.expand_path(unique_location)).count
+    end
+  end
+
+  def test_force_option_allows_duplicates
+    location = "/path/to/force_test.txt"
+    content = "This is test content"
+    file_modified_at = Time.current.beginning_of_minute
+
+    # Stub file operations for non-existent file
+    File.stub(:exist?, false) do
+      # Create first document
+      doc_id1 = Ragdoll::DocumentManagement.add_document(location, content, {}, force: false)
+      
+      # Force add the same document - should create a new one with modified location
+      doc_id2 = Ragdoll::DocumentManagement.add_document(location, content, {}, force: true)
+      
+      refute_equal doc_id1, doc_id2, "Force option should create new document despite duplicate"
+      
+      # Verify both documents exist but with different locations (force adds timestamp)
+      doc1 = Ragdoll::Document.find(doc_id1)
+      doc2 = Ragdoll::Document.find(doc_id2)
+      
+      assert_equal File.expand_path(location), doc1.location
+      assert doc2.location.start_with?(File.expand_path(location)), "Forced document should have modified location"
+      refute_equal doc1.location, doc2.location, "Documents should have different locations when forced"
+    end
+  end
+
+  def test_duplicate_detection_by_content_hash_for_urls
+    url = "http://example.com/document.txt"
+    content = "This is unique content for testing"
+    metadata = { content_hash: Digest::SHA256.hexdigest(content) }
+
+    # Create first document
+    doc_id1 = Ragdoll::DocumentManagement.add_document(url, content, metadata, force: false)
+    
+    # Try to add document with same content hash but different URL
+    different_url = "http://example.com/different-document.txt"
+    doc_id2 = Ragdoll::DocumentManagement.add_document(different_url, content, metadata, force: false)
+    
+    assert_equal doc_id1, doc_id2, "Should detect duplicate by content hash"
   end
 
   private
