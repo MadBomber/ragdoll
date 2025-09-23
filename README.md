@@ -1,7 +1,7 @@
-<div align="center" style="background-color: yellow; color: black; padding: 20px; margin: 20px 0; border: 2px solid black; font-size: 48px; font-weight: bold;">
-  ⚠️ CAUTION ⚠️<br />
-  Software Under Development by a Crazy Man
-</div>
+> [!CAUTION]<br />
+> **Software Under Development by a Crazy Man**<br />
+> Gave up on the multi-modal vectorization approach,<br />
+> now using a unified text-based RAG architecture.
 <br />
 <div align="center">
   <table>
