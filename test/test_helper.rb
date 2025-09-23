@@ -189,6 +189,22 @@ end
 Minitest::Reporters.use! [CompactTestReporter.new]
 require_relative "../lib/ragdoll-core"
 
+# Load new unified services for testing
+require_relative "../app/services/ragdoll/text_extraction_service"
+require_relative "../app/services/ragdoll/image_to_text_service"
+require_relative "../app/services/ragdoll/audio_to_text_service"
+require_relative "../app/services/ragdoll/document_converter"
+require_relative "../app/services/ragdoll/unified_document_management"
+require_relative "../app/services/ragdoll/migration_service"
+
+# Load new unified models for testing (if they exist)
+begin
+  require_relative "../app/models/ragdoll/unified_content"
+  require_relative "../app/models/ragdoll/unified_document"
+rescue LoadError
+  # These models are optional for testing
+end
+
 # Silence migration output during tests
 ActiveRecord::Migration.verbose = false
 
@@ -234,6 +250,7 @@ module Minitest
           ragdoll_search_results
           ragdoll_searches
           ragdoll_embeddings
+          ragdoll_unified_contents
           ragdoll_contents
           ragdoll_documents
         ]
