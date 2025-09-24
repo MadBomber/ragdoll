@@ -178,7 +178,7 @@ GEM
       rubocop (>= 1.72.1)
     ruby-progressbar (1.13.0)
     ruby-rc4 (0.1.5)
-    ruby_llm (1.8.1)
+    ruby_llm (1.8.2)
       base64
       event_stream_parser (~> 1)
       faraday (>= 1.10.0)

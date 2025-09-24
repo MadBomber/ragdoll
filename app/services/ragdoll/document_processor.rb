@@ -156,6 +156,7 @@ module Ragdoll
       when ".mp3" then "audio/mpeg"
       when ".wav" then "audio/wav"
       when ".m4a" then "audio/mp4"
+      when ".aac" then "audio/aac"
       when ".flac" then "audio/flac"
       when ".ogg" then "audio/ogg"
       when ".mp4" then "video/mp4"
