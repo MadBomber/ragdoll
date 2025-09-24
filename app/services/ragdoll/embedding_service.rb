@@ -48,12 +48,24 @@ module Ragdoll
             response = RubyLLM.embed(cleaned_text, model: model)
 
             # Extract the embedding vector from RubyLLM::Embedding object
-            return generate_fallback_embedding unless response.respond_to?(:instance_variable_get)
+            return generate_fallback_embedding unless response
 
-            vectors = response.instance_variable_get(:@vectors)
-            return generate_fallback_embedding unless vectors && vectors.is_a?(Array)
-
-            vectors
+            # Handle both RubyLLM::Embedding object and direct array response
+            if response.is_a?(Array)
+              # Direct array response
+              response
+            elsif response.respond_to?(:to_a)
+              # Can be converted to array
+              response.to_a
+            elsif response.respond_to?(:instance_variable_get)
+              # Extract vectors from RubyLLM::Embedding object
+              vectors = response.instance_variable_get(:@vectors)
+              return generate_fallback_embedding unless vectors && vectors.is_a?(Array)
+              # Return first vector if it's an array of arrays
+              vectors.is_a?(Array) && vectors.first.is_a?(Array) ? vectors.first : vectors
+            else
+              generate_fallback_embedding
+            end
           rescue StandardError
             # If RubyLLM fails, use fallback
             generate_fallback_embedding
@@ -108,12 +120,24 @@ module Ragdoll
             response = RubyLLM.embed(text, model: model)
 
             # Extract the embedding vector from RubyLLM::Embedding object
-            next generate_fallback_embedding unless response.respond_to?(:instance_variable_get)
+            next generate_fallback_embedding unless response
 
-            vectors = response.instance_variable_get(:@vectors)
-            next generate_fallback_embedding unless vectors && vectors.is_a?(Array)
-
-            vectors
+            # Handle both RubyLLM::Embedding object and direct array response
+            if response.is_a?(Array)
+              # Direct array response
+              response
+            elsif response.respond_to?(:to_a)
+              # Can be converted to array
+              response.to_a
+            elsif response.respond_to?(:instance_variable_get)
+              # Extract vectors from RubyLLM::Embedding object
+              vectors = response.instance_variable_get(:@vectors)
+              next generate_fallback_embedding unless vectors && vectors.is_a?(Array)
+              # Return first vector if it's an array of arrays
+              vectors.is_a?(Array) && vectors.first.is_a?(Array) ? vectors.first : vectors
+            else
+              generate_fallback_embedding
+            end
           rescue StandardError
             # If RubyLLM fails, use fallback
             generate_fallback_embedding

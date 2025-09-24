@@ -268,39 +268,52 @@ module Ragdoll
       limit = options[:limit] || 20
       threshold = options[:threshold] || 0.0
 
-      # Use precomputed tsvector column if it exists, otherwise build on the fly
-      if column_names.include?("search_vector")
+      # Check if we have any non-null search vectors to use full-text search
+      has_search_vectors = column_names.include?("search_vector") &&
+                          where("search_vector IS NOT NULL").exists?
+
+      if has_search_vectors
+        # Use precomputed tsvector column for full-text search
         tsvector = "#{table_name}.search_vector"
+
+        # Prepare sanitized tsquery terms
+        tsqueries = words.map do |word|
+          sanitize_sql_array(["plainto_tsquery('english', ?)", word])
+        end
+
+        # Combine per-word tsqueries with OR so PostgreSQL can use the GIN index
+        combined_tsquery = tsqueries.join(' || ')
+
+        # Score each match (1 if present, 0 if not), sum them
+        score_terms = tsqueries.map { |tsq| "(#{tsvector} @@ #{tsq})::int" }
+        score_sum   = score_terms.join(' + ')
+
+        # Similarity ratio: fraction of query words present
+        similarity_sql = "(#{score_sum})::float / #{words.size}"
+
+        # Start with basic search query
+        query = select("#{table_name}.*, #{similarity_sql} AS fulltext_similarity")
+
+        # Build where conditions
+        conditions = ["#{tsvector} @@ (#{combined_tsquery})"]
       else
-        # Build tsvector from title and metadata fields
-        text_expr = 
-          "COALESCE(title, '') || ' ' || " \
-          "COALESCE(metadata->>'summary', '') || ' ' || " \
-          "COALESCE(metadata->>'keywords', '') || ' ' || " \
-          "COALESCE(metadata->>'description', '')"
-        tsvector = "to_tsvector('english', #{text_expr})"
+        # Fallback to ILIKE search when search vectors are not available
+        puts "Using ILIKE fallback for search (no search vectors available)" if ENV["RAGDOLL_DEBUG"]
+
+        # Build ILIKE conditions for title and summary fields
+        ilike_conditions = words.map do |word|
+          sanitize_sql_array([
+            "(title ILIKE ? OR summary ILIKE ? OR metadata->>'keywords' ILIKE ? OR metadata->>'description' ILIKE ?)",
+            "%#{word}%", "%#{word}%", "%#{word}%", "%#{word}%"
+          ])
+        end
+
+        # Start with basic search query with a fixed similarity score for ILIKE matches
+        query = select("#{table_name}.*, 1.0 AS fulltext_similarity")
+
+        # Build where conditions
+        conditions = ["(#{ilike_conditions.join(' OR ')})"]
       end
-
-      # Prepare sanitized tsquery terms
-      tsqueries = words.map do |word|
-        sanitize_sql_array(["plainto_tsquery('english', ?)", word])
-      end
-
-      # Combine per-word tsqueries with OR so PostgreSQL can use the GIN index
-      combined_tsquery = tsqueries.join(' || ')
-
-      # Score each match (1 if present, 0 if not), sum them
-      score_terms = tsqueries.map { |tsq| "(#{tsvector} @@ #{tsq})::int" }
-      score_sum   = score_terms.join(' + ')
-
-      # Similarity ratio: fraction of query words present
-      similarity_sql = "(#{score_sum})::float / #{words.size}"
-
-      # Start with basic search query
-      query = select("#{table_name}.*, #{similarity_sql} AS fulltext_similarity")
-      
-      # Build where conditions
-      conditions = ["#{tsvector} @@ (#{combined_tsquery})"]
       
       # Add status filter (default to processed unless overridden)
       status = options[:status] || 'processed'
@@ -311,8 +324,8 @@ module Ragdoll
         conditions << sanitize_sql_array(["#{table_name}.document_type = ?", options[:document_type]])
       end
       
-      # Add threshold filtering if specified
-      if threshold > 0.0
+      # Add threshold filtering if specified (only applies to full-text search, not ILIKE fallback)
+      if threshold > 0.0 && has_search_vectors
         conditions << "#{similarity_sql} >= #{threshold}"
       end
       
