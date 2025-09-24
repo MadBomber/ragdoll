@@ -40,7 +40,7 @@ module Ragdoll
     validates :location, presence: true
     validates :title, presence: true
     validates :document_type, presence: true,
-                              inclusion: { in: %w[text image audio pdf docx html markdown mixed] }
+                              inclusion: { in: %w[text image audio pdf docx html markdown csv json xml mixed] }
     validates :summary, presence: false # Allow empty summaries initially
     validates :keywords, presence: false # Allow empty keywords initially
     validates :status, inclusion: { in: %w[pending processing processed error] }
