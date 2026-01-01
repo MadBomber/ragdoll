@@ -229,10 +229,11 @@ module Minitest
       ActiveRecord::Migration.verbose = false
 
       # Setup test database with PostgreSQL
+      # Default to current user (common for macOS Homebrew PostgreSQL)
       Ragdoll::Core::Database.setup({
                                       adapter: "postgresql",
                                       database: "ragdoll_test",
-                                      username: ENV.fetch("RAGDOLL_POSTGRES_USER", "postgres"),
+                                      username: ENV.fetch("RAGDOLL_POSTGRES_USER") { ENV.fetch("USER", "postgres") },
                                       password: ENV.fetch("RAGDOLL_POSTGRES_PASSWORD", ""),
                                       host: ENV.fetch("RAGDOLL_POSTGRES_HOST", "localhost"),
                                       port: ENV.fetch("RAGDOLL_POSTGRES_PORT", 5432),
@@ -247,6 +248,10 @@ module Minitest
       if !ci_environment? && ActiveRecord::Base.connected?
         # Delete child tables first, then parent tables (using current schema)
         tables_to_clean = %w[
+          ragdoll_propositions
+          ragdoll_embedding_tags
+          ragdoll_document_tags
+          ragdoll_tags
           ragdoll_search_results
           ragdoll_searches
           ragdoll_embeddings

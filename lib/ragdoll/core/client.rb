@@ -22,6 +22,7 @@ module Ragdoll
           model_resolver: @model_resolver
         )
         @search_engine = Ragdoll::SearchEngine.new(@embedding_service, config_service: @config_service)
+        @hybrid_search_service = Ragdoll::HybridSearchService.new(embedding_service: @embedding_service)
       end
 
       # Primary method for RAG applications
@@ -77,24 +78,42 @@ module Ragdoll
         }
       end
 
-      # FIXME: This high-level API method should be able to take a query that is
-      #        a string or a file.  If its a file, then the downstream Process will
-      #        be responsible for reading the file and passing the contents to the
-      #        search method based upon whether the content is text, image or audio.
+      # Unified search method supporting both semantic and hybrid search
+      #
+      # When timeframe: or tags: are provided, automatically uses hybrid RRF search.
+      # Otherwise, uses semantic-only search for backward compatibility.
+      #
+      # @param query [String] Search query
+      # @param timeframe [Range, String, Symbol, nil] Time filter (:auto extracts from query)
+      # @param tags [Array<String>, nil] Filter by tags
+      # @param limit [Integer] Maximum results
+      # @param options [Hash] Additional options
+      # @return [Hash] Search results
+      #
+      def search(query:, timeframe: nil, tags: nil, **options)
+        # Use hybrid search when timeframe or tags are specified
+        if timeframe || tags
+          return hybrid_search(
+            query: query,
+            timeframe: timeframe,
+            tags: tags,
+            limit: options[:limit] || 20,
+            **options
+          )
+        end
 
-      # Semantic search++ should incorporate hybrid search
-      def search(query:, **options)
-        # Pass through tracking options to the search engine
+        # Fall back to semantic-only search
         search_response = search_similar_content(query: query, **options)
-        
+
         # Handle both old format (array) and new format (hash with results/statistics)
         if search_response.is_a?(Hash) && search_response.key?(:results)
           results = search_response[:results]
           statistics = search_response[:statistics]
           execution_time_ms = search_response[:execution_time_ms]
-          
+
           {
             query: query,
+            search_type: "semantic",
             results: results,
             total_results: results.length,
             statistics: statistics,
@@ -105,6 +124,7 @@ module Ragdoll
           results = search_response || []
           {
             query: query,
+            search_type: "semantic",
             results: results,
             total_results: results.length
           }
@@ -116,67 +136,80 @@ module Ragdoll
         @search_engine.search_similar_content(query, **options)
       end
 
-      # Hybrid search combining semantic and full-text search
-      def hybrid_search(query:, **options)
+      # Hybrid search using RRF (Reciprocal Rank Fusion)
+      # Combines vector similarity, full-text, and tag-based search
+      #
+      # @param query [String] Search query
+      # @param timeframe [Range, String, Symbol, nil] Time filter (:auto extracts from query)
+      # @param tags [Array<String>, nil] Filter by tags
+      # @param limit [Integer] Maximum results (default: 20)
+      # @param parallel [Boolean] Use parallel execution via SimpleFlow (default: true)
+      # @param filters [Hash] Additional filters (document_type, keywords, etc.)
+      # @return [Hash] Search results with RRF scores
+      #
+      def hybrid_search(query:, timeframe: nil, tags: nil, limit: 20, parallel: true, **options)
         start_time = Time.current
-        
-        # Extract tracking options
-        session_id = options[:session_id]
-        user_id = options[:user_id]
-        track_search = options.fetch(:track_search, true)
-        
-        # Generate embedding for the query
-        query_embedding = @embedding_service.generate_embedding(query)
 
-        # Perform hybrid search
-        results = Ragdoll::Document.hybrid_search(query, query_embedding: query_embedding, **options)
-        
+        # Extract tracking options
+        session_id = options.delete(:session_id)
+        user_id = options.delete(:user_id)
+        track_search = options.delete(:track_search) { true }
+
+        # Extract filters for the hybrid search service
+        filters = options.slice(:document_type, :keywords).compact
+
+        # Perform hybrid search using RRF fusion
+        results = @hybrid_search_service.search(
+          query: query,
+          limit: limit,
+          timeframe: timeframe,
+          tags: tags,
+          filters: filters,
+          candidate_limit: options[:candidate_limit] || 100,
+          parallel: parallel
+        )
+
         execution_time = ((Time.current - start_time) * 1000).round
-        
+
         # Record search if tracking enabled
         if track_search && query && !query.empty?
           begin
-            # Format results for search recording - hybrid search returns different format
             search_results = results.map do |result|
               {
-                embedding_id: result[:embedding_id] || result[:id],
-                similarity: result[:similarity] || result[:score] || 0.0
+                embedding_id: result['id'],
+                similarity: result['rrf_score'] || 0.0
               }
             end
-            
-            # Extract filters from options
-            filters = options.slice(:document_type, :status).compact
-            search_options = options.slice(:limit, :semantic_weight, :text_weight).compact
-            
+
             Ragdoll::Search.record_search(
               query: query,
-              query_embedding: query_embedding,
+              query_embedding: nil,
               results: search_results,
-              search_type: "hybrid",
-              filters: filters,
-              options: search_options,
+              search_type: "hybrid_rrf",
+              filters: filters.merge(tags: tags, timeframe: timeframe.to_s),
+              options: options.slice(:limit, :candidate_limit).compact,
               execution_time_ms: execution_time,
               session_id: session_id,
               user_id: user_id
             )
-          rescue => e
-            # Log error but don't fail the search
-            puts "Warning: Hybrid search tracking failed: #{e.message}" if ENV["RAGDOLL_DEBUG"]
+          rescue StandardError => e
+            debug_me("Warning: Hybrid search tracking failed: #{e.message}") if $DEBUG_ME
           end
         end
 
         {
           query: query,
-          search_type: "hybrid",
+          search_type: "hybrid_rrf",
           results: results,
           total_results: results.length,
-          semantic_weight: options[:semantic_weight] || 0.7,
-          text_weight: options[:text_weight] || 0.3
+          execution_time_ms: execution_time,
+          timeframe: timeframe,
+          tags: tags
         }
       rescue StandardError => e
         {
           query: query,
-          search_type: "hybrid",
+          search_type: "hybrid_rrf",
           results: [],
           total_results: 0,
           error: "Hybrid search failed: #{e.message}"
@@ -199,13 +232,15 @@ module Ragdoll
                                                    **parsed[:metadata]
                                                  }, force: force)
 
-        # Queue background jobs for processing if content is available
-        embeddings_queued = false
+        # Process document using parallel workflow if content is available
+        enrichment_result = nil
         if parsed[:content].present?
-          Ragdoll::GenerateEmbeddingsJob.perform_later(doc_id)
-          Ragdoll::GenerateSummaryJob.perform_later(doc_id)
-          Ragdoll::ExtractKeywordsJob.perform_later(doc_id)
-          embeddings_queued = true
+          enrichment_result = enrich_document(
+            document_id: doc_id,
+            content: parsed[:content],
+            chunk_size: parsed[:metadata][:chunk_size],
+            chunk_overlap: parsed[:metadata][:chunk_overlap]
+          )
         end
 
         # Return success information
@@ -215,8 +250,8 @@ module Ragdoll
           title: title,
           document_type: parsed[:document_type],
           content_length: parsed[:content]&.length || 0,
-          embeddings_queued: embeddings_queued,
-          message: "Document '#{title}' added successfully with ID #{doc_id}"
+          enrichment: enrichment_result,
+          message: "Document '#{title}' added and processed with ID #{doc_id}"
         }
       rescue StandardError => e # StandardError => e
         {
@@ -310,6 +345,139 @@ module Ragdoll
 
       def list_documents(**options)
         Ragdoll::DocumentManagement.list_documents(options)
+      end
+
+      # Tag management
+      #
+      # Add tags to a document
+      #
+      # @param document_id [Integer] Document ID
+      # @param tags [Array<String>] Tags to add (hierarchical format: "database:postgresql")
+      # @param source [String] Tag source ('manual' or 'auto')
+      # @return [Array<Ragdoll::DocumentTag>] Created document tags
+      #
+      def add_tags(document_id:, tags:, source: 'manual')
+        Ragdoll::TagService.add_tags_to_document(
+          document_id: document_id,
+          tags: tags,
+          source: source
+        )
+      end
+
+      # Get tags for a document or embedding
+      #
+      # @param document_id [Integer, nil] Document ID
+      # @param embedding_id [Integer, nil] Embedding ID
+      # @return [Array<Hash>] Tags with confidence and source
+      #
+      def get_tags(document_id: nil, embedding_id: nil)
+        if document_id
+          document = Ragdoll::Document.find(document_id)
+          document.document_tags.includes(:tag).map do |dt|
+            {
+              name: dt.tag.name,
+              confidence: dt.confidence,
+              source: dt.source,
+              depth: dt.tag.depth
+            }
+          end
+        elsif embedding_id
+          embedding = Ragdoll::Embedding.find(embedding_id)
+          embedding.embedding_tags.includes(:tag).map do |et|
+            {
+              name: et.tag.name,
+              confidence: et.confidence,
+              source: et.source,
+              depth: et.tag.depth
+            }
+          end
+        else
+          raise ArgumentError, "Must provide either document_id or embedding_id"
+        end
+      end
+
+      # Extract and store propositions for a document
+      #
+      # @param document_id [Integer] Document ID
+      # @return [Array<Ragdoll::Proposition>] Created propositions
+      #
+      def extract_propositions(document_id:)
+        Ragdoll::PropositionService.extract_and_store(
+          document_id,
+          embedding_service: @embedding_service
+        )
+      end
+
+      # Get propositions for a document
+      #
+      # @param document_id [Integer] Document ID
+      # @return [Array<Hash>] Propositions with metadata
+      #
+      def get_propositions(document_id:)
+        document = Ragdoll::Document.find(document_id)
+        document.propositions.map do |prop|
+          {
+            id: prop.id,
+            content: prop.content,
+            source_embedding_id: prop.source_embedding_id,
+            has_embedding: prop.embedding_vector.present?,
+            metadata: prop.metadata,
+            created_at: prop.created_at
+          }
+        end
+      end
+
+      # Workflow-based document enrichment
+      #
+      # Enriches a document using parallel processing via SimpleFlow.
+      # Runs embeddings, summary, keywords, tags, and propositions in parallel.
+      #
+      # @param document_id [Integer] Document ID
+      # @param content [String] Document content
+      # @param options [Hash] Processing options
+      # @option options [Integer] :chunk_size Max tokens per chunk
+      # @option options [Integer] :chunk_overlap Overlap between chunks
+      # @option options [Boolean] :skip_embeddings Skip embedding generation
+      # @option options [Boolean] :skip_summary Skip summary generation
+      # @option options [Boolean] :skip_keywords Skip keyword extraction
+      # @option options [Boolean] :skip_tags Skip tag extraction
+      # @option options [Boolean] :skip_propositions Skip proposition extraction
+      # @return [Hash] Enrichment results with stats
+      #
+      def enrich_document(document_id:, content:, **options)
+        workflow = Ragdoll::Workflows::DocumentEnrichmentWorkflow.new(
+          embedding_service: @embedding_service,
+          config_service: @config_service
+        )
+        workflow.call(
+          document_id: document_id,
+          content: content,
+          options: options
+        )
+      end
+
+      # Workflow-based multi-modal embedding generation
+      #
+      # Generates embeddings for text, images, and audio content in parallel.
+      #
+      # @param document_id [Integer] Document ID
+      # @param text_content [String, nil] Text content to embed
+      # @param images [Array<Hash>, nil] Image data to embed
+      # @param audio_segments [Array<Hash>, nil] Audio data to embed
+      # @param options [Hash] Processing options
+      # @return [Hash] Results with embedding counts per content type
+      #
+      def embed_multimodal(document_id:, text_content: nil, images: nil, audio_segments: nil, **options)
+        workflow = Ragdoll::Workflows::MultiModalEmbeddingWorkflow.new(
+          embedding_service: @embedding_service
+        )
+        workflow.call(
+          document_id: document_id,
+          text_content: text_content,
+          images: images,
+          audio_segments: audio_segments,
+          options: options
+        )
       end
 
       # Analytics and stats

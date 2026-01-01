@@ -47,6 +47,20 @@ require "ragdoll/image_description_service"
 require "ragdoll/image_to_text_service"
 require "ragdoll/text_extraction_service"
 require "ragdoll/metadata_generator"
+require "ragdoll/circuit_breaker"
+require "ragdoll/timeframe_extractor"
+require "ragdoll/timeframe"
+require "ragdoll/tag"
+require "ragdoll/document_tag"
+require "ragdoll/embedding_tag"
+require "ragdoll/tag_service"
+require "ragdoll/proposition"
+require "ragdoll/proposition_service"
+require "ragdoll/hybrid_search_service"
+# Require workflows from app/services/ragdoll/workflows
+require "ragdoll/workflows/hybrid_search_workflow"
+require "ragdoll/workflows/document_enrichment_workflow"
+require "ragdoll/workflows/multi_modal_embedding_workflow"
 # Require from app/lib/ragdoll
 require "ragdoll/metadata_schemas"
 # Require jobs from app/jobs/ragdoll
@@ -91,7 +105,9 @@ module Ragdoll
     def_delegators :default_client, :add_document, :search, :enhance_prompt,
                    :get_document, :document_status, :list_documents, :delete_document,
                    :update_document, :get_context, :search_similar_content,
-                   :add_directory, :stats, :healthy?, :hybrid_search
+                   :add_directory, :stats, :healthy?, :hybrid_search,
+                   :add_tags, :get_tags, :extract_propositions, :get_propositions,
+                   :enrich_document, :embed_multimodal
 
     def self.default_client
       @default_client ||= Client.new

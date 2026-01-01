@@ -106,7 +106,7 @@ module Ragdoll
         database: {
           adapter: "postgresql",
           database: "ragdoll_development",
-          username: "ragdoll",
+          username: -> { ENV.fetch("RAGDOLL_POSTGRES_USER") { ENV.fetch("USER", "ragdoll") } },
           password: -> { ENV.fetch("RAGDOLL_DATABASE_PASSWORD", nil) },
           host: "localhost",
           port: 5432,
@@ -134,6 +134,49 @@ module Ragdoll
 
             Answer:
           TEMPLATE
+        },
+
+        # Circuit breaker configuration for external API calls
+        circuit_breaker: {
+          failure_threshold: 5,
+          reset_timeout: 60,
+          half_open_max_calls: 3
+        },
+
+        # Tagging configuration
+        tagging: {
+          enabled: true,
+          max_depth: 4,
+          auto_extract: true,
+          tag_documents: true,
+          tag_chunks: true
+        },
+
+        # Proposition extraction configuration
+        propositions: {
+          enabled: true,
+          auto_extract: true,
+          min_length: 10,
+          max_length: 1000,
+          min_words: 5
+        },
+
+        # Timeframe parsing configuration
+        timeframe: {
+          week_start: :sunday,
+          default_recent_days: 3
+        },
+
+        # Hybrid search configuration (RRF fusion)
+        hybrid_search: {
+          enabled: true,
+          rrf_k: 60,
+          candidate_multiplier: 3,
+          weights: {
+            semantic: 0.5,
+            fulltext: 0.3,
+            tags: 0.2
+          }
         }
 
       }.freeze

@@ -8,6 +8,20 @@ class ClientTest < Minitest::Test
     super
     return if ci_environment?
 
+    # Configure Ragdoll.config.database for ConfigurationService (used by Client)
+    # This ensures Client uses the test database instead of ragdoll_development
+    test_db_config = {
+      adapter: "postgresql",
+      database: "ragdoll_test",
+      username: ENV.fetch("RAGDOLL_POSTGRES_USER") { ENV.fetch("USER", "postgres") },
+      password: ENV.fetch("RAGDOLL_POSTGRES_PASSWORD", ""),
+      host: ENV.fetch("RAGDOLL_POSTGRES_HOST", "localhost"),
+      port: ENV.fetch("RAGDOLL_POSTGRES_PORT", 5432),
+      auto_migrate: true,
+      logger: nil
+    }
+    Ragdoll.config.instance_variable_get(:@config).database = test_db_config
+
     @client = Ragdoll::Core::Client.new
   end
 
@@ -112,15 +126,10 @@ class ClientTest < Minitest::Test
 
     assert_instance_of Hash, result
     assert_equal "test query", result[:query]
-    assert_equal "hybrid", result[:search_type]
+    # Implementation uses "hybrid_rrf" for Reciprocal Rank Fusion
+    assert_equal "hybrid_rrf", result[:search_type]
     assert_instance_of Array, result[:results]
     assert_instance_of Integer, result[:total_results]
-    assert_instance_of Float, result[:semantic_weight]
-    assert_instance_of Float, result[:text_weight]
-
-    # Test default weights
-    assert_equal 0.7, result[:semantic_weight]
-    assert_equal 0.3, result[:text_weight]
   end
 
   def test_hybrid_search_with_custom_weights
@@ -135,8 +144,48 @@ class ClientTest < Minitest::Test
     )
 
     assert_instance_of Hash, result
-    assert_equal 0.8, result[:semantic_weight]
-    assert_equal 0.2, result[:text_weight]
+    assert_equal "hybrid_rrf", result[:search_type]
+    assert_instance_of Array, result[:results]
+  end
+
+  def test_hybrid_search_with_parallel_true
+    return if ci_environment?
+
+    @client.add_text(content: "Test content for parallel hybrid search", title: "Parallel Doc")
+
+    # parallel: true is the default, uses SimpleFlow workflow
+    result = @client.hybrid_search(query: "parallel test", parallel: true)
+
+    assert_instance_of Hash, result
+    assert_equal "hybrid_rrf", result[:search_type]
+    assert_instance_of Array, result[:results]
+    assert_instance_of Integer, result[:total_results]
+  end
+
+  def test_hybrid_search_with_parallel_false
+    return if ci_environment?
+
+    @client.add_text(content: "Test content for sequential hybrid search", title: "Sequential Doc")
+
+    # parallel: false uses sequential execution
+    result = @client.hybrid_search(query: "sequential test", parallel: false)
+
+    assert_instance_of Hash, result
+    assert_equal "hybrid_rrf", result[:search_type]
+    assert_instance_of Array, result[:results]
+    assert_instance_of Integer, result[:total_results]
+  end
+
+  def test_hybrid_search_defaults_to_parallel_true
+    # Verify the Client.hybrid_search method defaults to parallel: true
+    method = Ragdoll::Core::Client.instance_method(:hybrid_search)
+    params = method.parameters
+
+    # Find the parallel parameter
+    parallel_param = params.find { |type, name| name == :parallel }
+
+    # It should be a keyword with default (:key)
+    assert_equal :key, parallel_param[0], "parallel should be a keyword argument with default"
   end
 
   def test_add_document_with_file_path

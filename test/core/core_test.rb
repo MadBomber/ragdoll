@@ -49,6 +49,17 @@ class CoreTest < Minitest::Test
   def test_client_factory_method_with_no_options
     return if ci_environment?
 
+    # Configure Ragdoll.config (used by ConfigurationService) to use test database
+    Ragdoll.config.database = {
+      adapter: "postgresql",
+      database: "ragdoll_test",
+      username: ENV.fetch("RAGDOLL_POSTGRES_USER") { ENV.fetch("USER", "postgres") },
+      password: ENV.fetch("RAGDOLL_POSTGRES_PASSWORD", ""),
+      host: ENV.fetch("RAGDOLL_POSTGRES_HOST", "localhost"),
+      port: ENV.fetch("RAGDOLL_POSTGRES_PORT", 5432),
+      auto_migrate: true
+    }
+
     client = Ragdoll::Core.client
 
     assert_instance_of Ragdoll::Core::Client, client
@@ -57,12 +68,23 @@ class CoreTest < Minitest::Test
   def test_client_factory_method_with_config
     return if ci_environment?
 
-    config = Ragdoll::Core::Configuration.new
-    config.database_config = {
+    # Configure Ragdoll.config (used by ConfigurationService) to use test database
+    Ragdoll.config.database = {
       adapter: "postgresql",
       database: "ragdoll_test",
-      username: "postgres",
-      password: "",
+      username: ENV.fetch("RAGDOLL_POSTGRES_USER") { ENV.fetch("USER", "postgres") },
+      password: ENV.fetch("RAGDOLL_POSTGRES_PASSWORD", ""),
+      host: ENV.fetch("RAGDOLL_POSTGRES_HOST", "localhost"),
+      port: ENV.fetch("RAGDOLL_POSTGRES_PORT", 5432),
+      auto_migrate: true
+    }
+
+    config = Ragdoll::Core::Configuration.new
+    config.database = {
+      adapter: "postgresql",
+      database: "ragdoll_test",
+      username: ENV.fetch("RAGDOLL_POSTGRES_USER") { ENV.fetch("USER", "postgres") },
+      password: ENV.fetch("RAGDOLL_POSTGRES_PASSWORD", ""),
       host: "localhost",
       port: 5432,
       auto_migrate: true

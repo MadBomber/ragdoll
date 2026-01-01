@@ -14,6 +14,10 @@ module Ragdoll
     has_many :search_results, class_name: "Ragdoll::SearchResult", dependent: :destroy
     has_many :searches, through: :search_results
 
+    # Tag associations
+    has_many :embedding_tags, class_name: "Ragdoll::EmbeddingTag", dependent: :destroy
+    has_many :tags, through: :embedding_tags
+
     validates :embeddable_id,    presence: true
     validates :embeddable_type,  presence: true
     validates :chunk_index,      presence: true, uniqueness: { scope: %i[embeddable_id embeddable_type] }

@@ -37,6 +37,19 @@ module Ragdoll
     has_many :image_embeddings, through: :image_contents, source: :embeddings
     has_many :audio_embeddings, through: :audio_contents, source: :embeddings
 
+    # Tag associations
+    has_many :document_tags,
+             class_name: "Ragdoll::DocumentTag",
+             foreign_key: "document_id",
+             dependent: :destroy
+    has_many :tags, through: :document_tags
+
+    # Proposition associations
+    has_many :propositions,
+             class_name: "Ragdoll::Proposition",
+             foreign_key: "document_id",
+             dependent: :destroy
+
     validates :location, presence: true
     validates :title, presence: true
     validates :document_type, presence: true,

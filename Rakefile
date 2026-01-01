@@ -15,10 +15,11 @@ task :setup_test_db do
   require_relative "lib/ragdoll-core"
 
   # Database configuration for tests
+  # Default to current user (common for macOS Homebrew PostgreSQL)
   test_db_config = {
     adapter: "postgresql",
     database: "ragdoll_test",
-    username: ENV.fetch("RAGDOLL_POSTGRES_USER", "postgres"),
+    username: ENV.fetch("RAGDOLL_POSTGRES_USER") { ENV.fetch("USER", "postgres") },
     password: ENV.fetch("RAGDOLL_POSTGRES_PASSWORD", ""),
     host: ENV.fetch("RAGDOLL_POSTGRES_HOST", "localhost"),
     port: ENV.fetch("RAGDOLL_POSTGRES_PORT", 5432)

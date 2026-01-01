@@ -38,7 +38,9 @@ Gem::Specification.new do |spec|
 
   # Runtime dependencies
   spec.add_dependency "activerecord"
+  spec.add_dependency "ostruct"
   spec.add_dependency "activejob"
+  spec.add_dependency "chronic"
   spec.add_dependency "debug_me"
   spec.add_dependency "docx"
   spec.add_dependency "neighbor"
@@ -52,6 +54,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "rubyzip"
   spec.add_dependency "searchkick"
   spec.add_dependency "shrine"
+  spec.add_dependency "simple_flow"
 
   # Development dependencies
   spec.add_development_dependency "annotate"
