@@ -1,9 +1,30 @@
 # frozen_string_literal: true
 
-# FIXME: This is crap.  It does not focus on search.
-
 module Ragdoll
+  # Semantic search engine using vector similarity
+  #
+  # Performs vector similarity search on embeddings to find semantically
+  # similar content. Supports filtering, threshold-based results, and
+  # search analytics tracking.
+  #
+  # @example Basic search
+  #   engine = Ragdoll::SearchEngine.new(embedding_service)
+  #   results = engine.search_similar_content("machine learning")
+  #
+  # @example Search with options
+  #   results = engine.search_similar_content(
+  #     "database optimization",
+  #     limit: 20,
+  #     threshold: 0.8,
+  #     keywords: ["postgresql", "performance"]
+  #   )
+  #
   class SearchEngine
+    # Initialize the search engine
+    #
+    # @param embedding_service [Ragdoll::EmbeddingService] Service for generating query embeddings
+    # @param config_service [Ragdoll::ConfigurationService, nil] Configuration service
+    #
     def initialize(embedding_service, config_service: nil)
       @embedding_service = embedding_service
       @config_service = config_service || Ragdoll::ConfigurationService.new

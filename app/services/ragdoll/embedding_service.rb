@@ -5,7 +5,27 @@ require "faraday"
 require "json"
 
 module Ragdoll
+  # Service for generating text embeddings using various LLM providers
+  #
+  # Supports multiple embedding providers including OpenAI, Ollama, and others.
+  # Handles provider-specific API calls and normalizes responses.
+  #
+  # @example Generate an embedding
+  #   service = Ragdoll::EmbeddingService.new
+  #   embedding = service.generate_embedding("Hello world")
+  #   # => [0.123, 0.456, ...] (1536-dimensional vector)
+  #
+  # @example With custom configuration
+  #   config_service = Ragdoll::ConfigurationService.new
+  #   service = Ragdoll::EmbeddingService.new(config_service: config_service)
+  #
   class EmbeddingService
+    # Initialize the embedding service
+    #
+    # @param client [Object, nil] Custom embedding client (for testing)
+    # @param config_service [Ragdoll::ConfigurationService, nil] Configuration service
+    # @param model_resolver [Ragdoll::ModelResolver, nil] Model resolution service
+    #
     def initialize(client: nil, config_service: nil, model_resolver: nil)
       @client = client
       @config_service = config_service || Ragdoll::ConfigurationService.new
@@ -13,6 +33,12 @@ module Ragdoll
       configure_ruby_llm unless @client
     end
 
+    # Generate an embedding vector for the given text
+    #
+    # @param text [String] Text to embed
+    # @return [Array<Float>, nil] Embedding vector or nil if text is empty
+    # @raise [Ragdoll::Core::EmbeddingError] If embedding generation fails
+    #
     def generate_embedding(text)
       return nil if text.nil? || text.strip.empty?
 

@@ -3,8 +3,33 @@
 require "securerandom"
 
 module Ragdoll
+  # Document CRUD operations and duplicate detection
+  #
+  # Provides a high-level API for managing documents in the Ragdoll system.
+  # Handles document creation with automatic duplicate detection, retrieval,
+  # updates, deletion, and listing. Supports file-based and content-based
+  # duplicate detection strategies.
+  #
+  # @example Add a new document
+  #   doc_id = Ragdoll::DocumentManagement.add_document(
+  #     "/path/to/file.txt",
+  #     "Document content here",
+  #     { title: "My Document", document_type: "text" }
+  #   )
+  #
+  # @example Force add (skip duplicate detection)
+  #   doc_id = Ragdoll::DocumentManagement.add_document(path, content, {}, force: true)
+  #
   class DocumentManagement
     class << self
+      # Add a document to the system with duplicate detection
+      #
+      # @param location [String] File path or URL of the document
+      # @param content [String] Text content of the document
+      # @param metadata [Hash] Document metadata (title, document_type, etc.)
+      # @param force [Boolean] Skip duplicate detection if true
+      # @return [String] ID of the created or existing document
+      #
       def add_document(location, content, metadata = {}, force: false)
         # Ensure location is an absolute path if it's a file path
         absolute_location = location.start_with?("http") || location.start_with?("ftp") ? location : File.expand_path(location)
@@ -44,6 +69,11 @@ module Ragdoll
         document.id.to_s
       end
 
+      # Retrieve a document by ID
+      #
+      # @param id [String, Integer] Document ID
+      # @return [Hash, nil] Document hash with content, or nil if not found
+      #
       def get_document(id)
         document = Ragdoll::Document.find_by(id: id)
         return nil unless document
@@ -53,6 +83,12 @@ module Ragdoll
         hash
       end
 
+      # Update a document's attributes
+      #
+      # @param id [String, Integer] Document ID
+      # @param updates [Hash] Attributes to update (:title, :metadata, :status, :document_type)
+      # @return [Hash, nil] Updated document hash, or nil if not found
+      #
       def update_document(id, **updates)
         document = Ragdoll::Document.find_by(id: id)
         return nil unless document
@@ -64,6 +100,11 @@ module Ragdoll
         document.to_hash
       end
 
+      # Delete a document by ID
+      #
+      # @param id [String, Integer] Document ID
+      # @return [Boolean, nil] true if deleted, nil if not found
+      #
       def delete_document(id)
         document = Ragdoll::Document.find_by(id: id)
         return nil unless document
@@ -72,6 +113,11 @@ module Ragdoll
         true
       end
 
+      # List documents with pagination
+      #
+      # @param options [Hash] Pagination options (:limit, :offset)
+      # @return [Array<Hash>] Array of document hashes
+      #
       def list_documents(options = {})
         limit = options[:limit] || 100
         offset = options[:offset] || 0
@@ -79,12 +125,22 @@ module Ragdoll
         Ragdoll::Document.offset(offset).limit(limit).recent.map(&:to_hash)
       end
 
+      # Get aggregate statistics about documents
+      #
+      # @return [Hash] Document statistics from Ragdoll::Document.stats
+      #
       def get_document_stats
         Ragdoll::Document.stats
       end
 
-      # FIXME: should this be here?
-
+      # Add an embedding for a content chunk
+      #
+      # @param embeddable_id [Integer] ID of the embeddable content
+      # @param chunk_index [Integer] Index of the chunk within the content
+      # @param embedding_vector [Array<Float>] Vector embedding
+      # @param metadata [Hash] Additional metadata (:embeddable_type, :content)
+      # @return [String] ID of the created embedding
+      #
       def add_embedding(embeddable_id, chunk_index, embedding_vector, metadata = {})
         # The embeddable_type should be the actual STI subclass, not the base class
         embeddable_type = if metadata[:embeddable_type]

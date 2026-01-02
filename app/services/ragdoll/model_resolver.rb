@@ -3,13 +3,37 @@
 require "ostruct"
 
 module Ragdoll
-  # Service for resolving models with provider/model parsing and inheritance
+  # Model resolution service with provider/model parsing
+  #
+  # Resolves the appropriate LLM model for different task types (embedding,
+  # summarization, keyword extraction) based on configuration. Handles model
+  # string parsing and provider credential lookup.
+  #
+  # @example Resolve model for embedding
+  #   resolver = Ragdoll::ModelResolver.new
+  #   config = resolver.resolve_embedding(:text)
+  #   config.model.model  # => "nomic-embed-text:latest"
+  #
+  # @example Get credentials for a model
+  #   model = resolver.resolve_for_task(:summary)
+  #   creds = resolver.provider_credentials_for_model(model)
+  #
   class ModelResolver
+    # Initialize the model resolver
+    #
+    # @param config_service [Ragdoll::ConfigurationService, nil] Configuration service
+    #
     def initialize(config_service = nil)
       @config_service = config_service || Ragdoll::ConfigurationService.new
     end
 
-    # Resolve model for a task, returns Model object
+    # Resolve model for a task type
+    #
+    # @param task_type [Symbol] Task type (:embedding, :summary, :keywords, :default)
+    # @param content_type [Symbol] Content type (unused, for future expansion)
+    # @return [Ragdoll::Core::Model] Parsed model object
+    # @raise [Ragdoll::Core::ConfigurationError] If no model configured
+    #
     def resolve_for_task(task_type, content_type = :text)
       model_string = @config_service.resolve_model(task_type, content_type)
 
@@ -18,7 +42,12 @@ module Ragdoll
       Ragdoll::Core::Model.new(model_string)
     end
 
-    # Resolve embedding model for content type, returns Model object with metadata
+    # Resolve embedding model with full configuration metadata
+    #
+    # @param content_type [Symbol] Content type (:text, :image, etc.)
+    # @return [OpenStruct] Object with :model, :provider_type, :max_dimensions, :cache_embeddings
+    # @raise [Ragdoll::Core::ConfigurationError] If no embedding model configured
+    #
     def resolve_embedding(content_type = :text)
       embedding_config = @config_service.embedding_config
 
@@ -37,7 +66,11 @@ module Ragdoll
       )
     end
 
-    # Get provider credentials for a Model object
+    # Get provider credentials for a resolved model
+    #
+    # @param model [Ragdoll::Core::Model] Model object with provider info
+    # @return [Hash] Provider credentials (api_key, etc.)
+    #
     def provider_credentials_for_model(model)
       provider = model.provider
 
@@ -49,7 +82,10 @@ module Ragdoll
       @config_service.provider_credentials(provider)
     end
 
-    # Resolve all models for debugging/introspection
+    # Resolve all configured models for debugging/introspection
+    #
+    # @return [Hash] All resolved models by category, or partial results with error
+    #
     def resolve_all_models
       {
         text_generation: {

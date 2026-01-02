@@ -7,22 +7,56 @@ require "yaml"
 require "date"
 
 module Ragdoll
+  # Multi-format document processor for RAG ingestion
+  #
+  # Parses various document formats (PDF, DOCX, text, HTML, images, audio)
+  # and extracts content and metadata for embedding generation. Handles
+  # file uploads, attachment processing, and document creation.
+  #
+  # @example Parse a document file
+  #   result = Ragdoll::DocumentProcessor.parse("/path/to/document.pdf")
+  #   # => { content: "...", metadata: {...}, title: "Document", document_type: "pdf" }
+  #
+  # @example Create a document from file
+  #   document = Ragdoll::DocumentProcessor.create_document_from_file("/path/to/file.docx")
+  #   # => #<Ragdoll::Document id: 1, title: "file", ...>
+  #
   class DocumentProcessor
+    # Raised when document parsing fails
     class ParseError < Ragdoll::Core::DocumentError; end
+
+    # Raised when file format is not supported
     class UnsupportedFormatError < ParseError; end
 
+    # Parse a document file and extract content/metadata
+    #
+    # @param file_path [String] Path to the document file
+    # @return [Hash] Parsed document with :content, :metadata, :title, :document_type
+    # @raise [ParseError] If file doesn't exist or parsing fails
+    #
     def self.parse(file_path)
       new(file_path).parse
     end
 
     # Parse from Shrine attached file
+    #
+    # @param attached_file [Shrine::UploadedFile] Shrine attachment object
+    # @return [Hash] Parsed document with :content, :metadata, :title, :document_type
+    # @raise [ParseError] If parsing fails
+    #
     def self.parse_attachment(attached_file)
       attached_file.open do |tempfile|
         new(tempfile.path, attached_file).parse
       end
     end
 
-    # Create document from file path
+    # Create a Document record from a file path
+    #
+    # @param file_path [String] Path to the document file
+    # @param options [Hash] Additional document attributes
+    # @return [Ragdoll::Document] Created document record
+    # @raise [ParseError] If file parsing fails
+    #
     def self.create_document_from_file(file_path, **options)
       parsed = parse(file_path)
 
@@ -46,7 +80,12 @@ module Ragdoll
       document
     end
 
-    # Create document from uploaded file (Shrine compatible)
+    # Create a Document record from an uploaded file (Shrine compatible)
+    #
+    # @param uploaded_file [ActionDispatch::Http::UploadedFile, Shrine::UploadedFile] Uploaded file
+    # @param options [Hash] Additional document attributes (:title, :metadata)
+    # @return [Ragdoll::Document] Created document record
+    #
     def self.create_document_from_upload(uploaded_file, **options)
       # Create document first
       document = Ragdoll::Document.create!(
@@ -77,12 +116,22 @@ module Ragdoll
       document
     end
 
+    # Initialize the document processor
+    #
+    # @param file_path [String] Path to the document file
+    # @param attached_file [Shrine::UploadedFile, nil] Optional Shrine attachment
+    #
     def initialize(file_path, attached_file = nil)
       @file_path = file_path
       @attached_file = attached_file
       @file_extension = File.extname(file_path).downcase
     end
 
+    # Parse the document and extract content/metadata
+    #
+    # @return [Hash] Parsed document with :content, :metadata, :title, :document_type
+    # @raise [ParseError] If file doesn't exist or parsing fails
+    #
     def parse
       # Check if file exists first
       unless File.exist?(@file_path)
@@ -119,11 +168,20 @@ module Ragdoll
       end
     end
 
-    # Helper methods for document type determination
+    # Determine document type from file path
+    #
+    # @param file_path [String] Path to the file
+    # @return [String] Document type (pdf, docx, text, image, etc.)
+    #
     def self.determine_document_type(file_path)
       Ragdoll::DocumentConverter.new.determine_document_type(file_path)
     end
 
+    # Determine document type from MIME content type
+    #
+    # @param content_type [String] MIME type (e.g., "application/pdf")
+    # @return [String] Document type (pdf, docx, text, image, etc.)
+    #
     def self.determine_document_type_from_content_type(content_type)
       case content_type
       when "application/pdf" then "pdf"
@@ -138,6 +196,11 @@ module Ragdoll
       end
     end
 
+    # Determine MIME content type from file path
+    #
+    # @param file_path [String] Path to the file
+    # @return [String] MIME content type
+    #
     def self.determine_content_type(file_path)
       case File.extname(file_path).downcase
       when ".pdf" then "application/pdf"

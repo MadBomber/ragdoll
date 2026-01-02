@@ -1,17 +1,48 @@
 # frozen_string_literal: true
 
 module Ragdoll
+  # Unified document-to-text conversion pipeline
+  #
+  # Converts various document formats (PDF, DOCX, images, audio, video)
+  # to plain text for embedding and search. Delegates to specialized
+  # extraction services based on document type.
+  #
+  # @example Convert a PDF to text
+  #   text = Ragdoll::DocumentConverter.convert_to_text("/path/to/doc.pdf")
+  #
+  # @example With explicit document type
+  #   converter = Ragdoll::DocumentConverter.new
+  #   text = converter.convert_to_text("/path/to/file", "image")
+  #
   class DocumentConverter
+    # Raised when document conversion fails
     class ConversionError < StandardError; end
 
+    # Convert a file to text using class method convenience
+    #
+    # @param file_path [String] Path to the document file
+    # @param document_type [String, nil] Document type override
+    # @param options [Hash] Options passed to extraction services
+    # @return [String] Extracted text content
+    #
     def self.convert_to_text(file_path, document_type = nil, **options)
       new(**options).convert_to_text(file_path, document_type)
     end
 
+    # Initialize the converter
+    #
+    # @param options [Hash] Options passed to extraction services
+    #
     def initialize(**options)
       @options = options
     end
 
+    # Convert a document to text
+    #
+    # @param file_path [String] Path to the document file
+    # @param document_type [String, nil] Document type (auto-detected if nil)
+    # @return [String] Extracted text content
+    #
     def convert_to_text(file_path, document_type = nil)
       return "" unless File.exist?(file_path)
 
@@ -36,6 +67,11 @@ module Ragdoll
       end
     end
 
+    # Determine document type from file extension
+    #
+    # @param file_path [String] Path to the file
+    # @return [String] Document type (pdf, docx, text, image, audio, video, etc.)
+    #
     def determine_document_type(file_path)
       extension = File.extname(file_path).downcase
 
@@ -60,6 +96,10 @@ module Ragdoll
       end
     end
 
+    # List of supported file formats by category
+    #
+    # @return [Hash] Supported formats organized by type
+    #
     def supported_formats
       {
         text: %w[.txt .md .markdown .html .htm .csv .json .xml .yml .yaml],

@@ -1,21 +1,39 @@
 # frozen_string_literal: true
 
 module Ragdoll
-  # Service class for centralized configuration logic
-  # Provides a clean interface for accessing configuration with validation
+  # Centralized configuration access with validation
   #
-  # This is a compatibility wrapper around the new anyway_config-based Config class.
-  # It provides method-based access to configuration values and validation.
+  # Provides a clean interface for accessing Ragdoll configuration values.
+  # Acts as a compatibility wrapper around the anyway_config-based Config class,
+  # offering method-based access to configuration with validation and defaults.
+  #
+  # @example Access configuration
+  #   service = Ragdoll::ConfigurationService.new
+  #   service.embedding_config[:provider]  # => :ollama
+  #   service.search_config[:max_results]  # => 10
+  #
+  # @example Validate configuration
+  #   service.validate!  # raises ConfigurationError if invalid
+  #   service.valid?     # => true/false
   #
   class ConfigurationService
+    # Initialize with optional custom config
+    #
+    # @param config [Ragdoll::Core::Config, nil] Custom config or use global
+    #
     def initialize(config = nil)
       @config = config || Ragdoll.config
     end
 
-    # Expose config as a public method for backward compatibility
+    # @return [Ragdoll::Core::Config] The underlying configuration object
     attr_reader :config
 
-    # Resolve model for a task with inheritance support
+    # Resolve the appropriate model for a task type
+    #
+    # @param task_type [Symbol] Task type (:embedding, :summary, :keywords)
+    # @param content_type [Symbol] Content type (unused, for future expansion)
+    # @return [String] Model identifier
+    #
     def resolve_model(task_type, content_type = :text)
       case task_type
       when :embedding
@@ -30,6 +48,11 @@ module Ragdoll
     end
 
     # Get provider credentials with fallback to default provider
+    #
+    # @param provider [Symbol, nil] Provider name or nil for default
+    # @return [Hash] Provider credentials
+    # @raise [Ragdoll::Core::ConfigurationError] If provider not configured
+    #
     def provider_credentials(provider = nil)
       provider ||= @config.default_provider
       credentials = @config.provider_credentials(provider)
@@ -41,7 +64,11 @@ module Ragdoll
       credentials
     end
 
-    # Get chunking configuration
+    # Get chunking configuration for text processing
+    #
+    # @param _content_type [Symbol] Content type (reserved for future use)
+    # @return [Hash] Chunking config with :max_tokens and :overlap
+    #
     def chunking_config(_content_type = :text)
       {
         max_tokens: @config.chunk_size,
@@ -49,7 +76,10 @@ module Ragdoll
       }
     end
 
-    # Get search configuration
+    # Get search configuration including analytics settings
+    #
+    # @return [Hash] Search config with :similarity_threshold, :max_results, :analytics
+    #
     def search_config
       {
         similarity_threshold: @config.similarity_threshold,
@@ -65,7 +95,12 @@ module Ragdoll
       }
     end
 
-    # Get prompt template with validation
+    # Get a named prompt template
+    #
+    # @param template_name [Symbol] Template name (default: :rag_enhancement)
+    # @return [String] Prompt template string
+    # @raise [Ragdoll::Core::ConfigurationError] If template not found
+    #
     def prompt_template(template_name = :rag_enhancement)
       template = @config.prompt_template(template_name)
 
@@ -77,6 +112,9 @@ module Ragdoll
     end
 
     # Get embedding configuration
+    #
+    # @return [Hash] Embedding config with :provider, :model, :dimensions, :timeout, etc.
+    #
     def embedding_config
       {
         provider: @config.embedding_provider,
@@ -89,11 +127,17 @@ module Ragdoll
     end
 
     # Get database configuration
+    #
+    # @return [Hash] Database connection configuration
+    #
     def database_config
       @config.database_config
     end
 
-    # Get circuit breaker configuration
+    # Get circuit breaker configuration for resilience
+    #
+    # @return [Hash] Circuit breaker config with :failure_threshold, :reset_timeout, etc.
+    #
     def circuit_breaker_config
       {
         failure_threshold: @config.circuit_breaker_failure_threshold,
@@ -102,7 +146,10 @@ module Ragdoll
       }
     end
 
-    # Get hybrid search configuration
+    # Get hybrid search configuration (RRF fusion settings)
+    #
+    # @return [Hash] Hybrid search config with :enabled, :rrf_k, :weights
+    #
     def hybrid_search_config
       {
         enabled: @config.hybrid_search_enabled?,
@@ -117,6 +164,9 @@ module Ragdoll
     end
 
     # Get tagging configuration
+    #
+    # @return [Hash] Tagging config with :enabled, :max_depth, :auto_extract
+    #
     def tagging_config
       {
         enabled: @config.tagging_enabled?,
@@ -127,7 +177,10 @@ module Ragdoll
       }
     end
 
-    # Get propositions configuration
+    # Get propositions extraction configuration
+    #
+    # @return [Hash] Propositions config with :enabled, :min_length, :max_length
+    #
     def propositions_config
       {
         enabled: @config.propositions_enabled?,
@@ -139,6 +192,10 @@ module Ragdoll
     end
 
     # Validate configuration completeness
+    #
+    # @return [Boolean] true if valid
+    # @raise [Ragdoll::Core::ConfigurationError] If validation fails
+    #
     def validate!
       errors = []
 
@@ -163,6 +220,9 @@ module Ragdoll
     end
 
     # Check if configuration is valid without raising
+    #
+    # @return [Boolean] true if configuration is valid
+    #
     def valid?
       validate!
       true

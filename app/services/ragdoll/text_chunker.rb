@@ -1,14 +1,43 @@
 # frozen_string_literal: true
 
 module Ragdoll
+  # Intelligent text chunking service for document processing
+  #
+  # Splits text into overlapping chunks suitable for embedding generation.
+  # Attempts to break at natural boundaries (sentences, paragraphs, words)
+  # to preserve semantic coherence within chunks.
+  #
+  # @example Basic chunking
+  #   chunks = Ragdoll::TextChunker.chunk(long_text)
+  #   # => ["First chunk...", "Second chunk...", ...]
+  #
+  # @example Custom chunk size
+  #   chunks = Ragdoll::TextChunker.chunk(text, chunk_size: 500, chunk_overlap: 100)
+  #
   class TextChunker
+    # Default maximum characters per chunk
     DEFAULT_CHUNK_SIZE = 1000
+
+    # Default overlap between consecutive chunks
     DEFAULT_CHUNK_OVERLAP = 200
 
+    # Chunk text using class method convenience
+    #
+    # @param text [String] Text to chunk
+    # @param chunk_size [Integer] Maximum characters per chunk
+    # @param chunk_overlap [Integer] Overlap between consecutive chunks
+    # @return [Array<String>] Array of text chunks
+    #
     def self.chunk(text, chunk_size: DEFAULT_CHUNK_SIZE, chunk_overlap: DEFAULT_CHUNK_OVERLAP)
       new(text, chunk_size: chunk_size, chunk_overlap: chunk_overlap).chunk
     end
 
+    # Initialize the chunker
+    #
+    # @param text [String] Text to chunk
+    # @param chunk_size [Integer] Maximum characters per chunk
+    # @param chunk_overlap [Integer] Overlap between consecutive chunks
+    #
     def initialize(text, chunk_size: DEFAULT_CHUNK_SIZE, chunk_overlap: DEFAULT_CHUNK_OVERLAP)
       @text = text.to_s
       @chunk_size = chunk_size

@@ -5,6 +5,24 @@ require "fileutils"
 module Ragdoll
   module Core
     class Client
+      # Default number of context chunks for prompt enhancement
+      DEFAULT_CONTEXT_LIMIT = 5
+
+      # Default number of results for context retrieval
+      DEFAULT_CONTEXT_RESULT_LIMIT = 10
+
+      # Default number of results for search operations
+      DEFAULT_SEARCH_LIMIT = 20
+
+      # Default candidate limit for hybrid search
+      DEFAULT_CANDIDATE_LIMIT = 100
+
+      # Character length for content preview in status responses
+      CONTENT_PREVIEW_LENGTH = 200
+
+      # Default number of days for analytics queries
+      DEFAULT_ANALYTICS_DAYS = 30
+
       def initialize
         # Setup configuration services
         @config_service = Ragdoll::ConfigurationService.new
@@ -27,7 +45,7 @@ module Ragdoll
 
       # Primary method for RAG applications
       # Returns context-enhanced content for AI prompts
-      def enhance_prompt(prompt:, context_limit: 5, **options)
+      def enhance_prompt(prompt:, context_limit: DEFAULT_CONTEXT_LIMIT, **options)
         context_data = get_context(query: prompt, limit: context_limit, **options)
 
         if context_data[:context_chunks].any?
@@ -49,7 +67,7 @@ module Ragdoll
       end
 
       # Get relevant context without prompt enhancement
-      def get_context(query:, limit: 10, **options)
+      def get_context(query:, limit: DEFAULT_CONTEXT_RESULT_LIMIT, **options)
         search_response = search_similar_content(query: query, limit: limit, **options)
         
         # Handle both old format (array) and new format (hash with results/statistics)
@@ -97,7 +115,7 @@ module Ragdoll
             query: query,
             timeframe: timeframe,
             tags: tags,
-            limit: options[:limit] || 20,
+            limit: options[:limit] || DEFAULT_SEARCH_LIMIT,
             **options
           )
         end
@@ -147,7 +165,7 @@ module Ragdoll
       # @param filters [Hash] Additional filters (document_type, keywords, etc.)
       # @return [Hash] Search results with RRF scores
       #
-      def hybrid_search(query:, timeframe: nil, tags: nil, limit: 20, parallel: true, **options)
+      def hybrid_search(query:, timeframe: nil, tags: nil, limit: DEFAULT_SEARCH_LIMIT, parallel: true, **options)
         start_time = Time.current
 
         # Extract tracking options
@@ -165,7 +183,7 @@ module Ragdoll
           timeframe: timeframe,
           tags: tags,
           filters: filters,
-          candidate_limit: options[:candidate_limit] || 100,
+          candidate_limit: options[:candidate_limit] || DEFAULT_CANDIDATE_LIMIT,
           parallel: parallel
         )
 
@@ -313,7 +331,7 @@ module Ragdoll
           status: document.status,
           embeddings_count: embeddings_count,
           embeddings_ready: embeddings_count.positive?,
-          content_preview: document.content&.first(200) || "No content",
+          content_preview: document.content&.first(CONTENT_PREVIEW_LENGTH) || "No content",
           message: case document.status
                    when "processed"
                      "Document processed successfully with #{embeddings_count} embeddings"
@@ -485,7 +503,7 @@ module Ragdoll
         Ragdoll::DocumentManagement.get_document_stats
       end
 
-      def search_analytics(days: 30)
+      def search_analytics(days: DEFAULT_ANALYTICS_DAYS)
         # This could be implemented with additional database queries
         Ragdoll::Embedding.where("returned_at > ?", days.days.ago)
                          .group("DATE(returned_at)")
