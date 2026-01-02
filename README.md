@@ -315,80 +315,106 @@ puts content.content_quality_score
 
 ## Configuration
 
+Ragdoll uses the `anyway_config` gem for flexible, layered configuration with XDG Base Directory support.
+
+### Configuration Priority
+
+Configuration is loaded from multiple sources (lowest to highest priority):
+
+1. Bundled defaults (`lib/ragdoll/core/config/defaults.yml`)
+2. XDG user config (`~/.config/ragdoll/ragdoll.yml`)
+3. Project config (`./config/ragdoll.yml`)
+4. Environment variables (`RAGDOLL_*`)
+5. Programmatic (`Ragdoll.configure` block)
+
+### Quick Start
+
+```ruby
+require 'ragdoll-core'
+
+# Access configuration (automatically loaded)
+config = Ragdoll.config
+
+# Read values using method access
+config.embedding.provider      # => :ollama
+config.embedding.model         # => "nomic-embed-text:latest"
+config.database.host           # => "localhost"
+config.ollama_url              # => "http://localhost:11434"
+
+# Environment helpers
+config.development?            # => true/false
+config.test?                   # => true/false
+config.production?             # => true/false
+```
+
+### Configuration File
+
+Create `~/.config/ragdoll/ragdoll.yml`:
+
+```yaml
+database:
+  host: localhost
+  port: 5432
+  name: ragdoll_production
+
+embedding:
+  provider: openai
+  model: text-embedding-3-small
+  dimensions: 1536
+
+chunking:
+  size: 1000
+  overlap: 200
+
+search:
+  similarity_threshold: 0.7
+  max_results: 10
+
+providers:
+  openai:
+    api_key: sk-...
+  ollama:
+    url: http://localhost:11434
+```
+
+### Environment Variables
+
+Use the `RAGDOLL_` prefix with double underscores for nested keys:
+
+```bash
+# Database
+export RAGDOLL_DATABASE__HOST=db.example.com
+export RAGDOLL_DATABASE__NAME=ragdoll_production
+
+# Embedding
+export RAGDOLL_EMBEDDING__PROVIDER=openai
+export RAGDOLL_EMBEDDING__MODEL=text-embedding-3-small
+
+# Provider credentials
+export RAGDOLL_PROVIDERS__OPENAI__API_KEY=sk-...
+export RAGDOLL_PROVIDERS__OLLAMA__URL=http://localhost:11434
+
+# Environment
+export RAGDOLL_ENV=production
+```
+
+### Programmatic Configuration
+
 ```ruby
 Ragdoll.configure do |config|
-  # Enable unified text-based architecture
-  config.use_unified_models = true
+  # Override embedding settings
+  config.embedding.provider = :openai
+  config.embedding.model = "text-embedding-3-small"
 
-  # Database configuration (PostgreSQL required)
-  config.database_config = {
-    adapter: 'postgresql',
-    database: 'ragdoll_production',
-    username: 'ragdoll',
-    password: ENV['DATABASE_PASSWORD'],
-    host: 'localhost',
-    port: 5432,
-    auto_migrate: true
-  }
+  # Override database settings
+  config.database.name = "my_ragdoll_db"
 
-  # Text conversion settings
-  config.text_conversion = {
-    # Image conversion detail levels:
-    # :minimal - Brief one-sentence description
-    # :standard - Main elements and composition
-    # :comprehensive - Detailed description including objects, colors, mood
-    # :analytical - Thorough analysis including artistic elements
-    image_detail_level: :comprehensive,
-
-    # Audio transcription providers
-    audio_transcription_provider: :openai,  # :azure, :google, :whisper_local
-
-    # Fallback behavior
-    enable_fallback_descriptions: true,
-    fallback_timeout: 30  # seconds
-  }
-
-  # Single embedding model for all content types
-  config.embedding_model = "text-embedding-3-large"
-  config.embedding_provider = :openai
-
-  # Ruby LLM configuration for text conversion
-  config.ruby_llm_config[:openai][:api_key] = ENV['OPENAI_API_KEY']
-  config.ruby_llm_config[:anthropic][:api_key] = ENV['ANTHROPIC_API_KEY']
-
-  # Vision model configuration for image descriptions
-  config.vision_config = {
-    primary_model: 'gpt-4-vision-preview',
-    fallback_model: 'gemini-pro-vision',
-    temperature: 0.2
-  }
-
-  # Audio transcription configuration
-  config.audio_config = {
-    openai: {
-      model: 'whisper-1',
-      temperature: 0.0
-    },
-    azure: {
-      endpoint: ENV['AZURE_SPEECH_ENDPOINT'],
-      api_key: ENV['AZURE_SPEECH_KEY']
-    }
-  }
-
-  # Processing settings
-  config.chunking[:text][:max_tokens] = 1000
-  config.chunking[:text][:overlap] = 200
-  config.search[:similarity_threshold] = 0.7
-  config.search[:max_results] = 10
-
-  # Quality thresholds
-  config.quality_thresholds = {
-    high_quality: 0.8,
-    medium_quality: 0.5,
-    min_content_length: 50
-  }
+  # Provider credentials
+  config.providers.openai.api_key = ENV['OPENAI_API_KEY']
 end
 ```
+
+See the [Configuration Guide](docs/docs/getting-started/configuration.md) for complete documentation.
 
 ## Performance Features
 
