@@ -2,7 +2,7 @@
 
 require_relative "../test_helper"
 
-class ImageDescriptionServiceTest < Minitest::Test
+class CoreImageDescriptionServiceTest < Minitest::Test
   def setup
     super
     @service = Ragdoll::ImageDescriptionService.new

@@ -2,7 +2,7 @@
 
 require_relative "../test_helper"
 
-class EmbeddingServiceTest < Minitest::Test
+class CoreEmbeddingServiceTest < Minitest::Test
   def setup
     super
     Ragdoll::Core.reset_configuration!

@@ -2,7 +2,7 @@
 
 require_relative "../test_helper"
 
-class ModelTest < Minitest::Test
+class CoreModelTest < Minitest::Test
   def test_model_with_provider
     model = Ragdoll::Core::Model.new("openai/gpt-4o-mini")
 
