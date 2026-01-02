@@ -16,7 +16,7 @@ $LOAD_PATH.unshift(File.expand_path("../../app/lib", __dir__))
 require_relative "core/version"
 require_relative "core/errors"
 require_relative "core/model"
-require_relative "core/configuration"
+require_relative "core/config"
 # Require services from app/services/ragdoll
 require "ragdoll/configuration_service"
 require "ragdoll/model_resolver"
@@ -72,28 +72,41 @@ require_relative "core/client"
 
 module Ragdoll
   def self.config
-    @config ||= Core::Configuration.new
+    Core.config
+  end
+
+  def self.configure(&block)
+    Core.configure(&block)
+  end
+
+  def self.env
+    Core::Config.env
   end
 
   module Core
     extend SingleForwardable
 
-    def self.config
-      @config ||= Configuration.new
-    end
+    class << self
+      def config
+        @config ||= Config.new
+      end
 
-    def self.configuration
-      config
-    end
+      alias_method :configuration, :config
 
-    def self.configure
-      yield(config)
-    end
+      def configure
+        yield(config) if block_given?
+        config
+      end
 
-    # Reset configuration (useful for testing)
-    def self.reset_configuration!
-      @config = Configuration.new
-      @default_client = nil
+      # Reset configuration (useful for testing)
+      def reset_configuration!
+        @config = nil
+        @default_client = nil
+      end
+
+      def env
+        Config.env
+      end
     end
 
     # Factory method for creating clients

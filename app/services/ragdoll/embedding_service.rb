@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require "ruby_llm"
+require "faraday"
+require "json"
 
 module Ragdoll
   class EmbeddingService
@@ -34,11 +36,22 @@ module Ragdoll
             raise Ragdoll::Core::EmbeddingError, "Invalid response format from embedding API"
           end
         else
-          # Use RubyLLM for real embedding generation
+          # In test environment, use fallback embeddings to avoid external dependencies
+          if @config_service.config.test?
+            return generate_fallback_embedding
+          end
+
           embedding_config = @model_resolver.resolve_embedding(:text)
-          # Use just the model name for RubyLLM
+          provider = @config_service.config.embedding_provider
+
+          # Use direct Ollama API since RubyLLM doesn't support Ollama embeddings
+          if provider == :ollama
+            return generate_ollama_embedding(cleaned_text, embedding_config.model.model)
+          end
+
+          # Use RubyLLM for other providers
           model = embedding_config.model.model
-          
+
           # If model is nil or empty, use fallback
           if model.nil? || model.empty?
             return generate_fallback_embedding
@@ -94,11 +107,17 @@ module Ragdoll
             raise Ragdoll::Core::EmbeddingError, "Invalid response format from embedding API"
           end
         else
-          # Use RubyLLM for real embedding generation (batch mode)
           embedding_config = @model_resolver.resolve_embedding(:text)
-          # Use just the model name for RubyLLM
+          provider = @config_service.config.embedding_provider
+
+          # Use direct Ollama API since RubyLLM doesn't support Ollama embeddings
+          if provider == :ollama
+            return cleaned_texts.map { |text| generate_ollama_embedding(text, embedding_config.model.model) }
+          end
+
+          # Use RubyLLM for other providers (batch mode)
           model = embedding_config.model.model
-          
+
           # If model is nil or empty, use fallback
           if model.nil? || model.empty?
             return cleaned_texts.map { generate_fallback_embedding }
@@ -145,46 +164,51 @@ module Ragdoll
 
     private
 
-    def configure_ruby_llm
-      # Configure ruby_llm based on Ragdoll configuration
-      provider = @config_service.config.llm_providers[:default_provider]
-      config = @config_service.provider_credentials(provider)
+    # Generate embedding using Ollama's native API directly
+    # RubyLLM doesn't properly support Ollama embeddings (wrong response format)
+    def generate_ollama_embedding(text, model)
+      endpoint = resolve_ollama_endpoint
 
-      RubyLLM.configure do |ruby_llm_config|
-        case provider
-        when :openai
-          ruby_llm_config.openai_api_key = config[:api_key]
-          # Set organization and project if methods exist
-          if config[:organization] && ruby_llm_config.respond_to?(:openai_organization=)
-            ruby_llm_config.openai_organization = config[:organization]
-          end
-          ruby_llm_config.openai_project = config[:project] if config[:project] && ruby_llm_config.respond_to?(:openai_project=)
-        when :anthropic
-          ruby_llm_config.anthropic_api_key = config[:api_key] if ruby_llm_config.respond_to?(:anthropic_api_key=)
-        when :google
-          ruby_llm_config.google_api_key = config[:api_key] if ruby_llm_config.respond_to?(:google_api_key=)
-          if config[:project_id] && ruby_llm_config.respond_to?(:google_project_id=)
-            ruby_llm_config.google_project_id = config[:project_id]
-          end
-        when :azure
-          ruby_llm_config.azure_api_key = config[:api_key] if ruby_llm_config.respond_to?(:azure_api_key=)
-          ruby_llm_config.azure_endpoint = config[:endpoint] if config[:endpoint] && ruby_llm_config.respond_to?(:azure_endpoint=)
-          if config[:api_version] && ruby_llm_config.respond_to?(:azure_api_version=)
-            ruby_llm_config.azure_api_version = config[:api_version]
-          end
-        when :ollama
-          if config[:endpoint] && ruby_llm_config.respond_to?(:ollama_endpoint=)
-            ruby_llm_config.ollama_endpoint = config[:endpoint]
-          end
-        when :huggingface
-          ruby_llm_config.huggingface_api_key = config[:api_key] if ruby_llm_config.respond_to?(:huggingface_api_key=)
-        when :openrouter
-          ruby_llm_config.openrouter_api_key = config[:api_key] if ruby_llm_config.respond_to?(:openrouter_api_key=)
-        else
-          # Don't raise error for unsupported providers in case RubyLLM doesn't support them yet
-          puts "Warning: Unsupported embedding provider: #{provider}"
-        end
+      conn = Faraday.new(url: endpoint) do |f|
+        f.request :json
+        f.response :json
+        f.adapter Faraday.default_adapter
       end
+
+      response = conn.post("/api/embeddings") do |req|
+        req.body = { model: model, prompt: text }
+      end
+
+      if response.success? && response.body["embedding"]
+        response.body["embedding"]
+      else
+        error_msg = response.body["error"] || "Unknown Ollama error"
+        raise Ragdoll::Core::EmbeddingError, "Ollama embedding failed: #{error_msg}"
+      end
+    rescue Faraday::Error => e
+      raise Ragdoll::Core::EmbeddingError, "Ollama connection failed: #{e.message}"
+    end
+
+    # Resolve the Ollama base endpoint from multiple sources
+    # The native embedding endpoint is /api/embeddings (NOT /v1/embeddings)
+    def resolve_ollama_endpoint
+      # Check config first
+      endpoint = @config_service.config.ollama_url
+
+      # Fall back to environment variables in order of preference
+      endpoint ||= ENV["RAGDOLL_PROVIDERS__OLLAMA__URL"]
+      endpoint ||= ENV["HTM_PROVIDERS__OLLAMA__URL"]
+      endpoint ||= ENV["OLLAMA_HOST"] && "http://#{ENV['OLLAMA_HOST']}:#{ENV['OLLAMA_PORT'] || 11434}"
+      endpoint ||= ENV["OLLAMA_ENDPOINT"]
+      endpoint ||= "http://localhost:11434"
+
+      # Strip /v1 suffix if present (OpenAI compat mode), we need native API
+      endpoint.sub(%r{/v1/?$}, "")
+    end
+
+    def configure_ruby_llm
+      # Use the Config's built-in configure_ruby_llm method
+      @config_service.config.configure_ruby_llm
     end
 
     def clean_text(text)
@@ -202,7 +226,10 @@ module Ragdoll
     end
 
     # Generate a fallback embedding for testing/development when LLM services are unavailable
-    def generate_fallback_embedding(dimensions = 1536)
+    def generate_fallback_embedding(dimensions = nil)
+      # Use configured embedding dimensions if not specified
+      dimensions ||= @config_service&.config&.embedding_dimensions || 1536
+
       # Generate deterministic pseudo-random embeddings based on the object_id
       # This ensures consistent results for testing while providing different embeddings for different instances
       rng = Random.new(object_id)

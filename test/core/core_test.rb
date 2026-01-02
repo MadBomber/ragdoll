@@ -5,14 +5,26 @@ require_relative "../test_helper"
 class CoreTest < Minitest::Test
   def setup
     super
-    # Reset configuration before each test
-    Ragdoll::Core.instance_variable_set(:@configuration, nil)
+    # Reset configuration before each test using official API
+    Ragdoll::Core.reset_configuration!
+  end
+
+  def teardown
+    super
+    Ragdoll::Core.reset_configuration!
   end
 
   def test_configuration_returns_configuration_instance
     config = Ragdoll::Core.configuration
 
     assert_instance_of Ragdoll::Core::Configuration, config
+  end
+
+  def test_config_alias_returns_same_instance
+    config = Ragdoll::Core.config
+
+    assert_instance_of Ragdoll::Core::Config, config
+    assert_same Ragdoll::Core.config, Ragdoll::Core.configuration
   end
 
   def test_configuration_memoization
@@ -24,41 +36,29 @@ class CoreTest < Minitest::Test
 
   def test_configure_yields_configuration
     Ragdoll::Core.configure do |config|
-      assert_instance_of Ragdoll::Core::Configuration, config
-      config.models[:text_generation][:default] = "test/provider"
+      assert_instance_of Ragdoll::Core::Config, config
     end
-
-    default_model = Ragdoll::Core.configuration.models[:text_generation][:default]
-    expected = default_model.is_a?(Ragdoll::Core::Model) ? default_model.name : default_model
-    assert_equal "test/provider", expected
   end
 
-  def test_configure_modifies_configuration
+  def test_configure_modifies_configuration_via_method_access
     Ragdoll::Core.configure do |config|
-      config.models[:text_generation][:default] = "new/provider"
-      config.processing[:text][:chunking][:max_tokens] = 500
+      config.chunking.size = 500
     end
 
-    config = Ragdoll::Core.configuration
-    default_model = config.models[:text_generation][:default]
-    expected = default_model.is_a?(Ragdoll::Core::Model) ? default_model.name : default_model
-    assert_equal "new/provider", expected
-    assert_equal 500, config.processing[:text][:chunking][:max_tokens]
+    assert_equal 500, Ragdoll::Core.configuration.chunk_size
   end
 
   def test_client_factory_method_with_no_options
     return if ci_environment?
 
-    # Configure Ragdoll.config (used by ConfigurationService) to use test database
-    Ragdoll.config.database = {
-      adapter: "postgresql",
-      database: "ragdoll_test",
-      username: ENV.fetch("RAGDOLL_POSTGRES_USER") { ENV.fetch("USER", "postgres") },
-      password: ENV.fetch("RAGDOLL_POSTGRES_PASSWORD", ""),
-      host: ENV.fetch("RAGDOLL_POSTGRES_HOST", "localhost"),
-      port: ENV.fetch("RAGDOLL_POSTGRES_PORT", 5432),
-      auto_migrate: true
-    }
+    # Configure database via the new ConfigSection API
+    config = Ragdoll.config
+    config.database.name = "ragdoll_test"
+    config.database.user = ENV.fetch("RAGDOLL_POSTGRES_USER") { ENV.fetch("USER", "postgres") }
+    config.database.password = ENV.fetch("RAGDOLL_POSTGRES_PASSWORD", "")
+    config.database.host = ENV.fetch("RAGDOLL_POSTGRES_HOST", "localhost")
+    config.database.port = ENV.fetch("RAGDOLL_POSTGRES_PORT", 5432).to_i
+    config.database.auto_migrate = true
 
     client = Ragdoll::Core.client
 
@@ -68,27 +68,14 @@ class CoreTest < Minitest::Test
   def test_client_factory_method_with_config
     return if ci_environment?
 
-    # Configure Ragdoll.config (used by ConfigurationService) to use test database
-    Ragdoll.config.database = {
-      adapter: "postgresql",
-      database: "ragdoll_test",
-      username: ENV.fetch("RAGDOLL_POSTGRES_USER") { ENV.fetch("USER", "postgres") },
-      password: ENV.fetch("RAGDOLL_POSTGRES_PASSWORD", ""),
-      host: ENV.fetch("RAGDOLL_POSTGRES_HOST", "localhost"),
-      port: ENV.fetch("RAGDOLL_POSTGRES_PORT", 5432),
-      auto_migrate: true
-    }
-
-    config = Ragdoll::Core::Configuration.new
-    config.database = {
-      adapter: "postgresql",
-      database: "ragdoll_test",
-      username: ENV.fetch("RAGDOLL_POSTGRES_USER") { ENV.fetch("USER", "postgres") },
-      password: ENV.fetch("RAGDOLL_POSTGRES_PASSWORD", ""),
-      host: "localhost",
-      port: 5432,
-      auto_migrate: true
-    }
+    # Configure database via the new ConfigSection API
+    config = Ragdoll.config
+    config.database.name = "ragdoll_test"
+    config.database.user = ENV.fetch("RAGDOLL_POSTGRES_USER") { ENV.fetch("USER", "postgres") }
+    config.database.password = ENV.fetch("RAGDOLL_POSTGRES_PASSWORD", "")
+    config.database.host = ENV.fetch("RAGDOLL_POSTGRES_HOST", "localhost")
+    config.database.port = ENV.fetch("RAGDOLL_POSTGRES_PORT", 5432).to_i
+    config.database.auto_migrate = true
 
     # The config parameter is accepted but ignored - client always uses Ragdoll.config
     client = Ragdoll::Core.client(config)
@@ -101,33 +88,29 @@ class CoreTest < Minitest::Test
   def test_reset_configuration_helper_method
     # First, modify the configuration
     Ragdoll::Core.configure do |config|
-      config.models[:text_generation][:default] = "modified/provider"
+      config.chunking.size = 999
     end
 
-    default_model = Ragdoll::Core.configuration.models[:text_generation][:default]
-    expected = default_model.is_a?(Ragdoll::Core::Model) ? default_model.name : default_model
-    assert_equal "modified/provider", expected
+    assert_equal 999, Ragdoll::Core.configuration.chunk_size
 
     # Reset should restore defaults
     Ragdoll::Core.reset_configuration!
 
-    assert_equal "openai/gpt-4o", Ragdoll::Core.configuration.models[:text_generation][:default].name
+    assert_equal 1000, Ragdoll::Core.configuration.chunk_size
   end
 
   def test_multiple_configure_calls
     Ragdoll::Core.configure do |config|
-      config.models[:text_generation][:default] = "first/provider"
+      config.chunking.size = 500
     end
 
     Ragdoll::Core.configure do |config|
-      config.processing[:text][:chunking][:max_tokens] = 123
+      config.chunking.overlap = 123
     end
 
     config = Ragdoll::Core.configuration
-    default_model = config.models[:text_generation][:default]
-    expected = default_model.is_a?(Ragdoll::Core::Model) ? default_model.name : default_model
-    assert_equal "first/provider", expected # Should persist
-    assert_equal 123, config.processing[:text][:chunking][:max_tokens] # Should be set
+    assert_equal 500, config.chunk_size # Should persist
+    assert_equal 123, config.chunk_overlap # Should be set
   end
 
   def test_configuration_thread_safety
@@ -138,9 +121,9 @@ class CoreTest < Minitest::Test
     3.times do |i|
       threads << Thread.new do
         Ragdoll::Core.configure do |config|
-          config.processing[:text][:chunking][:max_tokens] = 100 + i
+          config.chunking.size = 100 + i
         end
-        results << Ragdoll::Core.configuration.processing[:text][:chunking][:max_tokens]
+        results << Ragdoll::Core.configuration.chunk_size
       end
     end
 
@@ -167,5 +150,42 @@ class CoreTest < Minitest::Test
     expected_methods.each do |method|
       assert_respond_to Ragdoll::Core, method, "#{method} should be available on Core module"
     end
+  end
+
+  def test_backward_compat_models_hash
+    # Test that backward-compatible models hash still works
+    models = Ragdoll::Core.configuration.models
+
+    assert_instance_of Hash, models
+    assert models.key?(:text_generation)
+    assert models.key?(:embedding)
+  end
+
+  def test_backward_compat_processing_hash
+    # Test that backward-compatible processing hash still works
+    processing = Ragdoll::Core.configuration.processing
+
+    assert_instance_of Hash, processing
+    assert processing.key?(:text)
+    assert processing.key?(:search)
+  end
+
+  def test_ragdoll_module_shortcuts
+    # Test that Ragdoll module has config shortcuts
+    assert_respond_to Ragdoll, :config
+    assert_respond_to Ragdoll, :configure
+    assert_respond_to Ragdoll, :env
+
+    assert_same Ragdoll.config, Ragdoll::Core.config
+  end
+
+  def test_environment_detection
+    # Test environment detection methods
+    config = Ragdoll::Core.configuration
+
+    assert_respond_to config, :test?
+    assert_respond_to config, :development?
+    assert_respond_to config, :production?
+    assert_respond_to config, :environment
   end
 end

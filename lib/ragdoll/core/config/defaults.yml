@@ -1,0 +1,255 @@
+# Ragdoll Bundled Defaults
+#
+# This file is the SINGLE SOURCE OF TRUTH for Ragdoll configuration schema.
+# All attributes must be declared here (even if nil) to be recognized.
+# It is bundled with the gem and loaded automatically at lowest priority.
+#
+# Loading priority (lowest to highest):
+# 1. This file (bundled defaults)
+# 2. XDG user config (~/.config/ragdoll/ragdoll.yml)
+# 3. Project config (./config/ragdoll.yml)
+# 4. Local overrides (./config/ragdoll.local.yml)
+# 5. Environment variables (RAGDOLL_*)
+# 6. Programmatic (Ragdoll.configure block)
+#
+# Structure:
+# - defaults: Base values for all environments (with nested sections)
+# - development: Overrides for development environment
+# - test: Overrides for test environment
+# - production: Overrides for production environment
+
+# =============================================================================
+# Shared Defaults (base for all environments)
+# =============================================================================
+defaults:
+  # ---------------------------------------------------------------------------
+  # Database Configuration
+  # Access: Ragdoll.config.database.host, Ragdoll.config.database.port, etc.
+  # ---------------------------------------------------------------------------
+  database:
+    adapter: postgresql
+    host: localhost
+    port: 5432
+    name: ~
+    user: ~
+    password: ~
+    pool_size: 5
+    timeout: 5000
+    auto_migrate: false
+    sslmode: prefer
+
+  # ---------------------------------------------------------------------------
+  # Embedding Configuration
+  # Access: Ragdoll.config.embedding.provider, Ragdoll.config.embedding.model, etc.
+  # ---------------------------------------------------------------------------
+  embedding:
+    provider: ollama
+    model: nomic-embed-text:latest
+    dimensions: 768
+    max_dimensions: 3072
+    timeout: 120
+    cache_embeddings: true
+
+  # ---------------------------------------------------------------------------
+  # Text Generation Model Configuration
+  # Access: Ragdoll.config.generation.default_model, etc.
+  # ---------------------------------------------------------------------------
+  generation:
+    default_model: openai/gpt-4o
+    summary_model: ~
+    keywords_model: ~
+
+  # ---------------------------------------------------------------------------
+  # Chunking Configuration
+  # Access: Ragdoll.config.chunking.size, Ragdoll.config.chunking.overlap
+  # ---------------------------------------------------------------------------
+  chunking:
+    size: 1000
+    overlap: 200
+
+  # ---------------------------------------------------------------------------
+  # Search Configuration
+  # Access: Ragdoll.config.search.similarity_threshold, etc.
+  # ---------------------------------------------------------------------------
+  search:
+    similarity_threshold: 0.7
+    max_results: 10
+
+  # ---------------------------------------------------------------------------
+  # Analytics Configuration
+  # Access: Ragdoll.config.analytics.enabled, etc.
+  # ---------------------------------------------------------------------------
+  analytics:
+    enabled: true
+    usage_tracking: true
+    ranking_enabled: true
+    recency_weight: 0.3
+    frequency_weight: 0.7
+    similarity_weight: 1.0
+
+  # ---------------------------------------------------------------------------
+  # Hybrid Search Configuration (RRF fusion)
+  # Access: Ragdoll.config.hybrid_search.enabled, etc.
+  # ---------------------------------------------------------------------------
+  hybrid_search:
+    enabled: true
+    rrf_k: 60
+    candidate_multiplier: 3
+    semantic_weight: 0.5
+    fulltext_weight: 0.3
+    tags_weight: 0.2
+
+  # ---------------------------------------------------------------------------
+  # Summarization Configuration
+  # Access: Ragdoll.config.summarization.enabled, etc.
+  # ---------------------------------------------------------------------------
+  summarization:
+    enabled: true
+    max_length: 300
+    min_content_length: 300
+
+  # ---------------------------------------------------------------------------
+  # Tagging Configuration
+  # Access: Ragdoll.config.tagging.enabled, etc.
+  # ---------------------------------------------------------------------------
+  tagging:
+    enabled: true
+    max_depth: 4
+    auto_extract: true
+    tag_documents: true
+    tag_chunks: true
+
+  # ---------------------------------------------------------------------------
+  # Proposition Extraction Configuration
+  # Access: Ragdoll.config.propositions.enabled, etc.
+  # ---------------------------------------------------------------------------
+  propositions:
+    enabled: true
+    auto_extract: true
+    min_length: 10
+    max_length: 1000
+    min_words: 5
+
+  # ---------------------------------------------------------------------------
+  # Circuit Breaker Configuration
+  # Access: Ragdoll.config.circuit_breaker.failure_threshold, etc.
+  # ---------------------------------------------------------------------------
+  circuit_breaker:
+    failure_threshold: 5
+    reset_timeout: 60
+    half_open_max_calls: 3
+
+  # ---------------------------------------------------------------------------
+  # Timeframe Configuration
+  # Access: Ragdoll.config.timeframe.week_start, etc.
+  # ---------------------------------------------------------------------------
+  timeframe:
+    week_start: sunday
+    default_recent_days: 3
+
+  # ---------------------------------------------------------------------------
+  # Logging Configuration
+  # Access: Ragdoll.config.logging.level, etc.
+  # Note: Uses XDG standard ~/.config/ragdoll/ by default
+  # ---------------------------------------------------------------------------
+  logging:
+    level: info
+    directory: ~/.config/ragdoll/logs
+    filepath: ~/.config/ragdoll/logs/ragdoll.log
+
+  # ---------------------------------------------------------------------------
+  # Prompt Templates
+  # Access: Ragdoll.config.prompts.rag_enhancement
+  # ---------------------------------------------------------------------------
+  prompts:
+    rag_enhancement: |
+      You are an AI assistant. Use the following context to help answer the user's question.
+      If the context doesn't contain relevant information, say so.
+
+      Context:
+      {{context}}
+
+      Question: {{prompt}}
+
+      Answer:
+
+  # ---------------------------------------------------------------------------
+  # Provider Credentials
+  # Access: Ragdoll.config.providers.openai.api_key, etc.
+  # ---------------------------------------------------------------------------
+  providers:
+    default_provider: openai
+
+    openai:
+      api_key: ~
+      organization: ~
+      project: ~
+
+    anthropic:
+      api_key: ~
+
+    gemini:
+      api_key: ~
+
+    google:
+      api_key: ~
+      project_id: ~
+
+    azure:
+      api_key: ~
+      endpoint: ~
+      api_version: "2024-02-01"
+
+    ollama:
+      url: http://localhost:11434
+
+    huggingface:
+      api_key: ~
+
+    openrouter:
+      api_key: ~
+
+    bedrock:
+      access_key: ~
+      secret_key: ~
+      region: us-east-1
+
+    deepseek:
+      api_key: ~
+
+# =============================================================================
+# Development Environment Overrides
+# =============================================================================
+development:
+  database:
+    name: ragdoll_development
+    auto_migrate: true
+  logging:
+    level: debug
+
+# =============================================================================
+# Test Environment Overrides
+# =============================================================================
+test:
+  database:
+    name: ragdoll_test
+    auto_migrate: true
+  embedding:
+    # Match the database migration dimensions (1536) for test compatibility
+    dimensions: 1536
+  logging:
+    level: warn
+  analytics:
+    enabled: false
+
+# =============================================================================
+# Production Environment Overrides
+# =============================================================================
+production:
+  database:
+    pool_size: 25
+    sslmode: require
+  logging:
+    level: warn
+  analytics:
+    enabled: true

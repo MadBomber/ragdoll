@@ -13,8 +13,8 @@ module Ragdoll
         # Setup logging
         setup_logging
 
-        # Setup database connection
-        Database.setup(@config_service.config.database)
+        # Setup database connection (use database_config which has correct ActiveRecord keys)
+        Database.setup(@config_service.config.database_config)
 
         @embedding_service = Ragdoll::EmbeddingService.new(
           client: nil,
@@ -506,7 +506,7 @@ module Ragdoll
         require "active_job"
 
         # Create log directory if it doesn't exist
-        log_file = @config_service.config.logging[:filepath]
+        log_file = File.expand_path(@config_service.config.logging[:filepath] || "~/.config/ragdoll/logs/ragdoll.log")
         log_dir = File.dirname(log_file)
         FileUtils.mkdir_p(log_dir) unless Dir.exist?(log_dir)
 

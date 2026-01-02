@@ -7,6 +7,8 @@ module Ragdoll
   module Core
     class Database
       def self.setup(config = {})
+        # Convert ConfigSection to Hash if needed
+        config = config.to_h if config.respond_to?(:to_h) && !config.is_a?(Hash)
         database_config = default_config.merge(config)
 
         # Set up ActiveRecord connection

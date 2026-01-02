@@ -6,6 +6,9 @@ $VERBOSE = nil
 # Set flag to indicate we're running tests
 ENV["RUNNING_TESTS"] = "true"
 
+# Set environment for Ragdoll configuration loading
+ENV["RAGDOLL_ENV"] ||= "test"
+
 require "simplecov"
 
 # Load undercover after SimpleCov to avoid circular requires

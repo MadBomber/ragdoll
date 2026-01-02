@@ -4,6 +4,7 @@ PATH
     ragdoll (0.2.0)
       activejob
       activerecord
+      anyway_config (~> 2.0)
       chronic
       debug_me
       docx
@@ -54,6 +55,8 @@ GEM
       activerecord (>= 2.3.0)
       rake (>= 0.8.7)
     ansi (1.5.0)
+    anyway_config (2.7.2)
+      ruby-next-core (~> 1.0)
     ast (2.4.3)
     base64 (0.3.0)
     bigdecimal (3.3.1)
@@ -180,6 +183,7 @@ GEM
     rubocop-rake (0.7.1)
       lint_roller (~> 1.1)
       rubocop (>= 1.72.1)
+    ruby-next-core (1.1.2)
     ruby-progressbar (1.13.0)
     ruby-rc4 (0.1.5)
     ruby_llm (1.9.1)

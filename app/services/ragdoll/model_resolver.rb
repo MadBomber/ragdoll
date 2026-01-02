@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "ostruct"
+
 module Ragdoll
   # Service for resolving models with provider/model parsing and inheritance
   class ModelResolver
@@ -18,8 +20,9 @@ module Ragdoll
 
     # Resolve embedding model for content type, returns Model object with metadata
     def resolve_embedding(content_type = :text)
-      embedding_config = @config_service.config.models[:embedding]
-      model_string = embedding_config[content_type]
+      embedding_config = @config_service.embedding_config
+
+      model_string = embedding_config[:model]
 
       raise Ragdoll::Core::ConfigurationError, "No embedding model configured for content type '#{content_type}'" if model_string.nil?
 
@@ -40,7 +43,7 @@ module Ragdoll
 
       if provider.nil?
         # Use default provider if none specified
-        provider = @config_service.config.llm_providers[:default_provider]
+        provider = @config_service.config.default_provider
       end
 
       @config_service.provider_credentials(provider)
@@ -55,9 +58,7 @@ module Ragdoll
           keywords: resolve_for_task(:keywords)
         },
         embedding: {
-          text: resolve_embedding(:text),
-          image: resolve_embedding(:image),
-          audio: resolve_embedding(:audio)
+          text: resolve_embedding(:text)
         }
       }
     rescue Ragdoll::Core::ConfigurationError => e

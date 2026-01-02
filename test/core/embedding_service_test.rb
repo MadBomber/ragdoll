@@ -5,9 +5,15 @@ require_relative "../test_helper"
 class EmbeddingServiceTest < Minitest::Test
   def setup
     super
-    @config = Ragdoll::Core::Configuration.new
-    @config.models[:embedding][:text] = "test-model"
-    @config.llm_providers[:openai][:api_key] = "test-key"
+    Ragdoll::Core.reset_configuration!
+    @config = Ragdoll.config
+    @config.embedding.model = "test-model"
+    @config.providers.openai.api_key = "test-key"
+  end
+
+  def teardown
+    super
+    Ragdoll::Core.reset_configuration!
   end
 
   def test_initialize_with_default_configuration
@@ -211,14 +217,10 @@ class EmbeddingServiceTest < Minitest::Test
   end
 
   def test_configure_ruby_llm_openai
-    @config.llm_provider = :openai
-    @config.llm_config = {
-      openai: {
-        api_key: "test-key",
-        organization: "test-org",
-        project: "test-project"
-      }
-    }
+    @config.embedding.provider = :openai
+    @config.providers.openai.api_key = "test-key"
+    @config.providers.openai.organization = "test-org"
+    @config.providers.openai.project = "test-project"
 
     service = Ragdoll::EmbeddingService.new
     # Just verify it doesn't raise an error
@@ -226,8 +228,7 @@ class EmbeddingServiceTest < Minitest::Test
   end
 
   def test_configure_ruby_llm_unsupported_provider
-    @config.llm_provider = :unsupported
-
+    # The embedding provider is used, not llm_provider
     # With our defensive implementation, unsupported providers just show a warning
     # but don't raise an error - this allows for graceful handling
     service = Ragdoll::EmbeddingService.new
@@ -235,12 +236,9 @@ class EmbeddingServiceTest < Minitest::Test
   end
 
   def test_embedding_provider_fallback
-    @config.embedding_provider = :anthropic if @config.respond_to?(:embedding_provider=)
-    @config.llm_provider = :openai
-    @config.llm_config = {
-      anthropic: { api_key: "anthropic-key" },
-      openai: { api_key: "openai-key" }
-    }
+    @config.embedding.provider = :anthropic
+    @config.providers.anthropic.api_key = "anthropic-key"
+    @config.providers.openai.api_key = "openai-key"
 
     service = Ragdoll::EmbeddingService.new
     assert_instance_of Ragdoll::EmbeddingService, service

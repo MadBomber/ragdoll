@@ -8,21 +8,26 @@ class ClientTest < Minitest::Test
     super
     return if ci_environment?
 
-    # Configure Ragdoll.config.database for ConfigurationService (used by Client)
-    # This ensures Client uses the test database instead of ragdoll_development
-    test_db_config = {
-      adapter: "postgresql",
-      database: "ragdoll_test",
-      username: ENV.fetch("RAGDOLL_POSTGRES_USER") { ENV.fetch("USER", "postgres") },
-      password: ENV.fetch("RAGDOLL_POSTGRES_PASSWORD", ""),
-      host: ENV.fetch("RAGDOLL_POSTGRES_HOST", "localhost"),
-      port: ENV.fetch("RAGDOLL_POSTGRES_PORT", 5432),
-      auto_migrate: true,
-      logger: nil
-    }
-    Ragdoll.config.instance_variable_get(:@config).database = test_db_config
+    # Reset configuration to ensure clean state, then configure for test database
+    Ragdoll::Core.reset_configuration!
+
+    # Configure test database via the new Config API
+    # The database ConfigSection is automatically populated from defaults.yml
+    # For tests, we update the database name via the ConfigSection
+    config = Ragdoll.config
+    config.database.name = "ragdoll_test"
+    config.database.user = ENV.fetch("RAGDOLL_POSTGRES_USER") { ENV.fetch("USER", "postgres") }
+    config.database.password = ENV.fetch("RAGDOLL_POSTGRES_PASSWORD", "")
+    config.database.host = ENV.fetch("RAGDOLL_POSTGRES_HOST", "localhost")
+    config.database.port = ENV.fetch("RAGDOLL_POSTGRES_PORT", 5432).to_i
+    config.database.auto_migrate = true
 
     @client = Ragdoll::Core::Client.new
+  end
+
+  def teardown
+    super
+    Ragdoll::Core.reset_configuration!
   end
 
   def test_initialize_with_default_config

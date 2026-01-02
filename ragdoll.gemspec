@@ -40,6 +40,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "activerecord"
   spec.add_dependency "ostruct"
   spec.add_dependency "activejob"
+  spec.add_dependency "anyway_config", "~> 2.0"
   spec.add_dependency "chronic"
   spec.add_dependency "debug_me"
   spec.add_dependency "docx"
