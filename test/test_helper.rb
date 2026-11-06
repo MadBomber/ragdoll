@@ -275,13 +275,13 @@ module Minitest
   end
 end
 
-# Without a database (see ci_environment?), report ConnectionNotDefined as a
+# Without a database (see ci_environment?), report connection errors as a
 # skip rather than an error. capture_exceptions wraps setup, test, teardown.
 module SkipWithoutDatabase
   def capture_exceptions
     super do
       yield
-    rescue ActiveRecord::ConnectionNotDefined
+    rescue ActiveRecord::ConnectionNotEstablished
       skip_if_database_unavailable
       raise
     end
