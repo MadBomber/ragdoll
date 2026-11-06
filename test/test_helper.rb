@@ -275,8 +275,10 @@ module Minitest
   end
 end
 
-# Without a database (see ci_environment?), report ConnectionNotDefined as a
-# skip rather than an error. capture_exceptions wraps setup, test, teardown.
+# With database tests turned off (see ci_environment?), report
+# ConnectionNotDefined as a skip rather than an error. Only that class: other
+# connection errors (timeouts, refused) stay errors so regressions surface.
+# capture_exceptions wraps setup, test, and teardown.
 module SkipWithoutDatabase
   def capture_exceptions
     super do
