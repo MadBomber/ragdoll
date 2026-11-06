@@ -208,22 +208,6 @@ rescue LoadError
   # These models are optional for testing
 end
 
-# When the suite runs without a database (see ci_environment?), tests that
-# touch ActiveRecord raise ConnectionNotDefined. Report those as skips, not
-# errors, so the rest of the suite still runs in CI. capture_exceptions is
-# the method Minitest wraps around setup, the test body, and teardown.
-module SkipWithoutDatabase
-  def capture_exceptions
-    super do
-      yield
-    rescue ActiveRecord::ConnectionNotDefined
-      raise unless ci_environment?
-
-      skip("Skipping database test in CI environment")
-    end
-  end
-end
-
 # Silence migration output during tests
 ActiveRecord::Migration.verbose = false
 
@@ -287,6 +271,19 @@ module Minitest
       end
 
       Ragdoll::Core.reset_configuration!
+    end
+  end
+end
+
+# Without a database (see ci_environment?), report ConnectionNotDefined as a
+# skip rather than an error. capture_exceptions wraps setup, test, teardown.
+module SkipWithoutDatabase
+  def capture_exceptions
+    super do
+      yield
+    rescue ActiveRecord::ConnectionNotDefined
+      skip_if_database_unavailable
+      raise
     end
   end
 end

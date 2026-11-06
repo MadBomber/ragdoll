@@ -24,8 +24,8 @@ class DatabaseSkipTest < Minitest::Test
   def run_probe(ci:)
     probe = Class.new(Minitest::Test) do
       define_method(:ci_environment?) { ci }
-      define_method(:setup) {}
-      define_method(:teardown) {}
+      def setup; end
+      def teardown; end
       define_method(:test_needs_database) do
         raise ActiveRecord::ConnectionNotDefined, "No database connection defined."
       end
