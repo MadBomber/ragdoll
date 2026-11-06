@@ -65,6 +65,7 @@ class MigrationServiceTest < Minitest::Test
 
   # migrate_document tests
   def test_migrate_document_raises_for_nonexistent_document
+    skip_if_database_unavailable
     assert_raises(ActiveRecord::RecordNotFound) do
       @service.migrate_document(999999)
     end
