@@ -195,7 +195,7 @@ module Ragdoll
 
         # No client - this is a RubyLLM configuration issue, use fallback
         puts "Warning: Batch embedding generation failed (#{e.message}), using fallback"
-        texts.map { generate_fallback_embedding }
+        cleaned_texts.map { generate_fallback_embedding }
       end
     end
 
