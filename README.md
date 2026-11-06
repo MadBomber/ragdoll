@@ -1,3 +1,16 @@
+# Work Stopped on this project
+
+Its been about five months since the last time that I touched this project.  As was thinking about coming back
+to this project and moving it along a little more; but, according to my robot there is only one thing novel
+about Ragdoll in today's technology world is its converstion of basically all business-oriented media to text
+and then vectorizing that text.  Audio gets transcribed.  Images get described. document formats get converted
+and all is text.  The Robot suggested I just write a blog post on that idea and let Ragdoll rest its bones since
+that are so many other RAG products available these days.
+
+So I'm going to take the Robot's advice and just move on to another experiment.
+
+-- Dewayne, Feb 10, 2026
+
 > [!CAUTION]<br />
 > **Software Under Development by a Crazy Man**<br />
 > Gave up on the multi-modal vectorization approach,<br />
