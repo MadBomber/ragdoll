@@ -125,7 +125,7 @@ module Ragdoll
       end
 
       def self.connected?
-        ActiveRecord::Base.connected?
+        ActiveRecord::Base.connected? == true
       end
 
       def self.disconnect!
