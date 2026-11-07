@@ -101,7 +101,7 @@ class DatabaseTest < Minitest::Test
   end
 
   # disconnect! tests
-  def test_disconnect_leaves_no_connection
+  def test_disconnect_does_not_raise
     Ragdoll::Core::Database.disconnect!
     refute Ragdoll::Core::Database.connected?
   end
@@ -112,6 +112,7 @@ class DatabaseTest < Minitest::Test
 
     Ragdoll::Core::Database.disconnect!
     refute Ragdoll::Core::Database.connected?
+    assert_equal 0, Ragdoll::Document.count
   end
 
   # setup tests (limited scope - don't actually reconnect)
