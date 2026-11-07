@@ -49,7 +49,7 @@ class CoreTest < Minitest::Test
   end
 
   def test_client_factory_method_with_no_options
-    return if ci_environment?
+    skip_if_database_unavailable
 
     # Configure database via the new ConfigSection API
     config = Ragdoll.config
@@ -66,7 +66,7 @@ class CoreTest < Minitest::Test
   end
 
   def test_client_factory_method_with_config
-    return if ci_environment?
+    skip_if_database_unavailable
 
     # Configure database via the new ConfigSection API
     config = Ragdoll.config
