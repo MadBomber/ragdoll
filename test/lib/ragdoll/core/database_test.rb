@@ -101,7 +101,15 @@ class DatabaseTest < Minitest::Test
   end
 
   # disconnect! tests
-  def test_disconnect_closes_connections
+  def test_disconnect_leaves_no_connection
+    Ragdoll::Core::Database.disconnect!
+    refute Ragdoll::Core::Database.connected?
+  end
+
+  def test_disconnect_closes_open_connection
+    skip_if_database_unavailable
+    assert Ragdoll::Core::Database.connected?
+
     Ragdoll::Core::Database.disconnect!
     refute Ragdoll::Core::Database.connected?
   end
