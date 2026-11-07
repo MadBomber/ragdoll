@@ -100,10 +100,6 @@ class DatabaseTest < Minitest::Test
     assert Ragdoll::Core::Database.respond_to?(:reset!)
   end
 
-  def test_disconnect_class_method_exists
-    assert Ragdoll::Core::Database.respond_to?(:disconnect!)
-  end
-
   # disconnect! tests
   def test_disconnect_closes_connections
     Ragdoll::Core::Database.disconnect!
