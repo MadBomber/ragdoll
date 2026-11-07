@@ -31,14 +31,14 @@ class ClientTest < Minitest::Test
   end
 
   def test_initialize_with_default_config
-    return if ci_environment?
+    skip_if_database_unavailable
 
     assert_instance_of Ragdoll::EmbeddingService, @client.instance_variable_get(:@embedding_service)
     assert_instance_of Ragdoll::SearchEngine, @client.instance_variable_get(:@search_engine)
   end
 
   def test_enhance_prompt_with_context
-    return if ci_environment?
+    skip_if_database_unavailable
 
     # Add a document first
     @client.add_document(path: "test_content.txt")
@@ -67,7 +67,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_enhance_prompt_without_context
-    return if ci_environment?
+    skip_if_database_unavailable
 
     result = @client.enhance_prompt(prompt: "Random question")
 
@@ -78,7 +78,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_get_context
-    return if ci_environment?
+    skip_if_database_unavailable
 
     @client.add_text(content: "Context content", title: "Test Doc")
 
@@ -91,7 +91,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_search
-    return if ci_environment?
+    skip_if_database_unavailable
 
     @client.add_text(content: "Searchable content", title: "Test Doc")
 
@@ -104,7 +104,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_search_similar_content
-    return if ci_environment?
+    skip_if_database_unavailable
 
     @client.add_text(content: "Similar content", title: "Test Doc")
 
@@ -123,7 +123,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_hybrid_search
-    return if ci_environment?
+    skip_if_database_unavailable
 
     @client.add_text(content: "Test content for hybrid search", title: "Hybrid Doc")
 
@@ -138,7 +138,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_hybrid_search_with_custom_weights
-    return if ci_environment?
+    skip_if_database_unavailable
 
     @client.add_text(content: "Test content for weighted hybrid search", title: "Weighted Doc")
 
@@ -154,7 +154,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_hybrid_search_with_parallel_true
-    return if ci_environment?
+    skip_if_database_unavailable
 
     @client.add_text(content: "Test content for parallel hybrid search", title: "Parallel Doc")
 
@@ -168,7 +168,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_hybrid_search_with_parallel_false
-    return if ci_environment?
+    skip_if_database_unavailable
 
     @client.add_text(content: "Test content for sequential hybrid search", title: "Sequential Doc")
 
@@ -194,7 +194,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_add_document_with_file_path
-    return if ci_environment?
+    skip_if_database_unavailable
 
     with_temp_text_file("Test file content") do |file_path|
       result = @client.add_document(path: file_path)
@@ -209,7 +209,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_add_text
-    return if ci_environment?
+    skip_if_database_unavailable
 
     doc_id = @client.add_text(content: "Direct content", title: "Direct Title")
 
@@ -221,7 +221,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_add_document_with_custom_title
-    return if ci_environment?
+    skip_if_database_unavailable
 
     with_temp_text_file("File content") do |file_path|
       # Mock DocumentProcessor to return metadata with title
@@ -248,7 +248,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_add_document_from_parser_metadata
-    return if ci_environment?
+    skip_if_database_unavailable
 
     content_with_title = "File content"
     with_temp_text_file(content_with_title) do |file_path|
@@ -275,7 +275,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_add_text_with_metadata
-    return if ci_environment?
+    skip_if_database_unavailable
 
     doc_id = @client.add_text(content: "Text content", title: "Text Title", author: "Test Author")
 
@@ -287,7 +287,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_add_directory
-    return if ci_environment?
+    skip_if_database_unavailable
 
     Dir.mktmpdir do |dir|
       # Create test files
@@ -311,7 +311,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_add_directory_recursive
-    return if ci_environment?
+    skip_if_database_unavailable
 
     Dir.mktmpdir do |dir|
       # Create nested structure
@@ -327,7 +327,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_get_document
-    return if ci_environment?
+    skip_if_database_unavailable
 
     doc_id = @client.add_text(content: "Get test content", title: "Get Test")
 
@@ -340,7 +340,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_update_document
-    return if ci_environment?
+    skip_if_database_unavailable
 
     doc_id = @client.add_text(content: "Original content", title: "Original Title")
 
@@ -351,7 +351,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_delete_document
-    return if ci_environment?
+    skip_if_database_unavailable
 
     doc_id = @client.add_text(content: "Delete test content", title: "Delete Test")
 
@@ -362,7 +362,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_list_documents
-    return if ci_environment?
+    skip_if_database_unavailable
 
     @client.add_text(content: "Doc 1", title: "Title 1")
     @client.add_text(content: "Doc 2", title: "Title 2")
@@ -374,7 +374,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_stats
-    return if ci_environment?
+    skip_if_database_unavailable
 
     @client.add_text(content: "Stats test content", title: "Stats Test")
 
@@ -385,7 +385,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_search_analytics
-    return if ci_environment?
+    skip_if_database_unavailable
 
     result = @client.search_analytics(days: 7)
 
@@ -394,7 +394,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_healthy_with_working_storage
-    return if ci_environment?
+    skip_if_database_unavailable
 
     @client.add_text(content: "Health test", title: "Health")
 
@@ -408,7 +408,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_healthy_with_failing_storage
-    return if ci_environment?
+    skip_if_database_unavailable
 
     # Mock stats to raise an error
     # Mock DocumentManagement.get_document_stats to raise error
@@ -424,7 +424,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_client_uses_database_storage
-    return if ci_environment?
+    skip_if_database_unavailable
 
     client = Ragdoll::Core::Client.new
     search_engine = client.instance_variable_get(:@search_engine)
@@ -434,7 +434,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_client_initializes_embedding_service
-    return if ci_environment?
+    skip_if_database_unavailable
 
     client = Ragdoll::Core::Client.new
     embedding_service = client.instance_variable_get(:@embedding_service)
@@ -443,7 +443,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_client_setup_logging
-    return if ci_environment?
+    skip_if_database_unavailable
 
     # Test that client initializes without errors
     client = Ragdoll::Core::Client.new
@@ -453,7 +453,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_build_enhanced_prompt_with_default_template
-    return if ci_environment?
+    skip_if_database_unavailable
 
     context = "Relevant context information"
     prompt = "What is the answer?"
@@ -466,7 +466,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_build_enhanced_prompt_with_custom_template
-    return if ci_environment?
+    skip_if_database_unavailable
 
     # NOTE: Currently build_enhanced_prompt uses a hardcoded default template
     # This test verifies it works with the default template structure
