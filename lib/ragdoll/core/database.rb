@@ -129,7 +129,7 @@ module Ragdoll
       end
 
       def self.disconnect!
-        ActiveRecord::Base.clear_all_connections!
+        ActiveRecord::Base.connection_handler.clear_all_connections!
       end
 
       def self.default_config

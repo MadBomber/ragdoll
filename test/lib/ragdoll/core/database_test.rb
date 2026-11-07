@@ -104,6 +104,12 @@ class DatabaseTest < Minitest::Test
     assert Ragdoll::Core::Database.respond_to?(:disconnect!)
   end
 
+  # disconnect! tests
+  def test_disconnect_closes_connections
+    Ragdoll::Core::Database.disconnect!
+    refute Ragdoll::Core::Database.connected?
+  end
+
   # setup tests (limited scope - don't actually reconnect)
   def test_setup_accepts_config_hash
     # This test verifies the method signature, not actual connection
