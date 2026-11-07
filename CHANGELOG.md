@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### Changed
-- Development and CI `Gemfile.lock`: locked Rails 8.1, faraday, nokogiri, rubyzip and a few other gems move to their latest patch or minor releases (gem users are unaffected; the gemspec is unchanged)
+- Development and CI `Gemfile.lock`: activerecord, activejob, activemodel and activesupport (8.1.1 to 8.1.4.1), addressable, concurrent-ruby, faraday, json, nokogiri and rubyzip move to their latest patch or minor releases (the gemspec is unchanged, so gem users are unaffected)
 
 ### Fixed
 - `Ragdoll::Core::Database.connected?` returns `false` instead of `nil` when no connection pool exists
