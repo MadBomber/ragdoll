@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `Ragdoll::Core::Database.connected?` returns `false` instead of `nil` when no connection pool exists
 - `EmbeddingService#generate_embeddings_batch` fallback no longer returns embeddings for blank or nil texts
 - `Ragdoll::Core::Database.disconnect!` no longer raises `NoMethodError` on ActiveRecord 7.2 and later
-- `DocumentConverter` no longer fails with `ArgumentError` when handing image and audio files to `ImageToTextService` and `AudioToTextService` (the error was rescued and a filename placeholder stored instead), and `require "ragdoll"` now loads `AudioToTextService`
+- `DocumentConverter` now reaches `ImageToTextService` and `AudioToTextService` for image and audio files; the `ArgumentError` from passing options positionally (and the `NameError` from `AudioToTextService` never being required by `require "ragdoll"`) was rescued and a filename placeholder stored instead
 
 ## [0.1.12] - 2025-09-23
 
