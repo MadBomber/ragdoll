@@ -118,12 +118,12 @@ module Ragdoll
     end
 
     def convert_image_to_text(file_path)
-      service = Ragdoll::ImageToTextService.new(@options)
+      service = Ragdoll::ImageToTextService.new(**@options)
       service.convert(file_path)
     end
 
     def convert_audio_to_text(file_path)
-      service = Ragdoll::AudioToTextService.new(@options)
+      service = Ragdoll::AudioToTextService.new(**@options)
       service.transcribe(file_path)
     end
 
