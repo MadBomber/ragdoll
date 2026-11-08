@@ -202,7 +202,7 @@ class DocumentConverterTest < Minitest::Test
   def test_require_ragdoll_loads_audio_to_text_service
     root = File.expand_path("../../..", __dir__)
     output, status = Open3.capture2e(
-      RbConfig.ruby, "-rbundler/setup", "-I#{root}/lib", "-e",
+      RbConfig.ruby, "-I#{root}/lib", "-e",
       'require "ragdoll"; print "AudioToTextService=#{defined?(Ragdoll::AudioToTextService)}"',
       chdir: root
     )
