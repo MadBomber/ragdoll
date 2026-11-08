@@ -203,12 +203,12 @@ class DocumentConverterTest < Minitest::Test
     root = File.expand_path("../../..", __dir__)
     output, status = Open3.capture2e(
       RbConfig.ruby, "-I#{root}/lib", "-e",
-      'require "ragdoll"; print defined?(Ragdoll::AudioToTextService).inspect',
+      'require "ragdoll"; print "AudioToTextService=#{defined?(Ragdoll::AudioToTextService)}"',
       chdir: root
     )
 
     assert status.success?, output
-    assert_equal '"constant"', output.lines.last
+    assert_includes output, "AudioToTextService=constant"
   end
 
   def test_convert_to_text_with_explicit_type_override
