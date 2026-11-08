@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "open3"
 
 class DocumentConverterTest < Minitest::Test
   def setup
@@ -170,6 +171,46 @@ class DocumentConverterTest < Minitest::Test
     assert_includes result.downcase, "video"
   end
 
+  def test_convert_to_text_passes_options_to_image_service_as_keywords
+    file_path = create_file("test.png", "dummy content")
+    received = nil
+    fake = Object.new
+    fake.define_singleton_method(:convert) { |_path| "a red square" }
+
+    result = with_replaced_new(Ragdoll::ImageToTextService, ->(**kw) { received = kw; fake }) do
+      Ragdoll::DocumentConverter.new(detail_level: :minimal).convert_to_text(file_path, "image")
+    end
+
+    assert_equal "a red square", result
+    assert_equal({ detail_level: :minimal }, received)
+  end
+
+  def test_convert_to_text_passes_options_to_audio_service_as_keywords
+    file_path = create_file("test.wav", "dummy content")
+    received = nil
+    fake = Object.new
+    fake.define_singleton_method(:transcribe) { |_path| "hello world" }
+
+    result = with_replaced_new(Ragdoll::AudioToTextService, ->(**kw) { received = kw; fake }) do
+      Ragdoll::DocumentConverter.new(language: "en").convert_to_text(file_path, "audio")
+    end
+
+    assert_equal "hello world", result
+    assert_equal({ language: "en" }, received)
+  end
+
+  def test_require_ragdoll_loads_audio_to_text_service
+    root = File.expand_path("../../..", __dir__)
+    output, status = Open3.capture2e(
+      RbConfig.ruby, "-I#{root}/lib", "-e",
+      'require "ragdoll"; print "AudioToTextService=#{defined?(Ragdoll::AudioToTextService)}"',
+      chdir: root
+    )
+
+    assert status.success?, output
+    assert_includes output, "AudioToTextService=constant"
+  end
+
   def test_convert_to_text_with_explicit_type_override
     content = "Plain text content"
     file_path = create_file("test.unknown", content)
@@ -199,6 +240,13 @@ class DocumentConverterTest < Minitest::Test
   end
 
   private
+
+  def with_replaced_new(klass, replacement)
+    klass.define_singleton_method(:new, &replacement)
+    yield
+  ensure
+    klass.singleton_class.remove_method(:new)
+  end
 
   def create_text_file(content)
     create_file("test.txt", content)
