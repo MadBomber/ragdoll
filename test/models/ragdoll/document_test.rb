@@ -585,6 +585,53 @@ module Ragdoll
           # assert_equal 2, results.first.total_keywords_count
           # assert_equal 6, results.last.total_keywords_count
         end
+
+        # Keyword filter values are bound, so values carrying SQL-significant
+        # characters are treated as literal data rather than query syntax.
+        def test_search_by_keywords_binds_special_characters
+          Ragdoll::Document.create!(
+            location: "/safe.txt",
+            title: "Safe Document",
+            document_type: "text",
+            status: "processed",
+            keywords: ["python"]
+          )
+
+          tricky = "a'"
+          weird  = "x\"}'::text[]) --"
+
+          results = nil
+          assert_silent do
+            results = Ragdoll::Document.search_by_keywords([tricky, weird]).to_a
+          end
+          assert_empty results
+
+          assert_empty Ragdoll::Document.search_by_keywords_all([tricky, weird]).to_a
+
+          # Normal matching still works after the change.
+          assert_equal 1, Ragdoll::Document.search_by_keywords(["python"]).count
+        end
+
+        # The status filter value is bound, so a status carrying SQL-significant
+        # characters is treated as literal data rather than query syntax.
+        def test_search_content_binds_status_filter
+          Ragdoll::Document.create!(
+            location: "/status.txt",
+            title: "Status Python Document",
+            document_type: "text",
+            status: "processed",
+            keywords: ["python"]
+          )
+
+          results = nil
+          assert_silent do
+            results = Ragdoll::Document.search_content("python", status: "processed'--")
+          end
+          assert_empty results
+
+          # The default status path still returns processed documents.
+          assert_equal 1, Ragdoll::Document.search_content("python").length
+        end
       end
     end
   end

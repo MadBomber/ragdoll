@@ -83,10 +83,8 @@ module Ragdoll
       if filters[:keywords] && filters[:keywords].any?
         normalized_keywords = Array(filters[:keywords]).map(&:to_s).map(&:downcase).reject(&:empty?)
         if normalized_keywords.any?
-          # Use PostgreSQL array overlap operator with proper array literal
-          quoted_keywords = normalized_keywords.map { |k| "\"#{k}\"" }.join(',')
-          array_literal = "'{#{quoted_keywords}}'::text[]"
-          scope = scope.where("ragdoll_documents.keywords && #{array_literal}")
+          # Use PostgreSQL array overlap operator with bound parameters
+          scope = scope.where("ragdoll_documents.keywords && ARRAY[?]::text[]", normalized_keywords)
         end
       end
 
@@ -118,10 +116,8 @@ module Ragdoll
       if filters[:keywords] && filters[:keywords].any?
         normalized_keywords = Array(filters[:keywords]).map(&:to_s).map(&:downcase).reject(&:empty?)
         if normalized_keywords.any?
-          # Use PostgreSQL array overlap operator with proper array literal
-          quoted_keywords = normalized_keywords.map { |k| "\"#{k}\"" }.join(',')
-          array_literal = "'{#{quoted_keywords}}'::text[]"
-          scope = scope.where("ragdoll_documents.keywords && #{array_literal}")
+          # Use PostgreSQL array overlap operator with bound parameters
+          scope = scope.where("ragdoll_documents.keywords && ARRAY[?]::text[]", normalized_keywords)
         end
       end
 

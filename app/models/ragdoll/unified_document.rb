@@ -172,7 +172,7 @@ module Ragdoll
 
       # Add status filter
       status = options[:status] || 'processed'
-      conditions << "#{table_name}.status = '#{status}'"
+      conditions << sanitize_sql_array(["#{table_name}.status = ?", status])
 
       # Add document type filter if specified
       if options[:document_type].present?
