@@ -3,7 +3,7 @@ PATH
   specs:
     ragdoll (0.2.0)
       activejob
-      activerecord
+      activerecord (>= 7.1)
       anyway_config (~> 2.0)
       chronic
       debug_me

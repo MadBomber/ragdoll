@@ -37,7 +37,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib", "app/models"]
 
   # Runtime dependencies
-  spec.add_dependency "activerecord"
+  spec.add_dependency "activerecord", ">= 7.1"
   spec.add_dependency "ostruct"
   spec.add_dependency "activejob"
   spec.add_dependency "anyway_config", "~> 2.0"
