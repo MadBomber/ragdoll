@@ -594,7 +594,7 @@ module Ragdoll
             title: "Safe Document",
             document_type: "text",
             status: "processed",
-            keywords: ["python", "ruby"]
+            keywords: ["python"]
           )
 
           tricky = "a'"

@@ -337,7 +337,7 @@ module Ragdoll
         # The keyword filter values are bound, so values carrying SQL-significant
         # characters are treated as literal data rather than query syntax.
         def test_search_similar_binds_keyword_filter
-          vector = Array.new(1536) { |i| i / 1536.0 }
+          vector = Array.new(1536, 0.1)
           Ragdoll::Embedding.create!(
             embeddable: @text_content,
             chunk_index: 0,
