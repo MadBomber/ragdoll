@@ -93,35 +93,23 @@ The library converts all document types to rich text representations: PDFs and d
 ```ruby
 require 'ragdoll'
 
-# Configure with unified text-based architecture
+# Configure using nested configuration sections
 Ragdoll.configure do |config|
-  # Database configuration (PostgreSQL only)
-  config.database_config = {
-    adapter: 'postgresql',
-    database: 'ragdoll_production',
-    username: 'ragdoll',
-    password: ENV['DATABASE_PASSWORD'],
-    host: 'localhost',
-    port: 5432,
-    auto_migrate: true
-  }
+  # Database configuration (PostgreSQL)
+  config.database.adapter      = 'postgresql'
+  config.database.name         = 'ragdoll_production'
+  config.database.user         = 'ragdoll'
+  config.database.password     = ENV['DATABASE_PASSWORD']
+  config.database.host         = 'localhost'
+  config.database.port         = 5432
+  config.database.auto_migrate = true
 
-  # Enable unified text-based models
-  config.use_unified_models = true
+  # Embedding model and provider
+  config.embedding.provider = :openai
+  config.embedding.model    = "text-embedding-3-large"
 
-  # Text conversion settings
-  config.text_conversion = {
-    image_detail_level: :comprehensive,  # :minimal, :standard, :comprehensive, :analytical
-    audio_transcription_provider: :openai,  # :azure, :google, :whisper_local
-    enable_fallback_descriptions: true
-  }
-
-  # Single embedding model for all content
-  config.embedding_model = "text-embedding-3-large"
-  config.embedding_provider = :openai
-
-  # Ruby LLM configuration
-  config.ruby_llm_config[:openai][:api_key] = ENV['OPENAI_API_KEY']
+  # Provider credentials
+  config.providers.openai.api_key = ENV['OPENAI_API_KEY']
 end
 
 # Add documents - all types converted to text
@@ -349,7 +337,7 @@ require 'ragdoll-core'
 config = Ragdoll.config
 
 # Read values using method access
-config.embedding.provider      # => :ollama
+config.embedding.provider      # => "ollama"
 config.embedding.model         # => "nomic-embed-text:latest"
 config.database.host           # => "localhost"
 config.ollama_url              # => "http://localhost:11434"
@@ -427,7 +415,7 @@ Ragdoll.configure do |config|
 end
 ```
 
-See the [Configuration Guide](docs/docs/getting-started/configuration.md) for complete documentation.
+See the [Configuration](#configuration) section above for complete documentation.
 
 ## Performance Features
 
