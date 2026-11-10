@@ -207,69 +207,82 @@ class DocumentProcessorTest < Minitest::Test
   end
 
   # create_document_from_file tests
-  # Note: These tests may be skipped if Shrine file attachment is not configured
+
+  # Regression for #22: create_document_from_file must not assign to
+  # document.file=, which Ragdoll::Document does not define (file handling
+  # lives on the content models). Before the fix this raised NoMethodError
+  # *after* the record was already persisted. This test is database-free: it
+  # stubs Ragdoll::Document.create! so it reproduces the bug in-memory and
+  # runs in CI where the database is unavailable.
+  def test_create_document_from_file_does_not_assign_file_attachment
+    file_path = create_test_file("regression.txt", "Regression content for #22.")
+    persisted_document = Object.new
+
+    original_create = Ragdoll::Document.method(:create!)
+    Ragdoll::Document.define_singleton_method(:create!) { |*, **| persisted_document }
+    begin
+      # Before the fix this call raised NoMethodError (document.file=).
+      result = Ragdoll::DocumentProcessor.create_document_from_file(file_path)
+      assert_same persisted_document, result
+    ensure
+      Ragdoll::Document.define_singleton_method(:create!, original_create)
+    end
+  end
+
   def test_create_document_from_file_returns_document
+    skip_if_database_unavailable
     file_path = create_test_file("document.txt", "Document content for creation.")
     document = Ragdoll::DocumentProcessor.create_document_from_file(file_path)
 
     assert_kind_of Ragdoll::Document, document
     assert document.persisted?
-  rescue NoMethodError => e
-    skip "Shrine file attachment not configured: #{e.message.split("\n").first}"
   end
 
   def test_create_document_from_file_sets_location
+    skip_if_database_unavailable
     file_path = create_test_file("test.txt", "Content")
     document = Ragdoll::DocumentProcessor.create_document_from_file(file_path)
 
     assert_equal File.expand_path(file_path), document.location
-  rescue NoMethodError => e
-    skip "Shrine file attachment not configured: #{e.message.split("\n").first}"
   end
 
   def test_create_document_from_file_sets_title
+    skip_if_database_unavailable
     file_path = create_test_file("my-document.txt", "Content")
     document = Ragdoll::DocumentProcessor.create_document_from_file(file_path)
 
     assert document.title.present?
-  rescue NoMethodError => e
-    skip "Shrine file attachment not configured: #{e.message.split("\n").first}"
   end
 
   def test_create_document_from_file_sets_content
+    skip_if_database_unavailable
     content = "This is the document content."
     file_path = create_test_file("test.txt", content)
     document = Ragdoll::DocumentProcessor.create_document_from_file(file_path)
 
     assert document.content.present?
-  rescue NoMethodError => e
-    skip "Shrine file attachment not configured: #{e.message.split("\n").first}"
   end
 
   def test_create_document_from_file_sets_document_type
+    skip_if_database_unavailable
     file_path = create_test_file("test.txt", "Content")
     document = Ragdoll::DocumentProcessor.create_document_from_file(file_path)
 
     assert_equal "text", document.document_type
-  rescue NoMethodError => e
-    skip "Shrine file attachment not configured: #{e.message.split("\n").first}"
   end
 
   def test_create_document_from_file_sets_status
+    skip_if_database_unavailable
     file_path = create_test_file("test.txt", "Content")
     document = Ragdoll::DocumentProcessor.create_document_from_file(file_path)
 
     assert_equal "processed", document.status
-  rescue NoMethodError => e
-    skip "Shrine file attachment not configured: #{e.message.split("\n").first}"
   end
 
   def test_create_document_from_file_raises_for_nonexistent_file
     assert_raises(Ragdoll::DocumentProcessor::ParseError) do
       Ragdoll::DocumentProcessor.create_document_from_file("/nonexistent/file.txt")
     end
-  rescue NoMethodError => e
-    skip "Shrine file attachment not configured: #{e.message.split("\n").first}"
   end
 
   # Instance method tests

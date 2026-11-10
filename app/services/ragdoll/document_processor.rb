@@ -74,9 +74,6 @@ module Ragdoll
         **options
       )
 
-      # Attach the file if it exists
-      document.file = File.open(file_path) if File.exist?(file_path)
-
       document
     end
 
