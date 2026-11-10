@@ -30,8 +30,17 @@ module Ragdoll
       analytical: "Analyze the image thoroughly, describing composition, lighting, subjects, background, context, and any symbolic or artistic elements."
     }.freeze
 
+    # Keywords RubyLLM.chat accepts (RubyLLM::Chat#initialize)
+    CHAT_KEYWORDS = %i[model provider assume_model_exists context].freeze
+
     def self.convert(file_path, **options)
       new(**options).convert(file_path)
+    end
+
+    # Drop service-only settings such as :temperature and :detail_level,
+    # which RubyLLM.chat rejects as unknown keywords.
+    def self.chat_options(config)
+      config.slice(*CHAT_KEYWORDS)
     end
 
     def initialize(primary: DEFAULT_OPTIONS, fallback: DEFAULT_FALLBACK_OPTIONS, **options)
@@ -41,23 +50,18 @@ module Ragdoll
       configure_ruby_llm_globally
 
       # Setup primary model
-      primary_opts = primary.dup
-      primary_temp = primary_opts.delete(:temperature) || 0.2
       @primary_prompt = build_prompt(@detail_level)
 
       begin
-        @primary = RubyLLM.chat(**primary_opts).with_temperature(primary_temp)
+        @primary = RubyLLM.chat(**self.class.chat_options(primary)).with_temperature(primary[:temperature] || 0.2)
       rescue StandardError => e
         puts "❌ ImageToTextService: Primary model creation failed: #{e.message}"
         @primary = nil
       end
 
       # Setup fallback model
-      fallback_opts = fallback.dup
-      fallback_temp = fallback_opts.delete(:temperature) || 0.4
-
       begin
-        @fallback = RubyLLM.chat(**fallback_opts).with_temperature(fallback_temp)
+        @fallback = RubyLLM.chat(**self.class.chat_options(fallback)).with_temperature(fallback[:temperature] || 0.4)
       rescue StandardError => e
         puts "❌ ImageToTextService: Fallback model creation failed: #{e.message}"
         @fallback = nil
