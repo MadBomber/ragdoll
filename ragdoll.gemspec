@@ -58,7 +58,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "simple_flow"
 
   # Development dependencies
-  spec.add_development_dependency "annotate"
   spec.add_development_dependency "bundler"
   spec.add_development_dependency "database_cleaner-active_record"
   spec.add_development_dependency "minitest"
