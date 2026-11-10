@@ -49,8 +49,8 @@ module Ragdoll
       configure_ruby_llm_globally
 
       @primary_prompt = build_prompt(@detail_level)
-      @primary = build_chat(primary, 0.2, "Primary")
-      @fallback = build_chat(fallback, 0.4, "Fallback")
+      @primary = build_chat(primary, DEFAULT_OPTIONS[:temperature], "Primary")
+      @fallback = build_chat(fallback, DEFAULT_FALLBACK_OPTIONS[:temperature], "Fallback")
 
       if @primary.nil? && @fallback.nil?
         puts "⚠️  ImageToTextService: WARNING - No models available! Service will return metadata-based descriptions only."
