@@ -30,8 +30,16 @@ module Ragdoll
       analytical: "Analyze the image thoroughly, describing composition, lighting, subjects, background, context, and any symbolic or artistic elements."
     }.freeze
 
+    # Model config keys this service reads itself; RubyLLM.chat rejects them as unknown keywords
+    SERVICE_KEYS = %i[temperature detail_level].freeze
+
     def self.convert(file_path, **options)
       new(**options).convert(file_path)
+    end
+
+    # The model config minus SERVICE_KEYS; any other unknown key still raises in RubyLLM.chat
+    def self.chat_options(config)
+      config.except(*SERVICE_KEYS)
     end
 
     def initialize(primary: DEFAULT_OPTIONS, fallback: DEFAULT_FALLBACK_OPTIONS, **options)
@@ -40,28 +48,9 @@ module Ragdoll
 
       configure_ruby_llm_globally
 
-      # Setup primary model
-      primary_opts = primary.dup
-      primary_temp = primary_opts.delete(:temperature) || 0.2
       @primary_prompt = build_prompt(@detail_level)
-
-      begin
-        @primary = RubyLLM.chat(**primary_opts).with_temperature(primary_temp)
-      rescue StandardError => e
-        puts "❌ ImageToTextService: Primary model creation failed: #{e.message}"
-        @primary = nil
-      end
-
-      # Setup fallback model
-      fallback_opts = fallback.dup
-      fallback_temp = fallback_opts.delete(:temperature) || 0.4
-
-      begin
-        @fallback = RubyLLM.chat(**fallback_opts).with_temperature(fallback_temp)
-      rescue StandardError => e
-        puts "❌ ImageToTextService: Fallback model creation failed: #{e.message}"
-        @fallback = nil
-      end
+      @primary = build_chat(primary, DEFAULT_OPTIONS[:temperature], "Primary")
+      @fallback = build_chat(fallback, DEFAULT_FALLBACK_OPTIONS[:temperature], "Fallback")
 
       if @primary.nil? && @fallback.nil?
         puts "⚠️  ImageToTextService: WARNING - No models available! Service will return metadata-based descriptions only."
@@ -116,6 +105,14 @@ module Ragdoll
     end
 
     private
+
+    # Returns a chat for the model config, or nil when RubyLLM cannot build it
+    def build_chat(config, default_temperature, label)
+      RubyLLM.chat(**self.class.chat_options(config)).with_temperature(config[:temperature] || default_temperature)
+    rescue StandardError => e
+      puts "❌ ImageToTextService: #{label} model creation failed: #{e.message}"
+      nil
+    end
 
     def configure_ruby_llm_globally
       # Get Ragdoll configuration or use defaults

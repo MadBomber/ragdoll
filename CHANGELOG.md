@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `EmbeddingService#generate_embeddings_batch` fallback no longer returns embeddings for blank or nil texts
 - `Ragdoll::Core::Database.disconnect!` no longer raises `NoMethodError` on ActiveRecord 7.2 and later
 - `DocumentConverter` now reaches `ImageToTextService` and `AudioToTextService`: image files failed with `ArgumentError` (options passed positionally), and audio files failed with `NameError` because `require "ragdoll"` never loaded `AudioToTextService`; both errors were rescued and a filename placeholder stored instead
+- `ImageToTextService` builds its vision model again: the default primary options carried `detail_level:` into `RubyLLM.chat`, which rejected it as an unknown keyword, so images never reached the vision model; the service-only keys `temperature` and `detail_level` are no longer passed to `RubyLLM.chat`, and `detail_level` still shapes the prompt
 
 ## [0.1.12] - 2025-09-23
 

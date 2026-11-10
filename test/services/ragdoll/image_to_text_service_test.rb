@@ -167,11 +167,76 @@ class ImageToTextServiceTest < Minitest::Test
     skip "RMagick or dependencies not available: #{e.message.split("\n").first}"
   end
 
+  # RubyLLM.chat keyword tests (no LLM calls: RubyLLM.chat is replaced)
+  def test_initialize_passes_only_keywords_ruby_llm_chat_accepts
+    calls = []
+    chat = fake_chat
+    with_replaced_ruby_llm_chat(lambda { |**kw|
+      calls << kw
+      chat
+    }) { Ragdoll::ImageToTextService.new }
+
+    accepted = RubyLLM::Chat.instance_method(:initialize).parameters.map(&:last)
+    assert_equal 2, calls.size
+    calls.each { |kw| assert_empty kw.keys - accepted, "RubyLLM.chat got unsupported keywords" }
+  end
+
+  def test_initialize_keeps_detail_level_for_the_prompt
+    chat = fake_chat
+    service = with_replaced_ruby_llm_chat(->(**) { chat }) do
+      Ragdoll::ImageToTextService.new(detail_level: :minimal)
+    end
+
+    assert_equal Ragdoll::ImageToTextService::DETAIL_LEVELS[:minimal], service.instance_variable_get(:@primary_prompt)
+  end
+
+  def test_initialize_builds_both_models_with_configured_temperatures
+    temps = []
+    chat = fake_chat(temps)
+    service = with_replaced_ruby_llm_chat(->(**) { chat }) do
+      Ragdoll::ImageToTextService.new(primary: { model: "a", temperature: 0.7 }, fallback: { model: "b" })
+    end
+
+    assert_equal [0.7, 0.4], temps
+    assert_same chat, service.instance_variable_get(:@primary)
+    assert_same chat, service.instance_variable_get(:@fallback)
+  end
+
+  def test_chat_options_drops_service_keys
+    config = { model: "gemma3", provider: :ollama, assume_model_exists: true, temperature: 0.2, detail_level: :comprehensive }
+
+    assert_equal({ model: "gemma3", provider: :ollama, assume_model_exists: true },
+                 Ragdoll::ImageToTextService.chat_options(config))
+  end
+
+  def test_chat_options_keeps_unknown_keys_so_ruby_llm_rejects_them
+    assert_equal({ modle: "llava" }, Ragdoll::ImageToTextService.chat_options({ modle: "llava", temperature: 0.1 }))
+  end
+
   private
 
   def create_test_file(filename, content)
     file_path = File.join(@test_dir, filename)
     File.write(file_path, content)
     file_path
+  end
+
+  # Stand-in for a RubyLLM::Chat; records each temperature it is given
+  def fake_chat(temps = [])
+    chat = Object.new
+    chat.define_singleton_method(:with_temperature) do |temperature|
+      temps << temperature
+      self
+    end
+    chat
+  end
+
+  # The replacement runs with self == RubyLLM, so it must close over locals rather than call test helpers
+  def with_replaced_ruby_llm_chat(replacement)
+    original = RubyLLM.method(:chat)
+    RubyLLM.define_singleton_method(:chat, &replacement)
+    yield
+  ensure
+    RubyLLM.define_singleton_method(:chat, original)
   end
 end
