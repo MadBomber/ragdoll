@@ -66,7 +66,6 @@ end
 # Make test task depend on database setup only if not skipping database tests
 task test: :setup_test_db unless ci_environment?
 
-# Load rake tasks
 Dir.glob("lib/tasks/*.rake").each { |r| load r }
 
 task default: :test
