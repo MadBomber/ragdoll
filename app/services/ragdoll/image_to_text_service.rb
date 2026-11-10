@@ -30,17 +30,16 @@ module Ragdoll
       analytical: "Analyze the image thoroughly, describing composition, lighting, subjects, background, context, and any symbolic or artistic elements."
     }.freeze
 
-    # Keywords RubyLLM.chat accepts (RubyLLM::Chat#initialize)
-    CHAT_KEYWORDS = %i[model provider assume_model_exists context].freeze
+    # Model config keys this service reads itself; RubyLLM.chat rejects them as unknown keywords
+    SERVICE_KEYS = %i[temperature detail_level].freeze
 
     def self.convert(file_path, **options)
       new(**options).convert(file_path)
     end
 
-    # Drop service-only settings such as :temperature and :detail_level,
-    # which RubyLLM.chat rejects as unknown keywords.
+    # The model config minus SERVICE_KEYS; any other unknown key still raises in RubyLLM.chat
     def self.chat_options(config)
-      config.slice(*CHAT_KEYWORDS)
+      config.except(*SERVICE_KEYS)
     end
 
     def initialize(primary: DEFAULT_OPTIONS, fallback: DEFAULT_FALLBACK_OPTIONS, **options)

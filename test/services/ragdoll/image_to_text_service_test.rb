@@ -202,11 +202,15 @@ class ImageToTextServiceTest < Minitest::Test
     assert_same chat, service.instance_variable_get(:@fallback)
   end
 
-  def test_chat_options_keeps_only_ruby_llm_chat_keywords
+  def test_chat_options_drops_service_keys
     config = { model: "gemma3", provider: :ollama, assume_model_exists: true, temperature: 0.2, detail_level: :comprehensive }
 
     assert_equal({ model: "gemma3", provider: :ollama, assume_model_exists: true },
                  Ragdoll::ImageToTextService.chat_options(config))
+  end
+
+  def test_chat_options_keeps_unknown_keys_so_ruby_llm_rejects_them
+    assert_equal({ modle: "llava" }, Ragdoll::ImageToTextService.chat_options({ modle: "llava", temperature: 0.1 }))
   end
 
   private
