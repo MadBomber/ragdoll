@@ -43,12 +43,6 @@ class Ragdoll::SearchCleanupTest < Minitest::Test
     )
   end
 
-  private
-
-  def ci_environment?
-    ENV["CI"] == "true" || ENV["RAGDOLL_SKIP_DATABASE_TESTS"] == "true"
-  end
-
   def test_search_result_cleanup_on_embedding_deletion
     # Verify initial state
     assert_equal 1, Ragdoll::Search.count
@@ -182,6 +176,6 @@ class Ragdoll::SearchCleanupTest < Minitest::Test
     # Verify old unused search was cleaned up
     assert_equal 1, unused_count
     assert_equal 1, Ragdoll::Search.count
-    assert_not Ragdoll::Search.exists?(old_search.id)
+    refute Ragdoll::Search.exists?(old_search.id)
   end
 end
