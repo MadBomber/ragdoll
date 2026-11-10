@@ -49,23 +49,9 @@ module Ragdoll
 
       configure_ruby_llm_globally
 
-      # Setup primary model
       @primary_prompt = build_prompt(@detail_level)
-
-      begin
-        @primary = RubyLLM.chat(**self.class.chat_options(primary)).with_temperature(primary[:temperature] || 0.2)
-      rescue StandardError => e
-        puts "❌ ImageToTextService: Primary model creation failed: #{e.message}"
-        @primary = nil
-      end
-
-      # Setup fallback model
-      begin
-        @fallback = RubyLLM.chat(**self.class.chat_options(fallback)).with_temperature(fallback[:temperature] || 0.4)
-      rescue StandardError => e
-        puts "❌ ImageToTextService: Fallback model creation failed: #{e.message}"
-        @fallback = nil
-      end
+      @primary = build_chat(primary, 0.2, "Primary")
+      @fallback = build_chat(fallback, 0.4, "Fallback")
 
       if @primary.nil? && @fallback.nil?
         puts "⚠️  ImageToTextService: WARNING - No models available! Service will return metadata-based descriptions only."
@@ -120,6 +106,14 @@ module Ragdoll
     end
 
     private
+
+    # Returns a chat for the model config, or nil when RubyLLM cannot build it
+    def build_chat(config, default_temperature, label)
+      RubyLLM.chat(**self.class.chat_options(config)).with_temperature(config[:temperature] || default_temperature)
+    rescue StandardError => e
+      puts "❌ ImageToTextService: #{label} model creation failed: #{e.message}"
+      nil
+    end
 
     def configure_ruby_llm_globally
       # Get Ragdoll configuration or use defaults

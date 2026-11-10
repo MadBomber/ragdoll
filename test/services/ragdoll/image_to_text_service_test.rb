@@ -181,14 +181,6 @@ class ImageToTextServiceTest < Minitest::Test
     calls.each { |kw| assert_empty kw.keys - accepted, "RubyLLM.chat got unsupported keywords" }
   end
 
-  def test_initialize_builds_primary_and_fallback_models
-    chat = fake_chat
-    service = with_replaced_ruby_llm_chat(->(**) { chat }) { Ragdoll::ImageToTextService.new }
-
-    assert_same chat, service.instance_variable_get(:@primary)
-    assert_same chat, service.instance_variable_get(:@fallback)
-  end
-
   def test_initialize_keeps_detail_level_for_the_prompt
     chat = fake_chat
     service = with_replaced_ruby_llm_chat(->(**) { chat }) do
@@ -198,14 +190,16 @@ class ImageToTextServiceTest < Minitest::Test
     assert_equal Ragdoll::ImageToTextService::DETAIL_LEVELS[:minimal], service.instance_variable_get(:@primary_prompt)
   end
 
-  def test_initialize_applies_configured_temperatures
+  def test_initialize_builds_both_models_with_configured_temperatures
     temps = []
     chat = fake_chat(temps)
-    with_replaced_ruby_llm_chat(->(**) { chat }) do
+    service = with_replaced_ruby_llm_chat(->(**) { chat }) do
       Ragdoll::ImageToTextService.new(primary: { model: "a", temperature: 0.7 }, fallback: { model: "b" })
     end
 
     assert_equal [0.7, 0.4], temps
+    assert_same chat, service.instance_variable_get(:@primary)
+    assert_same chat, service.instance_variable_get(:@fallback)
   end
 
   def test_chat_options_keeps_only_ruby_llm_chat_keywords
