@@ -51,9 +51,6 @@ GEM
     addressable (2.9.2)
       public_suffix (>= 2.0.2, < 8.0)
     afm (1.0.0)
-    annotate (2.6.5)
-      activerecord (>= 2.3.0)
-      rake (>= 0.8.7)
     ansi (1.5.0)
     anyway_config (2.7.2)
       ruby-next-core (~> 1.0)
@@ -242,7 +239,6 @@ PLATFORMS
   x86_64-linux-musl
 
 DEPENDENCIES
-  annotate
   bundler
   database_cleaner-active_record
   minitest
