@@ -7,9 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### Changed
-- Rails 8.1 support: the test suite passes on the locked Rails 8.1.4.1 gems (see the lockfile entry below) with no deprecation warnings. The gemspec floor stays at `activerecord >= 7.1`
 - Removed the `annotate` development dependency and `lib/tasks/annotate.rake`. annotate has no release that supports Rails 8, so Bundler fell back to annotate 2.6.5 (2014) and every annotate task failed. The models carry no schema annotations
-- Development and CI `Gemfile.lock`: activerecord, activejob, activemodel and activesupport (8.1.1 to 8.1.4.1), addressable, concurrent-ruby, faraday, json, nokogiri and rubyzip move to newer patch or minor releases within their current majors (the gemspec is unchanged, so gem users are unaffected)
+- Development and CI `Gemfile.lock`: activerecord, activejob, activemodel and activesupport (8.1.1 to 8.1.4.1), addressable, concurrent-ruby, faraday, json, nokogiri and rubyzip move to newer patch or minor releases within their current majors (the gemspec is unchanged, so gem users are unaffected). This is the Rails 8.1 upgrade asked for in #17
 - Search filter conditions now use bound parameters: the keyword array filters in `Document.search_by_keywords`, `Document.search_by_keywords_all`, `Embedding.search_similar` and `Embedding.search_similar_with_stats`, and the status filter in `Document.search_content` and `UnifiedDocument.search_content`, build their SQL with bound values (`ARRAY[?]::text[]` and `sanitize_sql_array`) instead of string interpolation, consistent with the adjacent `document_type` handling
 
 ### Fixed
