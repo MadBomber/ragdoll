@@ -128,6 +128,27 @@ class UnifiedDocumentManagementTest < Minitest::Test
     assert_equal "processed", result.status
   end
 
+  # Regression: reprocess_document must forward conversion options to the
+  # converter without raising ArgumentError (issue #23). Runs DB-free by
+  # overriding document lookup and processing with singleton methods.
+  def test_reprocess_document_accepts_conversion_options
+    file_path = create_test_file("options.txt", "Content for option forwarding.")
+    document = OpenStruct.new(location: file_path)
+    lookup_class = defined?(Ragdoll::UnifiedDocument) ? Ragdoll::UnifiedDocument : Ragdoll::Document
+
+    lookup_class.define_singleton_method(:find) { |_id| document }
+    @service.define_singleton_method(:process_document_sync) { |doc| doc }
+
+    begin
+      result = @service.reprocess_document(1, image_detail: "high")
+    ensure
+      lookup_class.singleton_class.send(:remove_method, :find)
+    end
+
+    assert_equal document, result
+    assert_equal "Content for option forwarding.", document.content
+  end
+
   # batch_process_documents tests
   def test_batch_process_returns_hash_with_results
     file1 = create_test_file("batch1.txt", "First batch file content.")
