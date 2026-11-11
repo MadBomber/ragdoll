@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 - `DocumentProcessor.create_document_from_file` no longer raises `NoMethodError` after saving the document (#22)
+- `Ragdoll::Document#generate_metadata!` no longer raises `LoadError` on every call from a stale `require_relative` (#21)
 - `reprocess_document` no longer raises `ArgumentError` when passed conversion options; the options now reach the document converter (#23)
 - `Ragdoll::Core::Database.connected?` returns `false` instead of `nil` when no connection pool exists
 - `EmbeddingService#generate_embeddings_batch` fallback no longer returns embeddings for blank or nil texts

@@ -250,8 +250,6 @@ module Ragdoll
 
     # Generate structured metadata using LLM
     def generate_metadata!
-      require_relative "../../lib/ragdoll/core/services/metadata_generator"
-
       generator = Ragdoll::MetadataGenerator.new
       generated_metadata = generator.generate_for_document(self)
 
