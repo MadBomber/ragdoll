@@ -291,3 +291,37 @@ module SkipWithoutDatabase
 end
 
 Minitest::Test.prepend(SkipWithoutDatabase)
+
+# Replaces RubyLLM.chat for the duration of the block with a fake whose #ask
+# returns +reply+. Keywords RubyLLM::Chat#initialize does not accept raise
+# ArgumentError, as the real call does. Yields the RubyLLM.chat keywords and
+# the prompts passed to #ask.
+module StubbedRubyLLMChat
+  def with_stubbed_ruby_llm_chat(reply)
+    chat_options = {}
+    prompts = []
+    chat = fake_ruby_llm_chat(reply, prompts)
+    accepted = RubyLLM::Chat.instance_method(:initialize).parameters.map(&:last)
+    original_chat = RubyLLM.method(:chat)
+    RubyLLM.define_singleton_method(:chat) do |**options|
+      unknown = options.keys - accepted
+      raise ArgumentError, "unknown keyword: #{unknown.first.inspect}" if unknown.any?
+
+      chat_options.merge!(options)
+      chat
+    end
+    yield chat_options, prompts
+  ensure
+    RubyLLM.define_singleton_method(:chat, original_chat)
+  end
+
+  # A chat whose #ask records the prompt and replies with +reply+
+  def fake_ruby_llm_chat(reply, prompts)
+    Object.new.tap do |chat|
+      chat.define_singleton_method(:ask) do |prompt|
+        prompts << prompt
+        Struct.new(:content).new(reply)
+      end
+    end
+  end
+end

@@ -258,15 +258,7 @@ module Ragdoll
       # Default LLM-based tag extractor
       def default_extractor
         lambda do |content, existing_ontology|
-          prompt = build_extraction_prompt(content, existing_ontology)
-
-          # Use RubyLLM for extraction
-          response = RubyLLM.chat(
-            messages: [{ role: 'user', content: prompt }],
-            model: 'gpt-4o-mini'
-          )
-
-          response.content
+          RubyLLM.chat(model: "gpt-4o-mini").ask(build_extraction_prompt(content, existing_ontology)).content
         end
       end
 
