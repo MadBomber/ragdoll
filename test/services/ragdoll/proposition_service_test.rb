@@ -3,6 +3,8 @@
 require "test_helper"
 
 class PropositionServiceTest < Minitest::Test
+  include StubbedRubyLLMChat
+
   # ============================================
   # Valid Proposition Tests
   # ============================================
@@ -298,6 +300,20 @@ class PropositionServiceTest < Minitest::Test
     end
 
     # Reset for other tests
+    Ragdoll::PropositionService.reset_circuit_breaker!
+  end
+
+  def test_extract_with_default_extractor_asks_ruby_llm
+    reply = "Neil Armstrong walked on the Moon in 1969.\nApollo 11 launched from Kennedy Space Center."
+
+    with_stubbed_ruby_llm_chat(reply) do |chat_options, prompts|
+      result = Ragdoll::PropositionService.extract("Armstrong flew Apollo 11 to the Moon.")
+
+      assert_equal ["Neil Armstrong walked on the Moon in 1969.", "Apollo 11 launched from Kennedy Space Center."], result
+      assert_equal({ model: "gpt-4o-mini" }, chat_options)
+      assert_includes prompts.first, "Armstrong flew Apollo 11 to the Moon."
+    end
+  ensure
     Ragdoll::PropositionService.reset_circuit_breaker!
   end
 end

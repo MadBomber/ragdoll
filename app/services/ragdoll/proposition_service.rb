@@ -236,14 +236,7 @@ module Ragdoll
       # Default LLM-based proposition extractor
       def default_extractor
         lambda do |content|
-          prompt = build_extraction_prompt(content)
-
-          response = RubyLLM.chat(
-            messages: [{ role: 'user', content: prompt }],
-            model: 'gpt-4o-mini'
-          )
-
-          response.content
+          RubyLLM.chat(model: "gpt-4o-mini").ask(build_extraction_prompt(content)).content
         end
       end
 

@@ -3,6 +3,8 @@
 require "test_helper"
 
 class TagServiceTest < Minitest::Test
+  include StubbedRubyLLMChat
+
   def setup
     # Reset circuit breaker before each test to ensure test isolation
     Ragdoll::TagService.reset_circuit_breaker!
@@ -309,5 +311,17 @@ class TagServiceTest < Minitest::Test
     assert_includes result, "database"
     assert_includes result, "postgresql"
     assert_includes result, "performance"
+  end
+
+  def test_extract_with_default_extractor_asks_ruby_llm
+    with_stubbed_ruby_llm_chat("database:postgresql\nperformance") do |chat_options, prompts|
+      result = Ragdoll::TagService.extract("Tuning PostgreSQL queries")
+
+      assert_equal ["database:postgresql", "performance"], result
+      assert_equal({ model: "gpt-4o-mini" }, chat_options)
+      assert_includes prompts.first, "Tuning PostgreSQL queries"
+    end
+  ensure
+    Ragdoll::TagService.reset_circuit_breaker!
   end
 end
