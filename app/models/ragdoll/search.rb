@@ -136,8 +136,7 @@ module Ragdoll
     def self.cleanup_old_unused_searches(days: 30)
       cutoff_date = days.days.ago
       unused_searches = where(created_at: ...cutoff_date)
-                       .left_joins(:search_results)
-                       .where(search_results: { clicked: [nil, false] })
+                       .where.not(id: SearchResult.where(clicked: true).select(:search_id))
       
       unused_count = unused_searches.count
       
