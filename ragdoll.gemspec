@@ -31,8 +31,7 @@ Gem::Specification.new do |spec|
     "MIT-LICENSE",
     "Rakefile",
     "README.md",
-    "CHANGELOG.md",
-    "Thorfile"
+    "CHANGELOG.md"
   ]
   spec.require_paths = ["lib", "app/models"]
 

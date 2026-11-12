@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+- `MIT-LICENSE` file, so the gem now ships the license its gemspec declares; the stale `Thorfile` entry is dropped from `spec.files` (#29)
+
 ### Changed
 - Development and CI `Gemfile.lock`: activerecord, activejob, activemodel and activesupport (8.1.1 to 8.1.4.1), addressable, concurrent-ruby, faraday, json, nokogiri and rubyzip move to newer patch or minor releases within their current majors (the gemspec is unchanged, so gem users are unaffected)
 - Search filter conditions now use bound parameters: the keyword array filters in `Document.search_by_keywords`, `Document.search_by_keywords_all`, `Embedding.search_similar` and `Embedding.search_similar_with_stats`, and the status filter in `Document.search_content` and `UnifiedDocument.search_content`, build their SQL with bound values (`ARRAY[?]::text[]` and `sanitize_sql_array`) instead of string interpolation, consistent with the adjacent `document_type` handling
