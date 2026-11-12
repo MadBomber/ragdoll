@@ -178,4 +178,58 @@ class Ragdoll::SearchCleanupTest < Minitest::Test
     assert_equal 1, Ragdoll::Search.count
     refute Ragdoll::Search.exists?(old_search.id)
   end
+
+  def test_cleanup_old_unused_searches_keeps_searches_with_any_click
+    clicked_search, unused_search = create_clicked_and_unused_old_searches
+
+    Ragdoll::Search.cleanup_old_unused_searches(days: 30)
+
+    assert_equal 2, clicked_search.search_results.count
+    refute Ragdoll::Search.exists?(unused_search.id)
+    assert Ragdoll::Search.exists?(@search.id)
+  end
+
+  def test_cleanup_old_unused_searches_counts_searches_not_results
+    create_clicked_and_unused_old_searches
+
+    assert_equal 1, Ragdoll::Search.cleanup_old_unused_searches(days: 30)
+  end
+
+  private
+
+  def create_clicked_and_unused_old_searches
+    embedding2 = Ragdoll::Embedding.create!(
+      embeddable: @content,
+      content: "Another chunk of content",
+      embedding_vector: Array.new(1536) { rand },
+      chunk_index: 1
+    )
+
+    [true, false].map do |clicked|
+      search = create_old_search("old query #{clicked}")
+      create_result(search, @embedding, rank: 1, clicked: clicked)
+      create_result(search, embedding2, rank: 2, clicked: false)
+      search
+    end
+  end
+
+  def create_old_search(query)
+    Ragdoll::Search.create!(
+      query: query,
+      query_embedding: @query_embedding,
+      search_type: "semantic",
+      results_count: 2,
+      created_at: 35.days.ago
+    )
+  end
+
+  def create_result(search, embedding, rank:, clicked:)
+    Ragdoll::SearchResult.create!(
+      search: search,
+      embedding: embedding,
+      similarity_score: 0.5,
+      result_rank: rank,
+      clicked: clicked
+    )
+  end
 end
