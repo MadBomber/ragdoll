@@ -108,7 +108,7 @@ module Ragdoll
       # Look for sentence endings near newlines
       sentence_patterns = [
         /[.!?]\s*\n/,
-        /[.!?]\s+[A-Z]/,
+        /[.!?]\s+(?=[A-Z])/,
         /[.!?]$/
       ]
 
