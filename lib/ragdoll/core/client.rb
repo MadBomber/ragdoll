@@ -303,8 +303,12 @@ module Ragdoll
           next unless File.file?(file_path)
 
           begin
-            doc_id = add_document(path: file_path)
-            results << { file: file_path, document_id: doc_id, status: "success" }
+            result = add_document(path: file_path)
+            results << if result[:success]
+                         { file: file_path, document_id: result[:document_id], status: "success" }
+                       else
+                         { file: file_path, error: result[:error], status: "error" }
+                       end
           rescue StandardError => e
             results << { file: file_path, error: e.message, status: "error" }
           end
