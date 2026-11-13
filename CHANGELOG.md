@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `Ragdoll::Document#generate_metadata!` no longer raises `LoadError` on every call from a stale `require_relative` (#21)
 - `reprocess_document` no longer raises `ArgumentError` when passed conversion options; the options now reach the document converter (#23)
 - `Ragdoll::Core::Database.connected?` returns `false` instead of `nil` when no connection pool exists
+- `Ragdoll::Core::Database.migration_paths` returns the gem's `db/migrate` directory instead of a nonexistent path one level above the gem root; `migrate!` now reads its migrations from `migration_paths`
 - `Search.cleanup_old_unused_searches` no longer deletes an old search that has any clicked result, and returns the number of searches deleted rather than the number of result rows (#28)
 - `EmbeddingService#generate_embeddings_batch` fallback no longer returns embeddings for blank or nil texts
 - `Ragdoll::Core::Database.disconnect!` no longer raises `NoMethodError` on ActiveRecord 7.2 and later
