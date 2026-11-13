@@ -21,6 +21,7 @@ PATH
       searchkick
       shrine
       simple_flow
+      tsort
 
 GEM
   remote: https://rubygems.org/
@@ -210,6 +211,7 @@ GEM
     simplecov-html (0.13.2)
     simplecov_json_formatter (0.1.4)
     timeout (0.6.0)
+    tsort (0.2.0)
     ttfunk (1.8.0)
       bigdecimal (~> 3.1)
     tzinfo (2.0.6)

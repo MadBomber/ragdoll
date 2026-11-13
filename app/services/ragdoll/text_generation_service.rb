@@ -193,29 +193,7 @@ module Ragdoll
       return unless has_api_key
 
       begin
-        RubyLLM.configure do |ruby_llm_config|
-          case provider
-          when :openai
-            ruby_llm_config.openai_api_key = config[:api_key]
-            ruby_llm_config.openai_organization = config[:organization] if config[:organization]
-            ruby_llm_config.openai_project = config[:project] if config[:project]
-          when :anthropic
-            ruby_llm_config.anthropic_api_key = config[:api_key]
-          when :google
-            ruby_llm_config.google_api_key = config[:api_key]
-            ruby_llm_config.google_project_id = config[:project_id] if config[:project_id]
-          when :azure
-            ruby_llm_config.azure_api_key = config[:api_key]
-            ruby_llm_config.azure_endpoint = config[:endpoint] if config[:endpoint]
-            ruby_llm_config.azure_api_version = config[:api_version] if config[:api_version]
-          when :ollama
-            ruby_llm_config.ollama_endpoint = config[:endpoint] if config[:endpoint]
-          when :huggingface
-            ruby_llm_config.huggingface_api_key = config[:api_key]
-          when :openrouter
-            ruby_llm_config.openrouter_api_key = config[:api_key]
-          end
-        end
+        @config_service.config.configure_ruby_llm(provider)
 
         # RubyLLM uses module-level methods, not individual provider classes
         @client = :ruby_llm_configured

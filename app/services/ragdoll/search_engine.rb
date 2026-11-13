@@ -111,21 +111,13 @@ module Ragdoll
           # Record search if tracking enabled
           if track_search && query_string && !query_string.empty?
             begin
-              # Format results for search recording
-              search_results = text_results.map do |result|
-                {
-                  embedding_id: result[:id],
-                  similarity: result[:similarity]
-                }
-              end
-
-              search_type = "text_fallback"
-
+              # Text-fallback results are documents, not embeddings, so no result rows are stored
               Ragdoll::Search.record_search(
                 query: query_string,
                 query_embedding: nil,
-                results: search_results,
-                search_type: search_type,
+                results: [],
+                results_count: text_results.length,
+                search_type: "text_fallback",
                 filters: filters,
                 options: { limit: limit, threshold: threshold },
                 execution_time_ms: execution_time,
@@ -170,6 +162,8 @@ module Ragdoll
         statistics = nil
       end
 
+      used_text_fallback = false
+
       # If no semantic results found and we have a query string, try text search as additional fallback
       if results.empty? && query_string && !query_string.empty?
         puts "Warning: Semantic search returned no results for '#{query_string}', falling back to text search" if ENV["RAGDOLL_DEBUG"]
@@ -191,6 +185,7 @@ module Ragdoll
           puts "Text search found #{text_results.count} results" if ENV["RAGDOLL_DEBUG"]
           results = text_results
           statistics = { search_type: "text_fallback", total_matches: text_results.count }
+          used_text_fallback = true
         end
       end
       
@@ -199,20 +194,31 @@ module Ragdoll
       # Record search if tracking enabled and we have a query string
       if track_search && query_string && !query_string.empty?
         begin
-          # Format results for search recording
-          search_results = results.map do |result|
-            {
-              embedding_id: result[:embedding_id] || result[:id],
-              similarity: result[:similarity] || result[:similarity_score] || 0.0
-            }
-          end
-          
-          search_type = keywords.any? ? "semantic_with_keywords" : "semantic"
-          
+          # Text-fallback results are documents, not embeddings, so no result rows are stored
+          search_results = if used_text_fallback
+                             []
+                           else
+                             results.map do |result|
+                               {
+                                 embedding_id: result[:embedding_id] || result[:id],
+                                 similarity: result[:similarity] || result[:similarity_score] || 0.0
+                               }
+                             end
+                           end
+
+          search_type = if used_text_fallback
+                          "text_fallback"
+                        elsif keywords.any?
+                          "semantic_with_keywords"
+                        else
+                          "semantic"
+                        end
+
           Ragdoll::Search.record_search(
             query: query_string,
             query_embedding: query_embedding,
             results: search_results,
+            results_count: results.length,
             search_type: search_type,
             filters: filters,
             options: { limit: limit, threshold: threshold, keywords: keywords },

@@ -7,6 +7,8 @@ module Ragdoll
   class Search < ActiveRecord::Base
     self.table_name = "ragdoll_searches"
 
+    SEARCH_TYPES = %w[semantic semantic_with_keywords hybrid hybrid_rrf fulltext text_fallback].freeze
+
     # Use pgvector for vector similarity search on query embeddings
     has_neighbors :query_embedding
 
@@ -15,7 +17,7 @@ module Ragdoll
 
     validates :query, presence: true
     validates :query_embedding, presence: false, allow_nil: true
-    validates :search_type, presence: true, inclusion: { in: %w[semantic hybrid fulltext] }
+    validates :search_type, presence: true, inclusion: { in: SEARCH_TYPES }
     validates :results_count, presence: true, numericality: { greater_than_or_equal_to: 0 }
 
     scope :by_type, ->(type) { where(search_type: type) }
@@ -65,23 +67,26 @@ module Ragdoll
       search_results.where(clicked: true).order(:clicked_at)
     end
 
-    # Calculate click-through rate
+    # Calculate click-through rate as a percentage, like SearchResult.analytics
     def click_through_rate
       return 0.0 if results_count == 0
       
       clicked_count = search_results.where(clicked: true).count
-      clicked_count.to_f / results_count
+      (clicked_count.to_f / results_count * 100).round(2)
     end
 
     # Record a search with its results
+    #
+    # results_count defaults to results.length; pass it when the results are not
+    # embeddings (e.g. text-fallback documents) and so are not stored as rows.
     def self.record_search(query:, query_embedding:, results:, search_type: "semantic", 
                           filters: {}, options: {}, execution_time_ms: nil, 
-                          session_id: nil, user_id: nil)
+                          session_id: nil, user_id: nil, results_count: nil)
       search = create!(
         query: query,
         query_embedding: query_embedding,
         search_type: search_type,
-        results_count: results.length,
+        results_count: results_count || results.length,
         search_filters: filters,
         search_options: options,
         execution_time_ms: execution_time_ms,
