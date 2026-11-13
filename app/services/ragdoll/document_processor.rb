@@ -89,26 +89,21 @@ module Ragdoll
         location: uploaded_file.original_filename || "uploaded_file",
         title: options[:title] || File.basename(uploaded_file.original_filename || "uploaded_file",
                                                 File.extname(uploaded_file.original_filename || "")),
-        content: "", # Will be extracted after file attachment
+        content: "", # Will be extracted from the uploaded file below
         document_type: determine_document_type_from_content_type(uploaded_file.mime_type),
         status: "processing",
         metadata: options[:metadata] || {},
         file_modified_at: Time.current
       )
 
-      # Attach the file
-      document.file = uploaded_file
-
-      # Extract content from attached file
-      if document.file.present?
-        parsed = parse_attachment(document.file)
-        document.update!(
-          content: parsed[:content],
-          title: parsed[:title] || document.title,
-          metadata: document.metadata.merge(parsed[:metadata] || {}),
-          status: "processed"
-        )
-      end
+      # Ragdoll::Document has no file attachment; extract content from the upload directly
+      parsed = parse_attachment(uploaded_file)
+      document.update!(
+        content: parsed[:content],
+        title: parsed[:title] || document.title,
+        metadata: document.metadata.merge(parsed[:metadata] || {}),
+        status: "processed"
+      )
 
       document
     end
