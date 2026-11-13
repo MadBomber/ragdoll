@@ -509,8 +509,8 @@ module Ragdoll
           case provider
           when :openai
             config.openai_api_key = openai_api_key if openai_api_key
-            config.openai_organization = openai_organization if openai_organization && config.respond_to?(:openai_organization=)
-            config.openai_project = openai_project if openai_project && config.respond_to?(:openai_project=)
+            config.openai_organization_id = openai_organization if openai_organization
+            config.openai_project_id = openai_project if openai_project
           when :anthropic
             config.anthropic_api_key = anthropic_api_key if anthropic_api_key
           when :gemini

@@ -5,7 +5,23 @@ require "test_helper"
 class TextGenerationServiceTest < Minitest::Test
   def setup
     super
+    # The service now configures RubyLLM, so keep these tests offline: any LLM
+    # call raises and the service falls back to basic text processing.
+    @original_ruby_llm_chat = RubyLLM.method(:chat)
+    RubyLLM.define_singleton_method(:chat) { |**| raise StandardError, "LLM disabled in tests" }
     @service = Ragdoll::TextGenerationService.new
+  end
+
+  def teardown
+    RubyLLM.define_singleton_method(:chat, @original_ruby_llm_chat)
+    super
+  end
+
+  # Regression for #34: the hand-rolled RubyLLM.configure block called setters
+  # ruby_llm does not have (ollama_endpoint=), so @client was always nil.
+  def test_configures_ruby_llm_for_default_ollama_provider
+    assert_equal :ruby_llm_configured, @service.instance_variable_get(:@client)
+    assert_match %r{/v1\z}, RubyLLM.config.ollama_api_base
   end
 
   # Initialization tests
