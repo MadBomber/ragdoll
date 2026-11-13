@@ -27,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `DocumentConverter` now reaches `ImageToTextService` and `AudioToTextService`: image files failed with `ArgumentError` (options passed positionally), and audio files failed with `NameError` because `require "ragdoll"` never loaded `AudioToTextService`; both errors were rescued and a filename placeholder stored instead
 - `ImageToTextService` builds its vision model again: the default primary options carried `detail_level:` into `RubyLLM.chat`, which rejected it as an unknown keyword, so images never reached the vision model; the service-only keys `temperature` and `detail_level` are no longer passed to `RubyLLM.chat`, and `detail_level` still shapes the prompt
 - `PropositionService.extract` and `TagService.extract` work again without a custom extractor: the default extractors passed `messages:` to `RubyLLM.chat`, which ruby_llm 1.9 rejects as an unknown keyword, so every call raised; they now ask the chat for the prompt (#27)
+- Search tracking now records `hybrid_rrf`, `text_fallback` and `semantic_with_keywords` searches; `query_embedding` is nullable and text-fallback searches no longer store document ids as embedding results (#41)
 
 ## [0.1.12] - 2025-09-23
 
