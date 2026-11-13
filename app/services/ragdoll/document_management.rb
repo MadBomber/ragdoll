@@ -43,7 +43,7 @@ module Ragdoll
 
         # Skip duplicate detection if force is true
         unless force
-          existing_document = find_duplicate_document(absolute_location, content, metadata, file_modified_at)
+          existing_document = find_duplicate_document(absolute_location, content, metadata)
           return existing_document.id.to_s if existing_document
         end
 
@@ -162,17 +162,10 @@ module Ragdoll
 
       private
 
-      def find_duplicate_document(location, content, metadata, file_modified_at)
+      def find_duplicate_document(location, content, metadata)
         # Primary check: exact location match (simple duplicate detection)
         existing = Ragdoll::Document.find_by(location: location)
         return existing if existing
-
-        # Secondary check: exact location and file modification time (for files)
-        existing_with_time = Ragdoll::Document.find_by(
-          location: location,
-          file_modified_at: file_modified_at
-        )
-        return existing_with_time if existing_with_time
 
         # Enhanced duplicate detection for file-based documents
         if File.exist?(location) && !location.start_with?("http")

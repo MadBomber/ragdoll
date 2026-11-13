@@ -76,9 +76,13 @@ class DatabaseTest < Minitest::Test
     assert_kind_of Array, paths
   end
 
-  def test_migration_paths_includes_db_migrate_directory
-    paths = Ragdoll::Core::Database.migration_paths
-    assert paths.first.include?("db/migrate")
+  def test_migration_paths_points_at_the_gem_migrations
+    gem_migrate = File.expand_path("../../../../db/migrate", __dir__)
+    path = Ragdoll::Core::Database.migration_paths.first
+
+    assert_equal gem_migrate, path
+    assert Dir.exist?(path), "expected #{path} to exist"
+    refute_empty Dir[File.join(path, "*.rb")]
   end
 
   # connected? tests

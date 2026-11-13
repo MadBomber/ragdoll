@@ -229,6 +229,34 @@ class DocumentProcessorTest < Minitest::Test
     end
   end
 
+  # Regression for #22: create_document_from_upload must not assign to
+  # document.file= either; it extracts content from the upload itself.
+  def test_create_document_from_upload_extracts_content_without_file_attachment
+    file_path = create_test_file("upload.txt", "Uploaded content for #22.")
+    uploaded_file = Object.new
+    uploaded_file.define_singleton_method(:original_filename) { "upload.txt" }
+    uploaded_file.define_singleton_method(:mime_type) { "text/plain" }
+    uploaded_file.define_singleton_method(:open) { |&block| File.open(file_path, &block) }
+
+    updates = nil
+    persisted_document = Object.new
+    persisted_document.define_singleton_method(:title) { "upload" }
+    persisted_document.define_singleton_method(:metadata) { {} }
+    persisted_document.define_singleton_method(:update!) { |**attrs| updates = attrs }
+
+    original_create = Ragdoll::Document.method(:create!)
+    Ragdoll::Document.define_singleton_method(:create!) { |*, **| persisted_document }
+    begin
+      result = Ragdoll::DocumentProcessor.create_document_from_upload(uploaded_file)
+      assert_same persisted_document, result
+    ensure
+      Ragdoll::Document.define_singleton_method(:create!, original_create)
+    end
+
+    assert_equal "Uploaded content for #22.", updates[:content]
+    assert_equal "processed", updates[:status]
+  end
+
   def test_create_document_from_file_returns_document
     skip_if_database_unavailable
     file_path = create_test_file("document.txt", "Document content for creation.")
