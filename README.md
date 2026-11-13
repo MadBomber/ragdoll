@@ -126,8 +126,8 @@ results = Ragdoll.search(query: 'machine learning discussion')
 # Returns audio documents whose transcripts mention machine learning
 
 # Check content quality
-document = Ragdoll.get_document(id: result[:document_id])
-puts document[:content_quality_score]  # 0.0 to 1.0 rating
+document = Ragdoll::UnifiedDocument.find(result[:document_id])
+puts document.content_quality_score  # 0.0 to 1.0 rating
 ```
 
 ## Unified Architecture Guide
@@ -260,7 +260,8 @@ migrated_doc = Ragdoll::MigrationService.migrate_document(old_document_id)
 # Add documents with automatic text conversion
 result = Ragdoll.add_document(path: 'any_file.ext')
 puts result[:document_id]
-puts result[:content_preview]  # First 100 characters of converted text
+puts result[:title]
+puts result[:content_length]  # Characters of converted text
 
 # Batch processing with unified pipeline
 files = ['doc.pdf', 'image.jpg', 'audio.mp3']
@@ -277,13 +278,13 @@ Ragdoll::UnifiedDocumentManagement.new.reprocess_document(
 
 ```ruby
 # Unified search across all content types
-results = Ragdoll.search(query: 'machine learning algorithms')
+response = Ragdoll.search(query: 'machine learning algorithms')
 
-# Search with original media type context
-results.each do |doc|
-  puts "#{doc.title} (originally #{doc.original_media_type})"
-  puts "Quality: #{doc.content_quality_score.round(2)}"
-  puts "Content: #{doc.content[0..100]}..."
+# The response is a Hash; the matching chunks are in response[:results]
+response[:results].each do |result|
+  puts "#{result[:document_title]} (#{result[:document_location]})"
+  puts "Similarity: #{result[:similarity].round(2)}"
+  puts "Content: #{result[:content][0..100]}..."
 end
 
 # Advanced search with content quality
@@ -504,7 +505,7 @@ puts stats[:content_quality_distribution]
 
 # Reprocess low-quality content
 low_quality = Ragdoll::UnifiedDocument.joins(:unified_contents)
-  .where('unified_contents.content_quality_score < 0.5')
+  .where(ragdoll_unified_contents: { content_quality_score: ...0.5 })
 
 low_quality.each do |doc|
   Ragdoll::UnifiedDocumentManagement.new.reprocess_document(
