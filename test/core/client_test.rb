@@ -481,6 +481,24 @@ class ClientTest < Minitest::Test
     assert_includes enhanced, "You are an AI assistant"
   end
 
+  def test_add_tags_passes_document_id_and_tags_positionally
+    captured = nil
+    original = Ragdoll::TagService.method(:add_tags_to_document)
+    # Same signature as TagService.add_tags_to_document, so a mismatched call raises ArgumentError
+    Ragdoll::TagService.define_singleton_method(:add_tags_to_document) do |document_id, tags, source: "auto", confidence: 1.0|
+      captured = { document_id: document_id, tags: tags, source: source, confidence: confidence }
+      []
+    end
+
+    begin
+      Ragdoll::Core::Client.allocate.add_tags(document_id: 1, tags: ["ruby"])
+    ensure
+      Ragdoll::TagService.define_singleton_method(:add_tags_to_document, original)
+    end
+
+    assert_equal({ document_id: 1, tags: ["ruby"], source: "manual", confidence: 1.0 }, captured)
+  end
+
   private
 
   def with_temp_text_file(content)
