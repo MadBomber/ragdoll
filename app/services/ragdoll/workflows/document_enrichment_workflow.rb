@@ -120,7 +120,7 @@ module Ragdoll
 
       def build_pipeline
         embedding_service = @embedding_service
-        config_service = @config_service
+        text_generation_service = method(:text_generation_service)
         workflow_logger = method(:log)
 
         @pipeline = SimpleFlow::Pipeline.new(concurrency: @concurrency) do
@@ -171,7 +171,7 @@ module Ragdoll
 
               # Only generate summary if content is substantial
               if content.to_s.length > 300
-                summary = Ragdoll::TextGenerationService.summarize(content)
+                summary = text_generation_service.call.generate_summary(content)
                 if summary.present?
                   document.update!(summary: summary)
                   data[:summary] = summary
@@ -193,7 +193,7 @@ module Ragdoll
               document = data[:document]
               content = data[:content]
 
-              keywords = Ragdoll::TextGenerationService.extract_keywords(content)
+              keywords = text_generation_service.call.extract_keywords(content)
               if keywords.is_a?(Array) && keywords.any?
                 document.update!(keywords: keywords)
                 data[:keywords] = keywords
@@ -255,6 +255,10 @@ module Ragdoll
             result.continue(data)
           }, depends_on: [:generate_embeddings, :generate_summary, :extract_keywords, :extract_tags, :extract_propositions]
         end
+      end
+
+      def text_generation_service
+        @text_generation_service ||= Ragdoll::TextGenerationService.new(config_service: @config_service)
       end
 
       def finalize_document(data)
