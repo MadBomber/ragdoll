@@ -303,10 +303,31 @@ class ClientTest < Minitest::Test
 
       results.each do |result|
         if result[:status] == "success"
-          assert result[:document_id]
+          assert_kind_of String, result[:document_id]
           assert result[:file]
         end
       end
+    end
+  end
+
+  def test_add_directory_reports_failed_files_as_errors
+    client = Ragdoll::Core::Client.allocate
+    client.define_singleton_method(:add_document) do |path:, **|
+      if File.basename(path) == "bad.txt"
+        { success: false, error: "parse failed", message: "Failed to add document: parse failed" }
+      else
+        { success: true, document_id: "42" }
+      end
+    end
+
+    Dir.mktmpdir do |dir|
+      File.write(File.join(dir, "good.txt"), "ok")
+      File.write(File.join(dir, "bad.txt"), "nope")
+
+      results = client.add_directory(path: dir).to_h { |r| [File.basename(r[:file]), r] }
+
+      assert_equal({ file: File.join(dir, "good.txt"), document_id: "42", status: "success" }, results["good.txt"])
+      assert_equal({ file: File.join(dir, "bad.txt"), error: "parse failed", status: "error" }, results["bad.txt"])
     end
   end
 
