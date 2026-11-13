@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Search filter conditions now use bound parameters: the keyword array filters in `Document.search_by_keywords`, `Document.search_by_keywords_all`, `Embedding.search_similar` and `Embedding.search_similar_with_stats`, and the status filter in `Document.search_content` and `UnifiedDocument.search_content`, build their SQL with bound values (`ARRAY[?]::text[]` and `sanitize_sql_array`) instead of string interpolation, consistent with the adjacent `document_type` handling
 
 ### Removed
+- An unreachable second duplicate lookup in `DocumentManagement.add_document` (location plus `file_modified_at`), which ran only after the location-only lookup had found nothing and so could never match; duplicate detection behaves as before
 - The `annotate` development dependency and `lib/tasks/annotate.rake` with its `annotate_models`, `annotate:models`, `remove_annotation`, `set_annotation_options` and `environment` rake tasks. annotate has no release that supports Rails 8, so Bundler fell back to annotate 2.6.5 (2014) and none of those tasks could annotate a model. The models carry no schema annotations
 
 ### Fixed

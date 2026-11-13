@@ -48,6 +48,40 @@ class DocumentManagementTest < Minitest::Test
     assert_equal first_id, second_id
   end
 
+  def test_add_document_returns_document_found_at_location
+    existing = Struct.new(:id).new(42)
+    lookups = []
+    finder = lambda do |conditions|
+      lookups << conditions
+      existing
+    end
+
+    doc_id = with_singleton_stub(Ragdoll::Document, :find_by, finder) do
+      Ragdoll::DocumentManagement.add_document("https://example.com/a.pdf", "Body")
+    end
+
+    assert_equal "42", doc_id
+    assert_equal [{ location: "https://example.com/a.pdf" }], lookups
+  end
+
+  def test_add_document_checks_content_when_no_document_at_location
+    content_match = Struct.new(:id).new(7)
+    checked = []
+    content_check = lambda do |content, metadata|
+      checked << [content, metadata]
+      content_match
+    end
+
+    doc_id = with_singleton_stub(Ragdoll::Document, :find_by, ->(_conditions) {}) do
+      with_singleton_stub(Ragdoll::DocumentManagement, :find_content_based_duplicate, content_check) do
+        Ragdoll::DocumentManagement.add_document("https://example.com/b.pdf", "Body", { title: "B" })
+      end
+    end
+
+    assert_equal "7", doc_id
+    assert_equal [["Body", { title: "B" }]], checked
+  end
+
   def test_add_document_with_force_creates_new_even_for_duplicate
     file_path = create_test_file("forced.txt", "Content")
 
@@ -349,5 +383,24 @@ class DocumentManagementTest < Minitest::Test
     path = File.join(@test_dir, name)
     File.write(path, content)
     path
+  end
+
+  # Replaces +target+.+name+ with +impl+ for the duration of the block,
+  # restoring the original method (and its visibility) afterwards
+  def with_singleton_stub(target, name, impl)
+    singleton = target.singleton_class
+    private_own = singleton.private_method_defined?(name, false)
+    own = private_own || singleton.method_defined?(name, false)
+    original = target.method(name)
+    target.define_singleton_method(name, impl)
+    begin
+      yield
+    ensure
+      singleton.send(:remove_method, name)
+      if own
+        target.define_singleton_method(name, original)
+        singleton.send(:private, name) if private_own
+      end
+    end
   end
 end
