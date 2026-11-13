@@ -147,6 +147,36 @@ class TimeframeExtractorTest < Minitest::Test
     assert result.timeframe.end <= Time.current + 1.second
   end
 
+  def test_extract_since_month_runs_from_past_month_to_now
+    result = Ragdoll::TimeframeExtractor.extract("notes since march about ruby")
+
+    assert_instance_of Range, result.timeframe
+    assert_equal "since march", result.original_expression
+    assert_equal "notes about ruby", result.query
+    assert_equal 3, result.timeframe.begin.month
+    assert result.timeframe.begin <= Time.now
+    assert_in_delta Time.now, result.timeframe.end, 5
+  end
+
+  def test_extract_since_iso_date_runs_from_that_day_to_now
+    result = Ragdoll::TimeframeExtractor.extract("notes since 2026-03-01")
+
+    assert_instance_of Range, result.timeframe
+    assert_equal Time.local(2026, 3, 1), result.timeframe.begin
+    assert_in_delta Time.now, result.timeframe.end, 5
+  end
+
+  def test_parse_since_resolves_in_the_past_relative_to_now
+    now = Time.local(2026, 11, 13, 12, 0, 0)
+    range = Ragdoll::TimeframeExtractor.send(:parse_since, "march", now: now)
+
+    assert_equal Time.local(2026, 3, 1)..now, range
+  end
+
+  def test_parse_since_returns_nil_for_unparseable_text
+    assert_nil Ragdoll::TimeframeExtractor.send(:parse_since, "the dawn of ruby")
+  end
+
   # ============================================
   # Constants Tests
   # ============================================

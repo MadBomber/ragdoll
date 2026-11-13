@@ -166,6 +166,11 @@ module Ragdoll
           return parse_weekends_ago(count)
         end
 
+        # Handle "since X" - from the start of X (in the past) until now
+        if (match = expression.match(/\Asince\s+(.+)\z/i))
+          return parse_since(match[1], week_start: week_start)
+        end
+
         # Normalize "few" to numeric value for Chronic
         normalized = normalize_few_keywords(expression)
 
@@ -187,6 +192,24 @@ module Ragdoll
 
         # Fall back to point in time
         Chronic.parse(chronic_expr, week_start: week_start)
+      end
+
+      # Parse the X in "since X" to a range from the start of X until now
+      #
+      # X is resolved in the past ("since march" means the most recent March,
+      # not next year's).
+      #
+      # @param text [String] The expression following "since"
+      # @param week_start [Symbol] Day to start week
+      # @param now [Time] The end of the range
+      # @return [Range, nil] Time range, or nil when X cannot be parsed
+      #
+      def parse_since(text, week_start: :sunday, now: Time.now)
+        parsed = Chronic.parse(text, guess: false, context: :past, now: now, week_start: week_start)
+        return nil unless parsed
+
+        start = parsed.respond_to?(:begin) ? parsed.begin : parsed
+        start..now
       end
 
       # Parse a number from string (numeric or written word)
