@@ -450,7 +450,7 @@ gem 'ragdoll'
 
 ## Requirements
 
-- **Ruby**: 3.2+
+- **Ruby**: 3.3+
 - **PostgreSQL**: 12+ with pgvector extension
 - **ImageMagick**: For image processing and metadata extraction
 - **FFmpeg**: Optional, for advanced audio/video processing
