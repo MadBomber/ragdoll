@@ -217,11 +217,7 @@ module Ragdoll
               # Use TagService to extract and store tags
               tags = Ragdoll::TagService.extract(content)
               if tags.is_a?(Array) && tags.any?
-                Ragdoll::TagService.add_tags_to_document(
-                  document_id: document.id,
-                  tags: tags,
-                  source: 'auto'
-                )
+                Ragdoll::TagService.add_tags_to_document(document.id, tags, source: 'auto')
                 data[:tags] = tags
               end
             rescue StandardError => e

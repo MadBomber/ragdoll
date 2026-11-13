@@ -303,10 +303,31 @@ class ClientTest < Minitest::Test
 
       results.each do |result|
         if result[:status] == "success"
-          assert result[:document_id]
+          assert_kind_of String, result[:document_id]
           assert result[:file]
         end
       end
+    end
+  end
+
+  def test_add_directory_reports_failed_files_as_errors
+    client = Ragdoll::Core::Client.allocate
+    client.define_singleton_method(:add_document) do |path:, **|
+      if File.basename(path) == "bad.txt"
+        { success: false, error: "parse failed", message: "Failed to add document: parse failed" }
+      else
+        { success: true, document_id: "42" }
+      end
+    end
+
+    Dir.mktmpdir do |dir|
+      File.write(File.join(dir, "good.txt"), "ok")
+      File.write(File.join(dir, "bad.txt"), "nope")
+
+      results = client.add_directory(path: dir).to_h { |r| [File.basename(r[:file]), r] }
+
+      assert_equal({ file: File.join(dir, "good.txt"), document_id: "42", status: "success" }, results["good.txt"])
+      assert_equal({ file: File.join(dir, "bad.txt"), error: "parse failed", status: "error" }, results["bad.txt"])
     end
   end
 
@@ -479,6 +500,24 @@ class ClientTest < Minitest::Test
     assert_includes enhanced, context
     assert_includes enhanced, prompt
     assert_includes enhanced, "You are an AI assistant"
+  end
+
+  def test_add_tags_passes_document_id_and_tags_positionally
+    captured = nil
+    original = Ragdoll::TagService.method(:add_tags_to_document)
+    # Same signature as TagService.add_tags_to_document, so a mismatched call raises ArgumentError
+    Ragdoll::TagService.define_singleton_method(:add_tags_to_document) do |document_id, tags, source: "auto", confidence: 1.0|
+      captured = { document_id: document_id, tags: tags, source: source, confidence: confidence }
+      []
+    end
+
+    begin
+      Ragdoll::Core::Client.allocate.add_tags(document_id: 1, tags: ["ruby"])
+    ensure
+      Ragdoll::TagService.define_singleton_method(:add_tags_to_document, original)
+    end
+
+    assert_equal({ document_id: 1, tags: ["ruby"], source: "manual", confidence: 1.0 }, captured)
   end
 
   private

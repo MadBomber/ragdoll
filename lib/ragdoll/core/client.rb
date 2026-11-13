@@ -303,8 +303,12 @@ module Ragdoll
           next unless File.file?(file_path)
 
           begin
-            doc_id = add_document(path: file_path)
-            results << { file: file_path, document_id: doc_id, status: "success" }
+            result = add_document(path: file_path)
+            results << if result[:success]
+                         { file: file_path, document_id: result[:document_id], status: "success" }
+                       else
+                         { file: file_path, error: result[:error], status: "error" }
+                       end
           rescue StandardError => e
             results << { file: file_path, error: e.message, status: "error" }
           end
@@ -375,11 +379,7 @@ module Ragdoll
       # @return [Array<Ragdoll::DocumentTag>] Created document tags
       #
       def add_tags(document_id:, tags:, source: 'manual')
-        Ragdoll::TagService.add_tags_to_document(
-          document_id: document_id,
-          tags: tags,
-          source: source
-        )
+        Ragdoll::TagService.add_tags_to_document(document_id, tags, source: source)
       end
 
       # Get tags for a document or embedding
