@@ -24,39 +24,33 @@ class Ragdoll::SearchTest < Minitest::Test
     )
   end
 
-  private
-
-  def ci_environment?
-    ENV["CI"] == "true" || ENV["RAGDOLL_SKIP_DATABASE_TESTS"] == "true"
-  end
-
   def test_valid_search
     assert @search.valid?
   end
 
   def test_query_presence_validation
     @search.query = nil
-    assert_not @search.valid?
+    refute @search.valid?
     assert_includes @search.errors[:query], "can't be blank"
 
     @search.query = ""
-    assert_not @search.valid?
+    refute @search.valid?
     assert_includes @search.errors[:query], "can't be blank"
   end
 
-  def test_query_embedding_presence_validation
+  # Hybrid and text-only searches have no query embedding, so the model allows nil
+  def test_query_embedding_is_optional
     @search.query_embedding = nil
-    assert_not @search.valid?
-    assert_includes @search.errors[:query_embedding], "can't be blank"
+    assert @search.valid?
   end
 
   def test_search_type_validation
     @search.search_type = nil
-    assert_not @search.valid?
+    refute @search.valid?
     assert_includes @search.errors[:search_type], "can't be blank"
 
     @search.search_type = "invalid_type"
-    assert_not @search.valid?
+    refute @search.valid?
     assert_includes @search.errors[:search_type], "is not included in the list"
 
     %w[semantic hybrid fulltext].each do |valid_type|
@@ -67,11 +61,11 @@ class Ragdoll::SearchTest < Minitest::Test
 
   def test_results_count_validation
     @search.results_count = nil
-    assert_not @search.valid?
+    refute @search.valid?
     assert_includes @search.errors[:results_count], "can't be blank"
 
     @search.results_count = -1
-    assert_not @search.valid?
+    refute @search.valid?
     assert_includes @search.errors[:results_count], "must be greater than or equal to 0"
 
     @search.results_count = 0
@@ -95,7 +89,7 @@ class Ragdoll::SearchTest < Minitest::Test
 
     assert_includes Ragdoll::Search.by_type("semantic"), @search
     assert_includes Ragdoll::Search.by_type("semantic"), semantic_search
-    assert_not_includes Ragdoll::Search.by_type("semantic"), hybrid_search
+    refute_includes Ragdoll::Search.by_type("semantic"), hybrid_search
   end
 
   def test_session_and_user_scopes
@@ -109,10 +103,10 @@ class Ragdoll::SearchTest < Minitest::Test
     )
 
     assert_includes Ragdoll::Search.by_session("session_123"), @search
-    assert_not_includes Ragdoll::Search.by_session("session_123"), other_search
+    refute_includes Ragdoll::Search.by_session("session_123"), other_search
 
     assert_includes Ragdoll::Search.by_user("user_456"), @search
-    assert_not_includes Ragdoll::Search.by_user("user_456"), other_search
+    refute_includes Ragdoll::Search.by_user("user_456"), other_search
   end
 
   def test_with_results_and_popular_scopes
@@ -125,7 +119,7 @@ class Ragdoll::SearchTest < Minitest::Test
       results_count: 10
     )
 
-    assert_not_includes Ragdoll::Search.with_results, @search
+    refute_includes Ragdoll::Search.with_results, @search
     assert_includes Ragdoll::Search.with_results, popular_search
     
     assert_includes Ragdoll::Search.popular, popular_search
@@ -141,7 +135,7 @@ class Ragdoll::SearchTest < Minitest::Test
       execution_time_ms: 1500
     )
 
-    assert_not_includes Ragdoll::Search.slow_searches(1000), @search
+    refute_includes Ragdoll::Search.slow_searches(1000), @search
     assert_includes Ragdoll::Search.slow_searches(1000), slow_search
   end
 
@@ -223,7 +217,7 @@ class Ragdoll::SearchTest < Minitest::Test
 
     assert_equal 0.95, @search.max_similarity_score
     assert_equal 0.85, @search.min_similarity_score
-    assert_equal 0.90, @search.avg_similarity_score
+    assert_in_delta 0.90, @search.avg_similarity_score, 1e-9
   end
 
   def test_click_through_rate_calculation
@@ -296,7 +290,7 @@ class Ragdoll::SearchTest < Minitest::Test
     # Check similarity stats were calculated
     assert_equal 0.95, search.max_similarity_score
     assert_equal 0.85, search.min_similarity_score
-    assert_equal 0.90, search.avg_similarity_score
+    assert_in_delta 0.90, search.avg_similarity_score, 1e-9
   end
 
   def test_search_analytics
@@ -377,7 +371,7 @@ class Ragdoll::SearchTest < Minitest::Test
     assert_equal 1, cleaned_count
     assert_equal 1, Ragdoll::Search.count
     assert Ragdoll::Search.exists?(recent_search.id)
-    assert_not Ragdoll::Search.exists?(old_search.id)
+    refute Ragdoll::Search.exists?(old_search.id)
   end
 
   private

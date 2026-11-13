@@ -215,6 +215,20 @@ class ConfigurationTest < Minitest::Test
     assert_respond_to @config, :configure_ruby_llm
   end
 
+  def test_configure_ruby_llm_passes_openai_organization_and_project
+    require "ruby_llm"
+    original = [RubyLLM.config.openai_organization_id, RubyLLM.config.openai_project_id]
+    @config.providers.openai.organization = "org-test"
+    @config.providers.openai.project = "proj-test"
+
+    @config.configure_ruby_llm(:openai)
+
+    assert_equal "org-test", RubyLLM.config.openai_organization_id
+    assert_equal "proj-test", RubyLLM.config.openai_project_id
+  ensure
+    RubyLLM.config.openai_organization_id, RubyLLM.config.openai_project_id = original if original
+  end
+
   def test_normalize_ollama_model
     # Test model name normalization
     assert_equal "llama2:latest", @config.normalize_ollama_model("llama2")
