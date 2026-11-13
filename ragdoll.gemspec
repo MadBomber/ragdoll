@@ -55,6 +55,8 @@ Gem::Specification.new do |spec|
   spec.add_dependency "searchkick"
   spec.add_dependency "shrine"
   spec.add_dependency "simple_flow"
+  # simple_flow requires tsort without declaring it; tsort leaves the default gems in Ruby 4.1
+  spec.add_dependency "tsort"
 
   # Development dependencies
   spec.add_development_dependency "bundler"
