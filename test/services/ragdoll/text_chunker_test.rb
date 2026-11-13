@@ -110,6 +110,26 @@ class TextChunkerTest < Minitest::Test
     assert chunks.all?(&:present?)
   end
 
+  def test_sentence_break_does_not_consume_next_sentence_capital
+    text = "Sentence one. Sentence two. Sentence three. " * 50
+    chunks = Ragdoll::TextChunker.chunk(text, chunk_size: 200, chunk_overlap: 30)
+
+    assert chunks.length > 1
+    chunks[0...-1].each do |chunk|
+      refute_match(/[.!?]\s+[A-Z]\z/, chunk)
+      assert chunk.end_with?(".")
+    end
+  end
+
+  def test_chunk_after_sentence_break_starts_at_word_boundary
+    text = ("Alpha beta gamma delta. " * 3) + ("Zeta eta theta iota. " * 3)
+    chunks = Ragdoll::TextChunker.chunk(text, chunk_size: 80, chunk_overlap: 0)
+
+    assert_equal 2, chunks.length
+    assert chunks.first.end_with?("delta.")
+    assert chunks.last.start_with?("Zeta ")
+  end
+
   def test_chunk_breaks_at_word_boundary
     text = "word " * 500
     chunker = Ragdoll::TextChunker.new(text, chunk_size: 100, chunk_overlap: 20)
