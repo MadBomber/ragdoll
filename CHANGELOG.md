@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Changed
 - Development and CI `Gemfile.lock`: activerecord, activejob, activemodel and activesupport (8.1.1 to 8.1.4.1), addressable, concurrent-ruby, faraday, json, nokogiri and rubyzip move to newer patch or minor releases within their current majors (the gemspec is unchanged, so gem users are unaffected)
 - Search filter conditions now use bound parameters: the keyword array filters in `Document.search_by_keywords`, `Document.search_by_keywords_all`, `Embedding.search_similar` and `Embedding.search_similar_with_stats`, and the status filter in `Document.search_content` and `UnifiedDocument.search_content`, build their SQL with bound values (`ARRAY[?]::text[]` and `sanitize_sql_array`) instead of string interpolation, consistent with the adjacent `document_type` handling
+- Minimum Ruby version is now 3.3 (`required_ruby_version >= 3.3.0`); Ruby 3.2 reached end of life on 2026-03-31 and is dropped from the CI matrix (#38)
 - `Search#click_through_rate` returns a percentage rounded to two places (50.0 rather than 0.5), consistent with `SearchResult.analytics` and `Search.search_analytics` (#12)
 
 ### Removed
