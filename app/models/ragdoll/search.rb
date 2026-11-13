@@ -65,12 +65,12 @@ module Ragdoll
       search_results.where(clicked: true).order(:clicked_at)
     end
 
-    # Calculate click-through rate
+    # Calculate click-through rate as a percentage, like SearchResult.analytics
     def click_through_rate
       return 0.0 if results_count == 0
       
       clicked_count = search_results.where(clicked: true).count
-      clicked_count.to_f / results_count
+      (clicked_count.to_f / results_count * 100).round(2)
     end
 
     # Record a search with its results

@@ -12,8 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Changed
 - Development and CI `Gemfile.lock`: activerecord, activejob, activemodel and activesupport (8.1.1 to 8.1.4.1), addressable, concurrent-ruby, faraday, json, nokogiri and rubyzip move to newer patch or minor releases within their current majors (the gemspec is unchanged, so gem users are unaffected)
 - Search filter conditions now use bound parameters: the keyword array filters in `Document.search_by_keywords`, `Document.search_by_keywords_all`, `Embedding.search_similar` and `Embedding.search_similar_with_stats`, and the status filter in `Document.search_content` and `UnifiedDocument.search_content`, build their SQL with bound values (`ARRAY[?]::text[]` and `sanitize_sql_array`) instead of string interpolation, consistent with the adjacent `document_type` handling
+- `Search#click_through_rate` returns a percentage rounded to two places (50.0 rather than 0.5), consistent with `SearchResult.analytics` and `Search.search_analytics` (#12)
 
 ### Removed
+- An unreachable second duplicate lookup in `DocumentManagement.add_document` (location plus `file_modified_at`), which ran only after the location-only lookup had found nothing and so could never match; duplicate detection behaves as before
 - The `annotate` development dependency and `lib/tasks/annotate.rake` with its `annotate_models`, `annotate:models`, `remove_annotation`, `set_annotation_options` and `environment` rake tasks. annotate has no release that supports Rails 8, so Bundler fell back to annotate 2.6.5 (2014) and none of those tasks could annotate a model. The models carry no schema annotations
 
 ### Fixed
@@ -21,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `Ragdoll::Document#generate_metadata!` no longer raises `LoadError` on every call from a stale `require_relative` (#21)
 - `reprocess_document` no longer raises `ArgumentError` when passed conversion options; the options now reach the document converter (#23)
 - `Ragdoll::Core::Database.connected?` returns `false` instead of `nil` when no connection pool exists
+- `Ragdoll::Core::Database.migration_paths` returns the gem's `db/migrate` directory instead of a nonexistent path one level above the gem root; `migrate!` now reads its migrations from `migration_paths`
 - `Search.cleanup_old_unused_searches` no longer deletes an old search that has any clicked result, and returns the number of searches deleted rather than the number of result rows (#28)
 - `EmbeddingService#generate_embeddings_batch` fallback no longer returns embeddings for blank or nil texts
 - `Ragdoll::Core::Database.disconnect!` no longer raises `NoMethodError` on ActiveRecord 7.2 and later
@@ -28,6 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `ImageToTextService` builds its vision model again: the default primary options carried `detail_level:` into `RubyLLM.chat`, which rejected it as an unknown keyword, so images never reached the vision model; the service-only keys `temperature` and `detail_level` are no longer passed to `RubyLLM.chat`, and `detail_level` still shapes the prompt
 - `PropositionService.extract` and `TagService.extract` work again without a custom extractor: the default extractors passed `messages:` to `RubyLLM.chat`, which ruby_llm 1.9 rejects as an unknown keyword, so every call raised; they now ask the chat for the prompt (#27)
 - `Client#add_directory` (and `Ragdoll.add_directory`) reports files that `add_document` failed to add as `status: "error"` with the error message, and stores the document id rather than the whole result hash in `document_id:` (#33)
+- `Client#add_tags` (and `Ragdoll::Core.add_tags`) no longer raises `ArgumentError`; it passes the document id and tags to `TagService.add_tags_to_document` positionally (#39). `DocumentEnrichmentWorkflow`'s tag step made the same call and raised on every document, so extracted tags were never stored; it is fixed the same way
 
 ## [0.1.12] - 2025-09-23
 

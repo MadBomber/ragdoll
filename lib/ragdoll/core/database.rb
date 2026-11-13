@@ -24,13 +24,6 @@ module Ragdoll
       end
 
       def self.migrate!
-        # Get the path to the gem root directory
-        # Current file is lib/ragdoll/core/database.rb, so go up 3 levels to get to gem root
-        gem_root = File.expand_path(File.join(File.dirname(__FILE__), "..", "..", ".."))
-        migration_paths = [
-          File.join(gem_root, "db", "migrate")
-        ]
-
         ActiveRecord::Migration.verbose = true
 
         # Ensure schema_migrations table exists first
@@ -146,7 +139,8 @@ module Ragdoll
       end
 
       def self.migration_paths
-        [File.join(File.dirname(__FILE__), "..", "..", "..", "..", "db", "migrate")]
+        # lib/ragdoll/core/database.rb is three levels below the gem root
+        [File.expand_path("../../../db/migrate", __dir__)]
       end
     end
   end
