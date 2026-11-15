@@ -110,16 +110,10 @@ class ClientTest < Minitest::Test
 
     result = @client.search_similar_content(query: "test query")
 
-    # Enhanced search returns a hash with results, statistics, and execution_time_ms
-    if result.is_a?(Hash) && result.key?(:results)
-      assert_instance_of Hash, result
-      assert_instance_of Array, result[:results]
-      assert result.key?(:statistics)
-      assert result.key?(:execution_time_ms)
-    else
-      # Fallback for old format
-      assert_instance_of Array, result
-    end
+    assert_instance_of Hash, result
+    assert_instance_of Array, result[:results]
+    assert result.key?(:statistics)
+    assert result.key?(:execution_time_ms)
   end
 
   def test_hybrid_search
