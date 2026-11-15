@@ -205,7 +205,7 @@ module Ragdoll
               results: search_results,
               search_type: "hybrid_rrf",
               filters: filters.merge(tags: tags, timeframe: timeframe.to_s),
-              options: options.slice(:limit, :candidate_limit).compact,
+              options: { limit: limit, candidate_limit: options[:candidate_limit] }.compact,
               execution_time_ms: execution_time,
               session_id: session_id,
               user_id: user_id
