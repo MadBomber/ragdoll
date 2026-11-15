@@ -59,7 +59,7 @@ class SearchTrackingIntegrationTest < Minitest::Test
     assert_equal 0, Ragdoll::Search.count
     
     # Perform a hybrid search through the client
-    result = @client.hybrid_search(query: "test content", limit: 3, session_id: "hybrid_session", user_id: "hybrid_user")
+    @client.hybrid_search(query: "test content", limit: 3, session_id: "hybrid_session", user_id: "hybrid_user")
     
     # Verify search was recorded
     assert_equal 1, Ragdoll::Search.count
