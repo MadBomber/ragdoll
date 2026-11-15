@@ -86,7 +86,8 @@ module Ragdoll
           return {} unless File.exist?(path)
 
           content = File.read(path)
-          parsed = YAML.safe_load(content, permitted_classes: [Symbol], symbolize_names: true, aliases: true) || {}
+          # String keys, like Anyway Config's own loaders, so sections deep-merge
+          parsed = YAML.safe_load(content, permitted_classes: [Symbol], aliases: true) || {}
 
           # Support environment-specific configs
           env = Anyway::Settings.current_environment ||
@@ -96,9 +97,7 @@ module Ragdoll
                 "development"
 
           # Check for environment key first, fall back to root level
-          if parsed.key?(env.to_sym)
-            parsed[env.to_sym] || {}
-          elsif parsed.key?(env.to_s)
+          if parsed.key?(env.to_s)
             parsed[env.to_s] || {}
           else
             # No environment key, treat as flat config

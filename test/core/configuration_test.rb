@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../test_helper"
+require "tmpdir"
 
 class ConfigurationTest < Minitest::Test
   def setup
@@ -118,6 +119,33 @@ class ConfigurationTest < Minitest::Test
         ENV["RAGDOLL_PROVIDERS__OLLAMA__URL"] = original_env
       else
         ENV.delete("RAGDOLL_PROVIDERS__OLLAMA__URL")
+      end
+    end
+  end
+
+  def test_env_var_override_keeps_environment_bundled_defaults
+    with_env("RAGDOLL_ENV" => "production", "RAGDOLL_DATABASE__HOST" => "db.example.com") do
+      database = Ragdoll::Core::Config.new.database
+
+      assert_equal "db.example.com", database.host
+      assert_equal "require", database.sslmode
+      assert_equal 25, database.pool_size
+    end
+  end
+
+  def test_xdg_file_and_env_var_overrides_merge_with_bundled_defaults
+    Dir.mktmpdir do |dir|
+      FileUtils.mkdir_p(File.join(dir, "ragdoll"))
+      File.write(File.join(dir, "ragdoll", "ragdoll.yml"), "database:\n  name: ragdoll_prod\n")
+
+      with_env("RAGDOLL_ENV" => "production", "XDG_CONFIG_HOME" => dir,
+               "RAGDOLL_DATABASE__HOST" => "db.example.com") do
+        database = Ragdoll::Core::Config.new.database
+
+        assert_equal "db.example.com", database.host
+        assert_equal "ragdoll_prod", database.name
+        assert_equal "require", database.sslmode
+        assert_equal 25, database.pool_size
       end
     end
   end
@@ -261,5 +289,15 @@ class ConfigurationTest < Minitest::Test
   def test_configuration_alias
     # Test that Configuration is an alias for Config
     assert_equal Ragdoll::Core::Config, Ragdoll::Core::Configuration
+  end
+
+  private
+
+  def with_env(vars)
+    original = vars.keys.to_h { |key| [key, ENV.fetch(key, nil)] }
+    vars.each { |key, value| ENV[key] = value }
+    yield
+  ensure
+    original.each { |key, value| value.nil? ? ENV.delete(key) : ENV[key] = value }
   end
 end

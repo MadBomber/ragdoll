@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `Ragdoll::Core::Database.connected?` returns `false` instead of `nil` when no connection pool exists
 - `Ragdoll::Core::Database.migration_paths` returns the gem's `db/migrate` directory instead of a nonexistent path one level above the gem root; `migrate!` now reads its migrations from `migration_paths`
 - `Search.cleanup_old_unused_searches` no longer deletes an old search that has any clicked result, and returns the number of searches deleted rather than the number of result rows (#28)
+- Environment-specific bundled defaults (e.g. `production` database settings) are no longer lost when an environment variable or XDG config file overrides another key in the same section; the bundled and XDG loaders now return string keys so sections deep-merge
 - `EmbeddingService#generate_embeddings_batch` fallback no longer returns embeddings for blank or nil texts
 - `Ragdoll::Core::Database.disconnect!` no longer raises `NoMethodError` on ActiveRecord 7.2 and later
 - `DocumentConverter` now reaches `ImageToTextService` and `AudioToTextService`: image files failed with `ArgumentError` (options passed positionally), and audio files failed with `NameError` because `require "ragdoll"` never loaded `AudioToTextService`; both errors were rescued and a filename placeholder stored instead
