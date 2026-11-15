@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Removed
 - An unreachable second duplicate lookup in `DocumentManagement.add_document` (location plus `file_modified_at`), which ran only after the location-only lookup had found nothing and so could never match; duplicate detection behaves as before
 - The `annotate` development dependency and `lib/tasks/annotate.rake` with its `annotate_models`, `annotate:models`, `remove_annotation`, `set_annotation_options` and `environment` rake tasks. annotate has no release that supports Rails 8, so Bundler fell back to annotate 2.6.5 (2014) and none of those tasks could annotate a model. The models carry no schema annotations
+- The unused `searchkick`, `opensearch-ruby` and `ruby-progressbar` runtime dependencies; nothing in ragdoll requires them, so installing the gem no longer pulls them in. ragdoll-cli declares `ruby-progressbar` itself
 
 ### Fixed
 - `DocumentProcessor.create_document_from_file` no longer raises `NoMethodError` after saving the document (#22)
