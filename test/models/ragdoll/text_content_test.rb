@@ -263,15 +263,11 @@ class TextContentTest < Minitest::Test
   def test_stats_returns_hash
     result = Ragdoll::TextContent.stats
     assert_kind_of Hash, result
-  rescue ActiveRecord::StatementInvalid => e
-    skip "Content table not configured: #{e.message.split("\n").first}"
   end
 
   def test_stats_includes_total_text_contents
     result = Ragdoll::TextContent.stats
     assert result.key?(:total_text_contents)
-  rescue ActiveRecord::StatementInvalid => e
-    skip "Content table not configured: #{e.message.split("\n").first}"
   end
 
   private
