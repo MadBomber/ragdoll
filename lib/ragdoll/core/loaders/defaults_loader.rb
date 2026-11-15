@@ -57,15 +57,17 @@ module Ragdoll
 
           # Load and parse the raw YAML content
           #
-          # @return [Hash] parsed YAML with symbolized keys
-          def load_raw_yaml
+          # @param symbolize_names [Boolean] symbolize keys (the loader itself
+          #   uses string keys so Anyway Config's deep merge combines sections)
+          # @return [Hash] parsed YAML
+          def load_raw_yaml(symbolize_names: true)
             return {} unless defaults_exist?
 
             content = File.read(defaults_path)
             YAML.safe_load(
               content,
               permitted_classes: [Symbol],
-              symbolize_names: true,
+              symbolize_names: symbolize_names,
               aliases: true
             ) || {}
           rescue Psych::SyntaxError => e
@@ -119,15 +121,14 @@ module Ragdoll
         #
         # @return [Hash] merged configuration for current environment
         def load_and_merge_for_environment
-          raw = self.class.load_raw_yaml
+          raw = self.class.load_raw_yaml(symbolize_names: false)
           return {} if raw.empty?
 
           # Start with the defaults section
-          defaults = raw[:defaults] || {}
+          defaults = raw["defaults"] || {}
 
           # Deep merge with environment-specific overrides
-          env = current_environment
-          env_overrides = raw[env.to_sym] || {}
+          env_overrides = raw[current_environment.to_s] || {}
 
           deep_merge(defaults, env_overrides)
         end
