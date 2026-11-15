@@ -9,16 +9,13 @@ PATH
       debug_me
       docx
       neighbor
-      opensearch-ruby
       ostruct
       pdf-reader
       pg
       pgvector
       rmagick
-      ruby-progressbar
       ruby_llm
       rubyzip
-      searchkick
       shrine
       simple_flow
       tsort
@@ -105,7 +102,6 @@ GEM
       builder
       minitest (>= 5.0)
       ruby-progressbar
-    multi_json (1.19.1)
     multipart-post (2.4.1)
     neighbor (0.6.0)
       activerecord (>= 7.1)
@@ -128,9 +124,6 @@ GEM
     nokogiri (1.19.7-x86_64-linux-musl)
       racc (~> 1.4)
     observer (0.1.2)
-    opensearch-ruby (3.4.0)
-      faraday (>= 1.0, < 3)
-      multi_json (>= 1.0)
     ostruct (0.6.3)
     parallel (1.27.0)
     parser (3.3.10.0)
@@ -197,8 +190,6 @@ GEM
     ruby_llm-schema (0.2.5)
     rubyzip (3.7.0)
     rugged (1.9.0)
-    searchkick (6.0.2)
-      activemodel (>= 7.2)
     securerandom (0.4.1)
     shrine (3.6.0)
       content_disposition (~> 1.0)
