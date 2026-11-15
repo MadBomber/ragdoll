@@ -52,8 +52,8 @@ module Ragdoll
       # "from X to Y" - date ranges
       /\bfrom\s+(.+?)\s+to\s+(.+?)(?=\s+(?:about|regarding|for|on|with)|$)/i,
 
-      # "since X" - from date to now
-      /\bsince\s+(.+?)(?=\s+(?:about|regarding|for|on|with)|$)/i,
+      # "since X" - from date to now (trailing punctuation stays in the query)
+      /\bsince\s+(.+?)(?=[,.?!;:]*(?:\s+(?:about|regarding|for|on|with)|$))/i,
 
       # "before/after X"
       /\b(before|after)\s+(.+?)(?=\s+(?:about|regarding|for|on|with)|$)/i,
@@ -76,8 +76,9 @@ module Ragdoll
       # "last/this/next weekend"
       /\b(?:last|this|next)\s+weekend\b/i,
 
-      # "last/this/next X" (week, month, year, monday, etc.)
-      /\b(?:last|this|next)\s+(?:week|month|year|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i,
+      # "[in the|during] last/this/next X" (week, month, year, monday, etc.)
+      /\b(?:in\s+the\s+|during\s+)?(?:last|this|next)\s+
+        (?:week|month|year|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/ix,
 
       # "recently" or "recent" as standalone or with context
       /\b(?:recently|recent)\b/i,
@@ -179,8 +180,8 @@ module Ragdoll
           return parse_last_x(match[1].to_i, match[2])
         end
 
-        # Strip "in the" prefix for Chronic
-        chronic_expr = normalized.gsub(/\bin\s+the\s+/i, '')
+        # Strip "in the" / "during" prefix for Chronic
+        chronic_expr = normalized.gsub(/\b(?:in\s+the|during)\s+/i, '')
 
         # Try to get a span/range first
         result = Chronic.parse(chronic_expr, guess: false, week_start: week_start)
@@ -197,7 +198,8 @@ module Ragdoll
       # Parse the X in "since X" to a range from the start of X until now
       #
       # X is resolved in the past ("since march" means the most recent March,
-      # not next year's).
+      # not next year's). A bare four-digit year means the start of that year;
+      # Chronic would otherwise read "2020" as 8:20 pm.
       #
       # @param text [String] The expression following "since"
       # @param week_start [Symbol] Day to start week
@@ -205,6 +207,8 @@ module Ragdoll
       # @return [Range, nil] Time range, or nil when X cannot be parsed
       #
       def parse_since(text, week_start: :sunday, now: Time.now)
+        return Time.local(text.to_i)..now if text.match?(/\A\d{4}\z/)
+
         parsed = Chronic.parse(text, guess: false, context: :past, now: now, week_start: week_start)
         return nil unless parsed
 
@@ -303,7 +307,7 @@ module Ragdoll
         query
           .sub(/#{escaped}/i, '')
           .gsub(/\s{2,}/, ' ')
-          .gsub(/\s+([,.])/, '\1')
+          .gsub(/\s+([,.?!;:])/, '\1')
           .strip
       end
     end

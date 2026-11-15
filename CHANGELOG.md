@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - The `annotate` development dependency and `lib/tasks/annotate.rake` with its `annotate_models`, `annotate:models`, `remove_annotation`, `set_annotation_options` and `environment` rake tasks. annotate has no release that supports Rails 8, so Bundler fell back to annotate 2.6.5 (2014) and none of those tasks could annotate a model. The models carry no schema annotations
 
 ### Fixed
+- `TimeframeExtractor.extract` understands "since march?" and "since 2020" (a bare year now means the start of that year, not 8:20 pm), and removes the whole "in the last week" phrase and the space before a trailing `?` or `!` from the cleaned query (#65)
 - `DocumentProcessor.create_document_from_file` no longer raises `NoMethodError` after saving the document (#22)
 - `Ragdoll::Document#generate_metadata!` no longer raises `LoadError` on every call from a stale `require_relative` (#21)
 - `reprocess_document` no longer raises `ArgumentError` when passed conversion options; the options now reach the document converter (#23)

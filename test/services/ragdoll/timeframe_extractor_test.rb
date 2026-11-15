@@ -177,6 +177,38 @@ class TimeframeExtractorTest < Minitest::Test
     assert_nil Ragdoll::TimeframeExtractor.send(:parse_since, "the dawn of ruby")
   end
 
+  def test_extract_since_month_ending_a_question
+    result = Ragdoll::TimeframeExtractor.extract("what changed since march?")
+
+    assert_equal "since march", result.original_expression
+    assert_equal "what changed?", result.query
+    assert_equal 3, result.timeframe.begin.month
+    assert_in_delta Time.now, result.timeframe.end, 5
+  end
+
+  def test_extract_since_bare_year_runs_from_start_of_that_year
+    result = Ragdoll::TimeframeExtractor.extract("notes since 2020")
+
+    assert_equal "notes", result.query
+    assert_equal Time.local(2020), result.timeframe.begin
+    assert_in_delta Time.now, result.timeframe.end, 5
+  end
+
+  def test_extract_in_the_last_week_removes_whole_phrase
+    result = Ragdoll::TimeframeExtractor.extract("notes in the last week")
+
+    assert_equal "in the last week", result.original_expression
+    assert_equal "notes", result.query
+    assert_instance_of Range, result.timeframe
+  end
+
+  def test_extract_yesterday_leaves_no_space_before_question_mark
+    result = Ragdoll::TimeframeExtractor.extract("what did I write yesterday?")
+
+    assert_equal "what did I write?", result.query
+    refute_nil result.timeframe
+  end
+
   # ============================================
   # Constants Tests
   # ============================================
