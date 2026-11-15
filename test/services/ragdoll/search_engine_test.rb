@@ -89,7 +89,9 @@ class SearchEngineTest < Minitest::Test
     engine = Ragdoll::SearchEngine.new(nil_service)
 
     result = engine.search_similar_content("test query")
-    assert_equal [], result
+    assert_kind_of Hash, result
+    assert_equal [], result[:results]
+    assert_nil result[:statistics]
   end
 
   def test_search_similar_content_accepts_embedding_array_directly
