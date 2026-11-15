@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - The unused `searchkick`, `opensearch-ruby` and `ruby-progressbar` runtime dependencies; nothing in ragdoll requires them, so installing the gem no longer pulls them in. ragdoll-cli declares `ruby-progressbar` itself
 
 ### Fixed
+- `TimeframeExtractor.extract` understands "since march?" and "since 2020" (a bare year now means the start of that year, not 8:20 pm), and removes the whole "in the last week" phrase and the space before a trailing `?` or `!` from the cleaned query (#65)
 - `DocumentProcessor.create_document_from_file` no longer raises `NoMethodError` after saving the document (#22)
 - `Ragdoll::Document#generate_metadata!` no longer raises `LoadError` on every call from a stale `require_relative` (#21)
 - `reprocess_document` no longer raises `ArgumentError` when passed conversion options; the options now reach the document converter (#23)
