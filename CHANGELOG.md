@@ -25,6 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `DocumentProcessor.create_document_from_file` no longer raises `NoMethodError` after saving the document (#22)
 - `Ragdoll::Document#generate_metadata!` no longer raises `LoadError` on every call from a stale `require_relative` (#21)
 - `reprocess_document` no longer raises `ArgumentError` when passed conversion options; the options now reach the document converter (#23)
+- `SearchEngine` text-fallback results now carry `document_id`, `document_title` and a string `content`, the keys semantic results use, so callers such as the README's search example no longer get `nil` for the title (#64)
 - `Ragdoll::Core::Database.connected?` returns `false` instead of `nil` when no connection pool exists
 - `Ragdoll::Core::Database.migration_paths` returns the gem's `db/migrate` directory instead of a nonexistent path one level above the gem root; `migrate!` now reads its migrations from `migration_paths`
 - `Search.cleanup_old_unused_searches` no longer deletes an old search that has any clicked result, and returns the number of searches deleted rather than the number of result rows (#28)
