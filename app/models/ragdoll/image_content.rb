@@ -135,7 +135,7 @@ module Ragdoll
       content_parts.join(" ")
     end
 
-    def generate_embeddings!
+    def generate_embeddings!(**chunking)
       return unless should_generate_embeddings?
 
       embedding_content = content_for_embedding
