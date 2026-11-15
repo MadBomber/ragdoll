@@ -113,13 +113,18 @@ module Ragdoll
       content.strip
     end
 
+    # Reads the file as UTF-8, transcoding from ISO-8859-1 when the bytes
+    # are not valid UTF-8 (e.g. Latin-1 or Windows-1252 files)
+    def read_text_file
+      content = File.binread(@file_path).force_encoding(Encoding::UTF_8)
+      return content if content.valid_encoding?
+
+      content.force_encoding(Encoding::ISO_8859_1).encode(Encoding::UTF_8)
+    end
+
     def extract_from_text
       begin
-        content = File.read(@file_path, encoding: "UTF-8")
-      rescue Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError
-        # Try with different encoding
-        content = File.read(@file_path, encoding: "ISO-8859-1")
-                      .encode("UTF-8", invalid: :replace, undef: :replace, replace: "?")
+        content = read_text_file
       rescue Errno::ENOENT, Errno::EACCES => e
         raise ExtractionError, "Failed to read file #{@file_path}: #{e.message}"
       end
@@ -134,7 +139,7 @@ module Ragdoll
     end
 
     def extract_from_html
-      content = File.read(@file_path, encoding: "UTF-8")
+      content = read_text_file
 
       # Basic HTML tag stripping
       clean_content = content
@@ -183,7 +188,7 @@ module Ragdoll
 
       begin
         # Simple CSV parsing without using the csv gem
-        lines = File.readlines(@file_path, encoding: "UTF-8").map(&:strip).reject(&:empty?)
+        lines = read_text_file.lines.map(&:strip).reject(&:empty?)
         return "Empty CSV file" if lines.empty?
 
         # Assume first line is headers
@@ -207,37 +212,6 @@ module Ragdoll
           end
 
           content << row_pairs.join(", ") if row_pairs.any?
-        end
-      rescue Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError
-        # Try with different encoding
-        begin
-          lines = File.readlines(@file_path, encoding: "ISO-8859-1").map { |line|
-            line.encode("UTF-8", invalid: :replace, undef: :replace, replace: "?").strip
-          }.reject(&:empty?)
-
-          return "Empty CSV file" if lines.empty?
-
-          header_line = lines.first
-          headers = parse_csv_line(header_line)
-
-          return "CSV file with only headers" if lines.length == 1
-
-          lines[1..-1].each do |line|
-            next if line.strip.empty?
-
-            values = parse_csv_line(line)
-            next if values.all?(&:empty?)
-
-            row_pairs = []
-            headers.each_with_index do |header, col_index|
-              value = values[col_index] || ""
-              row_pairs << "#{header}: #{value}" unless value.empty?
-            end
-
-            content << row_pairs.join(", ") if row_pairs.any?
-          end
-        rescue StandardError => e
-          raise ExtractionError, "Failed to parse CSV with alternative encoding: #{e.message}"
         end
       rescue StandardError => e
         raise ExtractionError, "Failed to read CSV file: #{e.message}"
@@ -294,23 +268,13 @@ module Ragdoll
 
     def extract_from_json
       begin
-        content = File.read(@file_path, encoding: "UTF-8")
+        content = read_text_file
         parsed_json = JSON.parse(content)
 
         # Convert JSON to readable text format
         convert_json_to_text(parsed_json)
       rescue JSON::ParserError => e
         raise ExtractionError, "Invalid JSON: #{e.message}"
-      rescue Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError
-        # Try with different encoding
-        begin
-          content = File.read(@file_path, encoding: "ISO-8859-1")
-                        .encode("UTF-8", invalid: :replace, undef: :replace, replace: "?")
-          parsed_json = JSON.parse(content)
-          convert_json_to_text(parsed_json)
-        rescue StandardError => e
-          raise ExtractionError, "Failed to parse JSON with alternative encoding: #{e.message}"
-        end
       rescue StandardError => e
         raise ExtractionError, "Failed to read JSON file: #{e.message}"
       end
@@ -318,7 +282,7 @@ module Ragdoll
 
     def extract_from_xml
       begin
-        content = File.read(@file_path, encoding: "UTF-8")
+        content = read_text_file
 
         # Basic XML text extraction - remove tags and normalize whitespace
         clean_content = content
@@ -333,26 +297,6 @@ module Ragdoll
         else
           "XML Content:\n#{clean_content}"
         end
-      rescue Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError
-        begin
-          content = File.read(@file_path, encoding: "ISO-8859-1")
-                        .encode("UTF-8", invalid: :replace, undef: :replace, replace: "?")
-
-          clean_content = content
-                          .gsub(%r{<!--.*?-->}m, "")
-                          .gsub(/<\?.*?\?>/m, "")
-                          .gsub(/<[^>]+>/, " ")
-                          .gsub(/\s+/, " ")
-                          .strip
-
-          if clean_content.empty?
-            "XML document with no readable text content"
-          else
-            "XML Content:\n#{clean_content}"
-          end
-        rescue StandardError => e
-          raise ExtractionError, "Failed to parse XML: #{e.message}"
-        end
       rescue StandardError => e
         raise ExtractionError, "Failed to read XML file: #{e.message}"
       end
@@ -360,7 +304,7 @@ module Ragdoll
 
     def extract_from_yaml
       begin
-        content = File.read(@file_path, encoding: "UTF-8")
+        content = read_text_file
         parsed_yaml = YAML.safe_load(content, permitted_classes: [Time, Date])
 
         # Convert YAML to readable text format
@@ -369,15 +313,6 @@ module Ragdoll
         raise ExtractionError, "Invalid YAML: #{e.message}"
       rescue Psych::DisallowedClass => e
         raise ExtractionError, "YAML contains disallowed class: #{e.message}"
-      rescue Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError
-        begin
-          content = File.read(@file_path, encoding: "ISO-8859-1")
-                        .encode("UTF-8", invalid: :replace, undef: :replace, replace: "?")
-          parsed_yaml = YAML.safe_load(content, permitted_classes: [Time, Date])
-          convert_yaml_to_text(parsed_yaml)
-        rescue StandardError => e
-          raise ExtractionError, "Failed to parse YAML with alternative encoding: #{e.message}"
-        end
       rescue StandardError => e
         raise ExtractionError, "Failed to read YAML file: #{e.message}"
       end
