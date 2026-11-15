@@ -191,6 +191,29 @@ class SearchEngineTest < Minitest::Test
     assert result[:execution_time_ms] >= 0
   end
 
+  # Text-fallback result shape: same keys callers read from semantic results
+  def test_search_documents_text_fallback_results_carry_document_keys
+    document = create_fallback_document
+    result = nil_embedding_engine.search_documents("Zebra").first
+
+    assert_fallback_result_keys(document, result)
+  end
+
+  def test_search_similar_content_text_fallback_results_carry_document_keys
+    document = create_fallback_document
+    result = nil_embedding_engine.search_similar_content("Zebra")[:results].first
+
+    assert_fallback_result_keys(document, result)
+  end
+
+  def test_search_similar_content_empty_semantic_results_fall_back_with_document_keys
+    skip_if_database_unavailable
+    document = create_fallback_document
+    result = @engine.search_similar_content("Zebra")[:results].first
+
+    assert_fallback_result_keys(document, result)
+  end
+
   # Error handling
   def test_search_handles_embedding_service_errors_gracefully
     error_service = Object.new
@@ -214,5 +237,35 @@ class SearchEngineTest < Minitest::Test
     assert_raises(StandardError) do
       engine.search_documents("test query")
     end
+  end
+
+  private
+
+  def nil_embedding_engine
+    nil_service = Object.new
+    def nil_service.generate_embedding(_text)
+      nil
+    end
+    Ragdoll::SearchEngine.new(nil_service)
+  end
+
+  def create_fallback_document
+    skip_if_database_unavailable
+    Ragdoll::Document.create!(
+      location: "/test/zebra.txt",
+      title: "Zebra Field Guide",
+      document_type: "text",
+      status: "processed"
+    )
+  end
+
+  def assert_fallback_result_keys(document, result)
+    refute_nil result
+    assert_equal document.id.to_s, result[:document_id]
+    assert_equal "Zebra Field Guide", result[:document_title]
+    assert_equal "/test/zebra.txt", result[:document_location]
+    assert_kind_of String, result[:content]
+    assert_equal document.id, result[:id]
+    assert_equal "Zebra Field Guide", result[:title]
   end
 end

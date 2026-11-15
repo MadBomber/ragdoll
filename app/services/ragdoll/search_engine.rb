@@ -41,19 +41,7 @@ module Ragdoll
       if query_embedding.nil?
         puts "Warning: Could not generate embedding for query, falling back to text search" if ENV["RAGDOLL_DEBUG"]
         # Fallback to direct text search when embeddings fail
-        text_results = Ragdoll::Document.where("summary ILIKE ? OR title ILIKE ?", "%#{query}%", "%#{query}%")
-                                       .limit(limit)
-                                       .map do |doc|
-          {
-            id: doc.id,
-            content: doc.summary,
-            title: doc.title,
-            document_location: doc.location,
-            similarity: 1.0,  # Max similarity for exact text match
-            chunk_index: 0
-          }
-        end
-        return text_results
+        return text_fallback_results(query, limit)
       end
 
       # Search using ActiveRecord models
@@ -93,18 +81,7 @@ module Ragdoll
           puts "Warning: Could not generate embedding for query '#{query_string}', falling back to text search" if ENV["RAGDOLL_DEBUG"]
 
           # Fallback to direct text search when embeddings fail
-          text_results = Ragdoll::Document.where("summary ILIKE ? OR title ILIKE ?", "%#{query_string}%", "%#{query_string}%")
-                                         .limit(limit)
-                                         .map do |doc|
-            {
-              id: doc.id,
-              content: doc.summary,
-              title: doc.title,
-              document_location: doc.location,
-              similarity: 1.0,  # Max similarity for exact text match
-              chunk_index: 0
-            }
-          end
+          text_results = text_fallback_results(query_string, limit)
 
           execution_time = ((Time.current - start_time) * 1000).round
 
@@ -168,18 +145,7 @@ module Ragdoll
       if results.empty? && query_string && !query_string.empty?
         puts "Warning: Semantic search returned no results for '#{query_string}', falling back to text search" if ENV["RAGDOLL_DEBUG"]
 
-        text_results = Ragdoll::Document.where("summary ILIKE ? OR title ILIKE ?", "%#{query_string}%", "%#{query_string}%")
-                                       .limit(limit)
-                                       .map do |doc|
-          {
-            id: doc.id,
-            content: doc.summary,
-            title: doc.title,
-            document_location: doc.location,
-            similarity: 1.0,  # Max similarity for exact text match
-            chunk_index: 0
-          }
-        end
+        text_results = text_fallback_results(query_string, limit)
 
         if text_results.any?
           puts "Text search found #{text_results.count} results" if ENV["RAGDOLL_DEBUG"]
@@ -238,6 +204,27 @@ module Ragdoll
         statistics: statistics,
         execution_time_ms: execution_time
       }
+    end
+
+    private
+
+    # Documents whose summary or title contains the query, shaped like
+    # Embedding.search_similar rows (document_id, document_title,
+    # document_location, content) plus the original id and title keys.
+    def text_fallback_results(query, limit)
+      documents = Ragdoll::Document.where("summary ILIKE ? OR title ILIKE ?", "%#{query}%", "%#{query}%").limit(limit)
+      documents.map do |doc|
+        {
+          id: doc.id,
+          document_id: doc.id.to_s,
+          document_title: doc.title,
+          title: doc.title,
+          document_location: doc.location,
+          content: doc.summary.to_s,
+          similarity: 1.0, # Max similarity for exact text match
+          chunk_index: 0
+        }
+      end
     end
   end
 end
