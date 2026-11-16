@@ -327,15 +327,11 @@ class AudioContentTest < Minitest::Test
   def test_stats_returns_hash
     result = Ragdoll::AudioContent.stats
     assert_kind_of Hash, result
-  rescue ActiveRecord::StatementInvalid, ActiveRecord::ConfigurationError, PG::UndefinedTable => e
-    skip "Content table not configured: #{e.message.split("\n").first}"
   end
 
   def test_stats_includes_total_audio_contents
     result = Ragdoll::AudioContent.stats
     assert result.key?(:total_audio_contents)
-  rescue ActiveRecord::StatementInvalid, ActiveRecord::ConfigurationError, PG::UndefinedTable => e
-    skip "Content table not configured: #{e.message.split("\n").first}"
   end
 
   private

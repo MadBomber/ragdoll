@@ -378,12 +378,34 @@ class UnifiedDocumentTest < Minitest::Test
     skip "UnifiedDocument table not configured: #{e.message.split("\n").first}"
   end
 
+  def test_search_content_finds_document_by_unified_content
+    matching = Ragdoll::UnifiedDocument.create!(
+      location: create_test_file("match.txt", "x"), title: "Notes",
+      document_type: "text", status: "processed"
+    )
+    other = Ragdoll::UnifiedDocument.create!(
+      location: create_test_file("other.txt", "x"), title: "Other",
+      document_type: "text", status: "processed"
+    )
+    [[matching, "Photosynthesis converts light"], [matching, "into chemical energy"],
+     [other, "Unrelated cooking recipe"]].each do |doc, text|
+      Ragdoll::UnifiedContent.create!(
+        document_id: doc.id, content: text,
+        original_media_type: "text", embedding_model: "test-model"
+      )
+    end
+
+    results = Ragdoll::UnifiedDocument.search_content("photosynthesis energy")
+
+    assert_equal [matching.id], results.map(&:id)
+    assert_equal 1.0, results.first.fulltext_similarity
+    assert_includes results.first.content, "chemical energy"
+  end
+
   # stats class method tests
   def test_stats_returns_hash
     result = Ragdoll::UnifiedDocument.stats
     assert_kind_of Hash, result
-  rescue ActiveRecord::StatementInvalid, PG::UndefinedTable => e
-    skip "UnifiedDocument table not configured: #{e.message.split("\n").first}"
   end
 
   def test_stats_includes_expected_keys
@@ -391,8 +413,6 @@ class UnifiedDocumentTest < Minitest::Test
     assert result.key?(:total_documents)
     assert result.key?(:by_status)
     assert result.key?(:by_type)
-  rescue ActiveRecord::StatementInvalid, PG::UndefinedTable => e
-    skip "UnifiedDocument table not configured: #{e.message.split("\n").first}"
   end
 
   # all_media_types class method tests

@@ -145,8 +145,8 @@ module Ragdoll
       limit = options[:limit] || 20
       threshold = options[:threshold] || 0.0
 
-      # Build tsvector from title and content
-      text_expr = "COALESCE(title, '') || ' ' || COALESCE(content, '')"
+      # Build tsvector from title and the document's aggregated content
+      text_expr = "COALESCE(#{table_name}.title, '') || ' ' || COALESCE(aggregated_contents.content, '')"
       tsvector = "to_tsvector('english', #{text_expr})"
 
       # Prepare sanitized tsquery terms
@@ -162,10 +162,14 @@ module Ragdoll
       score_sum = score_terms.join(' + ')
       similarity_sql = "(#{score_sum})::float / #{words.size}"
 
-      # Build query with content from unified_contents
-      query = joins(:unified_contents)
-              .select("#{table_name}.*, string_agg(unified_contents.content, ' ') as content, #{similarity_sql} AS fulltext_similarity")
-              .group("#{table_name}.id")
+      # Aggregate each document's unified contents before scoring, so the
+      # similarity expression reads one content value per document
+      aggregated_contents = Ragdoll::UnifiedContent
+                            .select("document_id, string_agg(content, ' ') AS content")
+                            .group(:document_id)
+      query = joins("INNER JOIN (#{aggregated_contents.to_sql}) aggregated_contents " \
+                    "ON aggregated_contents.document_id = #{table_name}.id")
+              .select("#{table_name}.*, aggregated_contents.content AS content, #{similarity_sql} AS fulltext_similarity")
 
       # Build where conditions
       conditions = ["#{tsvector} @@ (#{combined_tsquery})"]
@@ -188,7 +192,7 @@ module Ragdoll
       where_clause = conditions.join(' AND ')
 
       query.where(where_clause)
-           .order(Arel.sql("fulltext_similarity DESC, updated_at DESC"))
+           .order(Arel.sql("fulltext_similarity DESC, #{table_name}.updated_at DESC"))
            .limit(limit)
            .to_a
     end
@@ -221,9 +225,9 @@ module Ragdoll
         total_unified_contents: joins(:unified_contents).count,
         total_embeddings: joins(:embeddings).count,
         content_quality: {
-          high: joins(:unified_contents).where("LENGTH(unified_contents.content) > 1000").distinct.count,
-          medium: joins(:unified_contents).where("LENGTH(unified_contents.content) BETWEEN 100 AND 1000").distinct.count,
-          low: joins(:unified_contents).where("LENGTH(unified_contents.content) < 100").distinct.count
+          high: joins(:unified_contents).where("LENGTH(ragdoll_unified_contents.content) > 1000").distinct.count,
+          medium: joins(:unified_contents).where("LENGTH(ragdoll_unified_contents.content) BETWEEN 100 AND 1000").distinct.count,
+          low: joins(:unified_contents).where("LENGTH(ragdoll_unified_contents.content) < 100").distinct.count
         },
         storage_type: "unified_text_based"
       }

@@ -21,6 +21,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - The unused `searchkick`, `opensearch-ruby` and `ruby-progressbar` runtime dependencies; nothing in ragdoll requires them, so installing the gem no longer pulls them in. ragdoll-cli declares `ruby-progressbar` itself
 
 ### Fixed
+- `TextContent.stats`, `ImageContent.stats`, `AudioContent.stats` and `UnifiedDocument.stats` return a hash on PostgreSQL instead of raising; the never-working `average_chunk_size`, `average_image_size` and `average_audio_size` keys are dropped, and `UnifiedDocumentManagement#processing_stats` and `MigrationService#create_comparison_report` work again (#77)
+- `UnifiedDocument.search_content` (and so `UnifiedDocumentManagement#search_documents`) no longer raises on PostgreSQL; each document's unified contents are aggregated before the full-text score is computed (#78)
+- `Ragdoll.search_similar_content` YARD now documents the `{results:, statistics:, execution_time_ms:}` Hash it returns (the example iterated an Array); `Client#search` and `Client#get_context` drop their unreachable Array-result branches (#76)
 - Text, Markdown, HTML, CSV, JSON, XML and YAML files that are not UTF-8 (e.g. Latin-1 or Windows-1252) are now transcoded from ISO-8859-1 on ingest instead of producing invalid UTF-8 or raising; the never-reached encoding rescue branches in `TextExtractionService` are removed (#74)
 - `TimeframeExtractor.extract` understands "since march?" and "since 2020" (a bare year now means the start of that year, not 8:20 pm), and removes the whole "in the last week" phrase and the space before a trailing `?` or `!` from the cleaned query (#65)
 - `DocumentProcessor.create_document_from_file` no longer raises `NoMethodError` after saving the document (#22)
