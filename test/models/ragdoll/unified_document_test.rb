@@ -406,8 +406,6 @@ class UnifiedDocumentTest < Minitest::Test
   def test_stats_returns_hash
     result = Ragdoll::UnifiedDocument.stats
     assert_kind_of Hash, result
-  rescue ActiveRecord::StatementInvalid, PG::UndefinedTable => e
-    skip "UnifiedDocument table not configured: #{e.message.split("\n").first}"
   end
 
   def test_stats_includes_expected_keys
@@ -415,8 +413,6 @@ class UnifiedDocumentTest < Minitest::Test
     assert result.key?(:total_documents)
     assert result.key?(:by_status)
     assert result.key?(:by_type)
-  rescue ActiveRecord::StatementInvalid, PG::UndefinedTable => e
-    skip "UnifiedDocument table not configured: #{e.message.split("\n").first}"
   end
 
   # all_media_types class method tests

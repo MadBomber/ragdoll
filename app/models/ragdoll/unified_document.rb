@@ -225,9 +225,9 @@ module Ragdoll
         total_unified_contents: joins(:unified_contents).count,
         total_embeddings: joins(:embeddings).count,
         content_quality: {
-          high: joins(:unified_contents).where("LENGTH(unified_contents.content) > 1000").distinct.count,
-          medium: joins(:unified_contents).where("LENGTH(unified_contents.content) BETWEEN 100 AND 1000").distinct.count,
-          low: joins(:unified_contents).where("LENGTH(unified_contents.content) < 100").distinct.count
+          high: joins(:unified_contents).where("LENGTH(ragdoll_unified_contents.content) > 1000").distinct.count,
+          medium: joins(:unified_contents).where("LENGTH(ragdoll_unified_contents.content) BETWEEN 100 AND 1000").distinct.count,
+          low: joins(:unified_contents).where("LENGTH(ragdoll_unified_contents.content) < 100").distinct.count
         },
         storage_type: "unified_text_based"
       }
