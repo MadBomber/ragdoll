@@ -12,7 +12,9 @@ module Ragdoll
       return if document.all_embeddings.exists?
 
       # Process all content records using their own generate_embeddings! methods
-      document.contents.each(&:generate_embeddings!)
+      document.contents.each do |content|
+        content.generate_embeddings!(chunk_size: chunk_size, chunk_overlap: chunk_overlap)
+      end
 
       # Update document status to processed
       document.update!(status: "processed")

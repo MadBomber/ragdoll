@@ -31,14 +31,17 @@ module Ragdoll
     scope :without_embeddings, -> { left_joins(:embeddings).where(embeddings: { id: nil }) }
 
     # Generate embeddings for this content
-    def generate_embeddings!
+    # chunk_size/chunk_overlap default to Ragdoll.config.chunk_size/chunk_overlap
+    def generate_embeddings!(chunk_size: nil, chunk_overlap: nil)
       return unless should_generate_embeddings?
 
       # Clear existing embeddings
       embeddings.destroy_all
 
       # Use TextChunker to split content into chunks
-      chunks = Ragdoll::TextChunker.chunk(content)
+      chunks = Ragdoll::TextChunker.chunk(content,
+                                          chunk_size: chunk_size || Ragdoll.config.chunk_size,
+                                          chunk_overlap: chunk_overlap || Ragdoll.config.chunk_overlap)
 
       # Generate embeddings for each chunk
       embedding_service = Ragdoll::EmbeddingService.new
