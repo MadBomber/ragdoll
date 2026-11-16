@@ -202,29 +202,20 @@ class UnifiedDocumentManagementTest < Minitest::Test
 
   # processing_stats tests
   def test_processing_stats_returns_hash
-    begin
-      result = @service.processing_stats
-      assert_kind_of Hash, result
-      assert result.key?(:documents)
-      assert result.key?(:content)
-      assert result.key?(:processing_summary)
-    rescue ActiveRecord::StatementInvalid => e
-      skip "Stats require unified_contents table: #{e.message.split("\n").first}"
-    end
+    result = @service.processing_stats
+    assert_kind_of Hash, result
+    assert result.key?(:documents)
+    assert result.key?(:content)
+    assert result.key?(:processing_summary)
   end
 
   def test_processing_stats_includes_summary_fields
-    begin
-      result = @service.processing_stats
-      summary = result[:processing_summary]
+    summary = @service.processing_stats[:processing_summary]
 
-      assert summary.key?(:total_documents)
-      assert summary.key?(:processed_documents)
-      assert summary.key?(:total_embeddings)
-      assert summary.key?(:average_processing_time)
-    rescue ActiveRecord::StatementInvalid => e
-      skip "Stats require unified_contents table: #{e.message.split("\n").first}"
-    end
+    assert summary.key?(:total_documents)
+    assert summary.key?(:processed_documents)
+    assert summary.key?(:total_embeddings)
+    assert summary.key?(:average_processing_time)
   end
 
   # Error handling tests

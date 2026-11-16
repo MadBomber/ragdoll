@@ -332,7 +332,7 @@ Configuration is loaded from multiple sources (lowest to highest priority):
 ### Quick Start
 
 ```ruby
-require 'ragdoll-core'
+require 'ragdoll'
 
 # Access configuration (automatically loaded)
 config = Ragdoll.config

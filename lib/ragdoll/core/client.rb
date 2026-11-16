@@ -68,15 +68,7 @@ module Ragdoll
 
       # Get relevant context without prompt enhancement
       def get_context(query:, limit: DEFAULT_CONTEXT_RESULT_LIMIT, **options)
-        search_response = search_similar_content(query: query, limit: limit, **options)
-        
-        # Handle both old format (array) and new format (hash with results/statistics)
-        if search_response.is_a?(Hash) && search_response.key?(:results)
-          results = search_response[:results]
-        else
-          # Fallback for old format
-          results = search_response || []
-        end
+        results = search_similar_content(query: query, limit: limit, **options)[:results]
 
         context_chunks = results.map do |result|
           {
@@ -122,31 +114,16 @@ module Ragdoll
 
         # Fall back to semantic-only search
         search_response = search_similar_content(query: query, **options)
+        results = search_response[:results]
 
-        # Handle both old format (array) and new format (hash with results/statistics)
-        if search_response.is_a?(Hash) && search_response.key?(:results)
-          results = search_response[:results]
-          statistics = search_response[:statistics]
-          execution_time_ms = search_response[:execution_time_ms]
-
-          {
-            query: query,
-            search_type: "semantic",
-            results: results,
-            total_results: results.length,
-            statistics: statistics,
-            execution_time_ms: execution_time_ms
-          }
-        else
-          # Fallback for old format
-          results = search_response || []
-          {
-            query: query,
-            search_type: "semantic",
-            results: results,
-            total_results: results.length
-          }
-        end
+        {
+          query: query,
+          search_type: "semantic",
+          results: results,
+          total_results: results.length,
+          statistics: search_response[:statistics],
+          execution_time_ms: search_response[:execution_time_ms]
+        }
       end
 
       # Search similar content (core functionality)

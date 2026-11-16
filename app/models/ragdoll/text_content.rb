@@ -132,8 +132,7 @@ module Ragdoll
         total_text_contents:  count,
         by_model:             group(:embedding_model).count,
         total_embeddings:     joins(:embeddings).count,
-        average_word_count:   average("LENGTH(content) - LENGTH(REPLACE(content, ' ', '')) + 1"),
-        average_chunk_size:   average(:chunk_size)
+        average_word_count:   average("LENGTH(content) - LENGTH(REPLACE(content, ' ', '')) + 1")
       }
     end
   end
