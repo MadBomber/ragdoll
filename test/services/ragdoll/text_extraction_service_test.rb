@@ -70,9 +70,29 @@ class Ragdoll::TextExtractionServiceTest < Minitest::Test
     service = Ragdoll::TextExtractionService.new(file_path)
     result = service.extract
 
-    # Should handle encoding gracefully
-    assert_includes result, "test"
-    assert_includes result, "special"
+    assert result.valid_encoding?
+    assert_includes result, "café"
+  end
+
+  def test_extract_transcodes_latin1_files_of_every_text_format
+    samples = {
+      "l1.html" => "<p>caf\xE9</p>",
+      "l1.csv"  => "name,drink\nAnn,caf\xE9\n",
+      "l1.json" => %({"drink": "caf\xE9"}),
+      "l1.xml"  => "<drink>caf\xE9</drink>",
+      "l1.yml"  => "drink: caf\xE9\n",
+      "l1.md"   => "# caf\xE9\n"
+    }
+
+    samples.each do |name, latin1|
+      file_path = File.join(@temp_dir, name)
+      File.binwrite(file_path, latin1.b)
+
+      result = Ragdoll::TextExtractionService.new(file_path).extract
+
+      assert result.valid_encoding?, "#{name} produced invalid UTF-8"
+      assert_includes result, "café", name
+    end
   end
 
   def test_extract_from_nonexistent_file

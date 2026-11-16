@@ -189,9 +189,10 @@ module Ragdoll
     # @param query [String] the query to find similar content for.
     # @param options [Hash] additional options for the search, such as filters and limits.
     # @example
-    #   similar_content = Ragdoll.search_similar_content(query: "AI")
-    #   similar_content.each { |content| puts content[:document_title] }
-    # @return [Array<Hash>] an array of similar content data.
+    #   response = Ragdoll.search_similar_content(query: "AI")
+    #   response[:results].each { |content| puts content[:document_title] }
+    # @return [Hash] +:results+ (Array<Hash> of similar content), +:statistics+
+    #   (Hash, or nil for the text fallback) and +:execution_time_ms+ (Integer).
     def search_similar_content(*args, **kwargs)
       Ragdoll::Core.search_similar_content(*args, **kwargs)
     end
