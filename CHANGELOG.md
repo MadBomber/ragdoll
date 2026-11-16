@@ -25,6 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `UnifiedDocument.search_content` (and so `UnifiedDocumentManagement#search_documents`) no longer raises on PostgreSQL; each document's unified contents are aggregated before the full-text score is computed (#78)
 - `Ragdoll.search_similar_content` YARD now documents the `{results:, statistics:, execution_time_ms:}` Hash it returns (the example iterated an Array); `Client#search` and `Client#get_context` drop their unreachable Array-result branches (#76)
 - Text, Markdown, HTML, CSV, JSON, XML and YAML files that are not UTF-8 (e.g. Latin-1 or Windows-1252) are now transcoded from ISO-8859-1 on ingest instead of producing invalid UTF-8 or raising; the never-reached encoding rescue branches in `TextExtractionService` are removed (#74)
+- README Configuration Quick Start now uses `require 'ragdoll'`; `require 'ragdoll-core'` loads only `ragdoll/core`, so `Ragdoll.search` and the rest of the documented API were missing (#69)
 - `TimeframeExtractor.extract` understands "since march?" and "since 2020" (a bare year now means the start of that year, not 8:20 pm), and removes the whole "in the last week" phrase and the space before a trailing `?` or `!` from the cleaned query (#65)
 - `DocumentProcessor.create_document_from_file` no longer raises `NoMethodError` after saving the document (#22)
 - `Ragdoll::Document#generate_metadata!` no longer raises `LoadError` on every call from a stale `require_relative` (#21)
