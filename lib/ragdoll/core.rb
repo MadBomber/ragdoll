@@ -16,7 +16,7 @@ $LOAD_PATH.unshift(File.expand_path("../../app/lib", __dir__))
 require_relative "core/version"
 require_relative "core/errors"
 require_relative "core/model"
-require_relative "core/configuration"
+require_relative "core/config"
 # Require services from app/services/ragdoll
 require "ragdoll/configuration_service"
 require "ragdoll/model_resolver"
@@ -45,8 +45,23 @@ require "ragdoll/text_generation_service"
 require "ragdoll/search_engine"
 require "ragdoll/image_description_service"
 require "ragdoll/image_to_text_service"
+require "ragdoll/audio_to_text_service"
 require "ragdoll/text_extraction_service"
 require "ragdoll/metadata_generator"
+require "ragdoll/circuit_breaker"
+require "ragdoll/timeframe_extractor"
+require "ragdoll/timeframe"
+require "ragdoll/tag"
+require "ragdoll/document_tag"
+require "ragdoll/embedding_tag"
+require "ragdoll/tag_service"
+require "ragdoll/proposition"
+require "ragdoll/proposition_service"
+require "ragdoll/hybrid_search_service"
+# Require workflows from app/services/ragdoll/workflows
+require "ragdoll/workflows/hybrid_search_workflow"
+require "ragdoll/workflows/document_enrichment_workflow"
+require "ragdoll/workflows/multi_modal_embedding_workflow"
 # Require from app/lib/ragdoll
 require "ragdoll/metadata_schemas"
 # Require jobs from app/jobs/ragdoll
@@ -58,28 +73,41 @@ require_relative "core/client"
 
 module Ragdoll
   def self.config
-    @config ||= Core::Configuration.new
+    Core.config
+  end
+
+  def self.configure(&block)
+    Core.configure(&block)
+  end
+
+  def self.env
+    Core::Config.env
   end
 
   module Core
     extend SingleForwardable
 
-    def self.config
-      @config ||= Configuration.new
-    end
+    class << self
+      def config
+        @config ||= Config.new
+      end
 
-    def self.configuration
-      config
-    end
+      alias_method :configuration, :config
 
-    def self.configure
-      yield(config)
-    end
+      def configure
+        yield(config) if block_given?
+        config
+      end
 
-    # Reset configuration (useful for testing)
-    def self.reset_configuration!
-      @config = Configuration.new
-      @default_client = nil
+      # Reset configuration (useful for testing)
+      def reset_configuration!
+        @config = nil
+        @default_client = nil
+      end
+
+      def env
+        Config.env
+      end
     end
 
     # Factory method for creating clients
@@ -91,7 +119,9 @@ module Ragdoll
     def_delegators :default_client, :add_document, :search, :enhance_prompt,
                    :get_document, :document_status, :list_documents, :delete_document,
                    :update_document, :get_context, :search_similar_content,
-                   :add_directory, :stats, :healthy?, :hybrid_search
+                   :add_directory, :stats, :healthy?, :hybrid_search,
+                   :add_tags, :get_tags, :extract_propositions, :get_propositions,
+                   :enrich_document, :embed_multimodal
 
     def self.default_client
       @default_client ||= Client.new

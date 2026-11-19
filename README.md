@@ -93,35 +93,23 @@ The library converts all document types to rich text representations: PDFs and d
 ```ruby
 require 'ragdoll'
 
-# Configure with unified text-based architecture
+# Configure using nested configuration sections
 Ragdoll.configure do |config|
-  # Database configuration (PostgreSQL only)
-  config.database_config = {
-    adapter: 'postgresql',
-    database: 'ragdoll_production',
-    username: 'ragdoll',
-    password: ENV['DATABASE_PASSWORD'],
-    host: 'localhost',
-    port: 5432,
-    auto_migrate: true
-  }
+  # Database configuration (PostgreSQL)
+  config.database.adapter      = 'postgresql'
+  config.database.name         = 'ragdoll_production'
+  config.database.user         = 'ragdoll'
+  config.database.password     = ENV['DATABASE_PASSWORD']
+  config.database.host         = 'localhost'
+  config.database.port         = 5432
+  config.database.auto_migrate = true
 
-  # Enable unified text-based models
-  config.use_unified_models = true
+  # Embedding model and provider
+  config.embedding.provider = :openai
+  config.embedding.model    = "text-embedding-3-large"
 
-  # Text conversion settings
-  config.text_conversion = {
-    image_detail_level: :comprehensive,  # :minimal, :standard, :comprehensive, :analytical
-    audio_transcription_provider: :openai,  # :azure, :google, :whisper_local
-    enable_fallback_descriptions: true
-  }
-
-  # Single embedding model for all content
-  config.embedding_model = "text-embedding-3-large"
-  config.embedding_provider = :openai
-
-  # Ruby LLM configuration
-  config.ruby_llm_config[:openai][:api_key] = ENV['OPENAI_API_KEY']
+  # Provider credentials
+  config.providers.openai.api_key = ENV['OPENAI_API_KEY']
 end
 
 # Add documents - all types converted to text
@@ -138,8 +126,8 @@ results = Ragdoll.search(query: 'machine learning discussion')
 # Returns audio documents whose transcripts mention machine learning
 
 # Check content quality
-document = Ragdoll.get_document(id: result[:document_id])
-puts document[:content_quality_score]  # 0.0 to 1.0 rating
+document = Ragdoll::UnifiedDocument.find(result[:document_id])
+puts document.content_quality_score  # 0.0 to 1.0 rating
 ```
 
 ## Unified Architecture Guide
@@ -272,7 +260,8 @@ migrated_doc = Ragdoll::MigrationService.migrate_document(old_document_id)
 # Add documents with automatic text conversion
 result = Ragdoll.add_document(path: 'any_file.ext')
 puts result[:document_id]
-puts result[:content_preview]  # First 100 characters of converted text
+puts result[:title]
+puts result[:content_length]  # Characters of converted text
 
 # Batch processing with unified pipeline
 files = ['doc.pdf', 'image.jpg', 'audio.mp3']
@@ -289,13 +278,13 @@ Ragdoll::UnifiedDocumentManagement.new.reprocess_document(
 
 ```ruby
 # Unified search across all content types
-results = Ragdoll.search(query: 'machine learning algorithms')
+response = Ragdoll.search(query: 'machine learning algorithms')
 
-# Search with original media type context
-results.each do |doc|
-  puts "#{doc.title} (originally #{doc.original_media_type})"
-  puts "Quality: #{doc.content_quality_score.round(2)}"
-  puts "Content: #{doc.content[0..100]}..."
+# The response is a Hash; the matching chunks are in response[:results]
+response[:results].each do |result|
+  puts "#{result[:document_title]} (#{result[:document_location]})"
+  puts "Similarity: #{result[:similarity].round(2)}"
+  puts "Content: #{result[:content][0..100]}..."
 end
 
 # Advanced search with content quality
@@ -328,80 +317,106 @@ puts content.content_quality_score
 
 ## Configuration
 
+Ragdoll uses the `anyway_config` gem for flexible, layered configuration with XDG Base Directory support.
+
+### Configuration Priority
+
+Configuration is loaded from multiple sources (lowest to highest priority):
+
+1. Bundled defaults (`lib/ragdoll/core/config/defaults.yml`)
+2. XDG user config (`~/.config/ragdoll/ragdoll.yml`)
+3. Project config (`./config/ragdoll.yml`)
+4. Environment variables (`RAGDOLL_*`)
+5. Programmatic (`Ragdoll.configure` block)
+
+### Quick Start
+
+```ruby
+require 'ragdoll'
+
+# Access configuration (automatically loaded)
+config = Ragdoll.config
+
+# Read values using method access
+config.embedding.provider      # => "ollama"
+config.embedding.model         # => "nomic-embed-text:latest"
+config.database.host           # => "localhost"
+config.ollama_url              # => "http://localhost:11434"
+
+# Environment helpers
+config.development?            # => true/false
+config.test?                   # => true/false
+config.production?             # => true/false
+```
+
+### Configuration File
+
+Create `~/.config/ragdoll/ragdoll.yml`:
+
+```yaml
+database:
+  host: localhost
+  port: 5432
+  name: ragdoll_production
+
+embedding:
+  provider: openai
+  model: text-embedding-3-small
+  dimensions: 1536
+
+chunking:
+  size: 1000
+  overlap: 200
+
+search:
+  similarity_threshold: 0.7
+  max_results: 10
+
+providers:
+  openai:
+    api_key: sk-...
+  ollama:
+    url: http://localhost:11434
+```
+
+### Environment Variables
+
+Use the `RAGDOLL_` prefix with double underscores for nested keys:
+
+```bash
+# Database
+export RAGDOLL_DATABASE__HOST=db.example.com
+export RAGDOLL_DATABASE__NAME=ragdoll_production
+
+# Embedding
+export RAGDOLL_EMBEDDING__PROVIDER=openai
+export RAGDOLL_EMBEDDING__MODEL=text-embedding-3-small
+
+# Provider credentials
+export RAGDOLL_PROVIDERS__OPENAI__API_KEY=sk-...
+export RAGDOLL_PROVIDERS__OLLAMA__URL=http://localhost:11434
+
+# Environment
+export RAGDOLL_ENV=production
+```
+
+### Programmatic Configuration
+
 ```ruby
 Ragdoll.configure do |config|
-  # Enable unified text-based architecture
-  config.use_unified_models = true
+  # Override embedding settings
+  config.embedding.provider = :openai
+  config.embedding.model = "text-embedding-3-small"
 
-  # Database configuration (PostgreSQL required)
-  config.database_config = {
-    adapter: 'postgresql',
-    database: 'ragdoll_production',
-    username: 'ragdoll',
-    password: ENV['DATABASE_PASSWORD'],
-    host: 'localhost',
-    port: 5432,
-    auto_migrate: true
-  }
+  # Override database settings
+  config.database.name = "my_ragdoll_db"
 
-  # Text conversion settings
-  config.text_conversion = {
-    # Image conversion detail levels:
-    # :minimal - Brief one-sentence description
-    # :standard - Main elements and composition
-    # :comprehensive - Detailed description including objects, colors, mood
-    # :analytical - Thorough analysis including artistic elements
-    image_detail_level: :comprehensive,
-
-    # Audio transcription providers
-    audio_transcription_provider: :openai,  # :azure, :google, :whisper_local
-
-    # Fallback behavior
-    enable_fallback_descriptions: true,
-    fallback_timeout: 30  # seconds
-  }
-
-  # Single embedding model for all content types
-  config.embedding_model = "text-embedding-3-large"
-  config.embedding_provider = :openai
-
-  # Ruby LLM configuration for text conversion
-  config.ruby_llm_config[:openai][:api_key] = ENV['OPENAI_API_KEY']
-  config.ruby_llm_config[:anthropic][:api_key] = ENV['ANTHROPIC_API_KEY']
-
-  # Vision model configuration for image descriptions
-  config.vision_config = {
-    primary_model: 'gpt-4-vision-preview',
-    fallback_model: 'gemini-pro-vision',
-    temperature: 0.2
-  }
-
-  # Audio transcription configuration
-  config.audio_config = {
-    openai: {
-      model: 'whisper-1',
-      temperature: 0.0
-    },
-    azure: {
-      endpoint: ENV['AZURE_SPEECH_ENDPOINT'],
-      api_key: ENV['AZURE_SPEECH_KEY']
-    }
-  }
-
-  # Processing settings
-  config.chunking[:text][:max_tokens] = 1000
-  config.chunking[:text][:overlap] = 200
-  config.search[:similarity_threshold] = 0.7
-  config.search[:max_results] = 10
-
-  # Quality thresholds
-  config.quality_thresholds = {
-    high_quality: 0.8,
-    medium_quality: 0.5,
-    min_content_length: 50
-  }
+  # Provider credentials
+  config.providers.openai.api_key = ENV['OPENAI_API_KEY']
 end
 ```
+
+See the [Configuration](#configuration) section above for complete documentation.
 
 ## Performance Features
 
@@ -436,7 +451,7 @@ gem 'ragdoll'
 
 ## Requirements
 
-- **Ruby**: 3.2+
+- **Ruby**: 4.0+
 - **PostgreSQL**: 12+ with pgvector extension
 - **ImageMagick**: For image processing and metadata extraction
 - **FFmpeg**: Optional, for advanced audio/video processing
@@ -490,7 +505,7 @@ puts stats[:content_quality_distribution]
 
 # Reprocess low-quality content
 low_quality = Ragdoll::UnifiedDocument.joins(:unified_contents)
-  .where('unified_contents.content_quality_score < 0.5')
+  .where(ragdoll_unified_contents: { content_quality_score: ...0.5 })
 
 low_quality.each do |doc|
   Ragdoll::UnifiedDocumentManagement.new.reprocess_document(

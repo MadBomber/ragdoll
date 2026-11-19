@@ -15,10 +15,11 @@ task :setup_test_db do
   require_relative "lib/ragdoll-core"
 
   # Database configuration for tests
+  # Default to current user (common for macOS Homebrew PostgreSQL)
   test_db_config = {
     adapter: "postgresql",
     database: "ragdoll_test",
-    username: ENV.fetch("RAGDOLL_POSTGRES_USER", "postgres"),
+    username: ENV.fetch("RAGDOLL_POSTGRES_USER") { ENV.fetch("USER", "postgres") },
     password: ENV.fetch("RAGDOLL_POSTGRES_PASSWORD", ""),
     host: ENV.fetch("RAGDOLL_POSTGRES_HOST", "localhost"),
     port: ENV.fetch("RAGDOLL_POSTGRES_PORT", 5432)
@@ -65,7 +66,7 @@ end
 # Make test task depend on database setup only if not skipping database tests
 task test: :setup_test_db unless ci_environment?
 
-# Load annotate tasks
+# Load the db:* tasks from lib/tasks
 Dir.glob("lib/tasks/*.rake").each { |r| load r }
 
 task default: :test

@@ -40,27 +40,21 @@ class Ragdoll::SearchResultTest < Minitest::Test
     )
   end
 
-  private
-
-  def ci_environment?
-    ENV["CI"] == "true" || ENV["RAGDOLL_SKIP_DATABASE_TESTS"] == "true"
-  end
-
   def test_valid_search_result
     assert @search_result.valid?
   end
 
   def test_similarity_score_validation
     @search_result.similarity_score = nil
-    assert_not @search_result.valid?
+    refute @search_result.valid?
     assert_includes @search_result.errors[:similarity_score], "can't be blank"
 
     @search_result.similarity_score = -0.1
-    assert_not @search_result.valid?
+    refute @search_result.valid?
     assert_includes @search_result.errors[:similarity_score], "must be in 0.0..1.0"
 
     @search_result.similarity_score = 1.1
-    assert_not @search_result.valid?
+    refute @search_result.valid?
     assert_includes @search_result.errors[:similarity_score], "must be in 0.0..1.0"
 
     @search_result.similarity_score = 0.0
@@ -72,15 +66,15 @@ class Ragdoll::SearchResultTest < Minitest::Test
 
   def test_result_rank_validation
     @search_result.result_rank = nil
-    assert_not @search_result.valid?
+    refute @search_result.valid?
     assert_includes @search_result.errors[:result_rank], "can't be blank"
 
     @search_result.result_rank = 0
-    assert_not @search_result.valid?
+    refute @search_result.valid?
     assert_includes @search_result.errors[:result_rank], "must be greater than 0"
 
     @search_result.result_rank = -1
-    assert_not @search_result.valid?
+    refute @search_result.valid?
     assert_includes @search_result.errors[:result_rank], "must be greater than 0"
 
     @search_result.result_rank = 1
@@ -97,7 +91,7 @@ class Ragdoll::SearchResultTest < Minitest::Test
       result_rank: 1
     )
 
-    assert_not duplicate_rank_result.valid?
+    refute duplicate_rank_result.valid?
     assert_includes duplicate_rank_result.errors[:result_rank], "has already been taken"
 
     # Same rank should be valid for different search
@@ -149,31 +143,31 @@ class Ragdoll::SearchResultTest < Minitest::Test
                  Ragdoll::SearchResult.by_rank.to_a
 
     assert_includes Ragdoll::SearchResult.clicked, clicked_result
-    assert_not_includes Ragdoll::SearchResult.clicked, @search_result
+    refute_includes Ragdoll::SearchResult.clicked, @search_result
 
     assert_includes Ragdoll::SearchResult.unclicked, @search_result
-    assert_not_includes Ragdoll::SearchResult.unclicked, clicked_result
+    refute_includes Ragdoll::SearchResult.unclicked, clicked_result
 
     assert_includes Ragdoll::SearchResult.high_similarity(0.8), @search_result
     assert_includes Ragdoll::SearchResult.high_similarity(0.8), clicked_result
     assert_includes Ragdoll::SearchResult.high_similarity(0.8), high_sim_result
-    assert_not_includes Ragdoll::SearchResult.high_similarity(0.8), low_sim_result
+    refute_includes Ragdoll::SearchResult.high_similarity(0.8), low_sim_result
 
     assert_includes Ragdoll::SearchResult.recent_clicks, clicked_result
-    assert_not_includes Ragdoll::SearchResult.recent_clicks, @search_result
+    refute_includes Ragdoll::SearchResult.recent_clicks, @search_result
   end
 
   def test_mark_as_clicked
     @search_result.save!
 
-    assert_not @search_result.clicked
+    refute @search_result.clicked
     assert_nil @search_result.clicked_at
 
     @search_result.mark_as_clicked!
     @search_result.reload
 
     assert @search_result.clicked
-    assert_not_nil @search_result.clicked_at
+    refute_nil @search_result.clicked_at
     assert_in_delta Time.current, @search_result.clicked_at, 1.second
   end
 
@@ -359,17 +353,13 @@ class Ragdoll::SearchResultTest < Minitest::Test
 
   def test_cleanup_callback_handles_missing_search
     @search_result.save!
-    
-    # Delete the search using SQL to bypass ActiveRecord completely
-    search_id = @search.id
-    ActiveRecord::Base.connection.execute("DELETE FROM ragdoll_searches WHERE id = #{search_id}")
-    
-    # Reload the search result to clear any cached associations
-    @search_result.reload
-    
+
+    # The foreign key keeps the search row from being deleted first, so simulate
+    # a parent search that can no longer be loaded
+    @search_result.define_singleton_method(:search) { nil }
+
     # Destroying the result shouldn't raise an error even though search is gone
-    assert_nothing_raised do
-      @search_result.destroy
-    end
+    assert @search_result.destroy
+    refute Ragdoll::SearchResult.exists?(@search_result.id)
   end
 end

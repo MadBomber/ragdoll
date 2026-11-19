@@ -6,6 +6,56 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+- `MIT-LICENSE` file, so the gem now ships the license its gemspec declares; the stale `Thorfile` entry is dropped from `spec.files` (#29)
+
+### Changed
+- Development and CI `Gemfile.lock`: activerecord, activejob, activemodel and activesupport (8.1.1 to 8.1.4.1), addressable, concurrent-ruby, faraday, json, nokogiri and rubyzip move to newer patch or minor releases within their current majors (the gemspec is unchanged, so gem users are unaffected)
+- Search filter conditions now use bound parameters: the keyword array filters in `Document.search_by_keywords`, `Document.search_by_keywords_all`, `Embedding.search_similar` and `Embedding.search_similar_with_stats`, and the status filter in `Document.search_content` and `UnifiedDocument.search_content`, build their SQL with bound values (`ARRAY[?]::text[]` and `sanitize_sql_array`) instead of string interpolation, consistent with the adjacent `document_type` handling
+- Minimum Ruby version is now 3.3 (`required_ruby_version >= 3.3.0`); Ruby 3.2 reached end of life on 2026-03-31 and is dropped from the CI matrix (#38)
+- `Search#click_through_rate` returns a percentage rounded to two places (50.0 rather than 0.5), consistent with `SearchResult.analytics` and `Search.search_analytics` (#12)
+
+### Removed
+- An unreachable second duplicate lookup in `DocumentManagement.add_document` (location plus `file_modified_at`), which ran only after the location-only lookup had found nothing and so could never match; duplicate detection behaves as before
+- The `annotate` development dependency and `lib/tasks/annotate.rake` with its `annotate_models`, `annotate:models`, `remove_annotation`, `set_annotation_options` and `environment` rake tasks. annotate has no release that supports Rails 8, so Bundler fell back to annotate 2.6.5 (2014) and none of those tasks could annotate a model. The models carry no schema annotations
+- The unused `searchkick`, `opensearch-ruby` and `ruby-progressbar` runtime dependencies; nothing in ragdoll requires them, so installing the gem no longer pulls them in. ragdoll-cli declares `ruby-progressbar` itself
+
+### Fixed
+- `TextContent.stats`, `ImageContent.stats`, `AudioContent.stats` and `UnifiedDocument.stats` return a hash on PostgreSQL instead of raising; the never-working `average_chunk_size`, `average_image_size` and `average_audio_size` keys are dropped, and `UnifiedDocumentManagement#processing_stats` and `MigrationService#create_comparison_report` work again (#77)
+- `UnifiedDocument.search_content` (and so `UnifiedDocumentManagement#search_documents`) no longer raises on PostgreSQL; each document's unified contents are aggregated before the full-text score is computed (#78)
+- `Ragdoll.search_similar_content` YARD now documents the `{results:, statistics:, execution_time_ms:}` Hash it returns (the example iterated an Array); `Client#search` and `Client#get_context` drop their unreachable Array-result branches (#76)
+- Text, Markdown, HTML, CSV, JSON, XML and YAML files that are not UTF-8 (e.g. Latin-1 or Windows-1252) are now transcoded from ISO-8859-1 on ingest instead of producing invalid UTF-8 or raising; the never-reached encoding rescue branches in `TextExtractionService` are removed (#74)
+- README Configuration Quick Start now uses `require 'ragdoll'`; `require 'ragdoll-core'` loads only `ragdoll/core`, so `Ragdoll.search` and the rest of the documented API were missing (#69)
+- Embedding chunking now honours the `chunk_size:`/`chunk_overlap:` options (e.g. `Ragdoll.add_text(..., chunk_size: 300)`) and the `chunking.size`/`chunking.overlap` config settings instead of always using 1000/200; anyone whose config isn't at the defaults will see different chunks (#68)
+- `TimeframeExtractor.extract` understands "since march?" and "since 2020" (a bare year now means the start of that year, not 8:20 pm), and removes the whole "in the last week" phrase and the space before a trailing `?` or `!` from the cleaned query (#65)
+- `DocumentProcessor.create_document_from_file` no longer raises `NoMethodError` after saving the document (#22)
+- `Ragdoll::Document#generate_metadata!` no longer raises `LoadError` on every call from a stale `require_relative` (#21)
+- `reprocess_document` no longer raises `ArgumentError` when passed conversion options; the options now reach the document converter (#23)
+- `SearchEngine` text-fallback results now carry `document_id`, `document_title` and a string `content`, the keys semantic results use, so callers such as the README's search example no longer get `nil` for the title (#64)
+- `Ragdoll::Core::Database.connected?` returns `false` instead of `nil` when no connection pool exists
+- `Ragdoll::Core::Database.migration_paths` returns the gem's `db/migrate` directory instead of a nonexistent path one level above the gem root; `migrate!` now reads its migrations from `migration_paths`
+- `Search.cleanup_old_unused_searches` no longer deletes an old search that has any clicked result, and returns the number of searches deleted rather than the number of result rows (#28)
+- Environment-specific bundled defaults (e.g. `production` database settings) are no longer lost when an environment variable or XDG config file overrides another key in the same section; the bundled and XDG loaders now return string keys so sections deep-merge
+- `EmbeddingService#generate_embeddings_batch` fallback no longer returns embeddings for blank or nil texts
+- `Ragdoll::Core::Database.disconnect!` no longer raises `NoMethodError` on ActiveRecord 7.2 and later
+- `Client#hybrid_search` now records its `limit:` in the tracked search's `search_options`; it was dropped before
+- `DocumentConverter` now reaches `ImageToTextService` and `AudioToTextService`: image files failed with `ArgumentError` (options passed positionally), and audio files failed with `NameError` because `require "ragdoll"` never loaded `AudioToTextService`; both errors were rescued and a filename placeholder stored instead
+- `ImageToTextService` builds its vision model again: the default primary options carried `detail_level:` into `RubyLLM.chat`, which rejected it as an unknown keyword, so images never reached the vision model; the service-only keys `temperature` and `detail_level` are no longer passed to `RubyLLM.chat`, and `detail_level` still shapes the prompt
+- `PropositionService.extract` and `TagService.extract` work again without a custom extractor: the default extractors passed `messages:` to `RubyLLM.chat`, which ruby_llm 1.9 rejects as an unknown keyword, so every call raised; they now ask the chat for the prompt (#27)
+- `ExtractKeywordsJob` stores the extracted keywords as an array; it joined them into one comma-separated string, which PostgreSQL parsed as an array literal and saved as garbled fragments in the `keywords` column
+- Search tracking now records `hybrid_rrf`, `text_fallback` and `semantic_with_keywords` searches; `query_embedding` is nullable and text-fallback searches no longer store document ids as embedding results (#41)
+- ragdoll loads on Ruby 4.1, where `tsort` is no longer a default gem: `tsort` is now a runtime dependency, because `simple_flow` requires it without declaring it. This also silences the Ruby 4.0 "tsort was loaded from the standard library" warning (#37)
+- `TextGenerationService` configures ruby_llm again by delegating to `Config#configure_ruby_llm`, as `EmbeddingService` does. Its own `RubyLLM.configure` block called setters ruby_llm 1.9 does not have (such as `ollama_endpoint=`), so configuration always failed and summaries and keywords always used the non-LLM fallback (#34)
+- Document enrichment stores a summary and keywords again: `DocumentEnrichmentWorkflow` called `TextGenerationService.summarize` and `.extract_keywords` as class methods, which do not exist, so both steps raised `NoMethodError`; it now calls `generate_summary` / `extract_keywords` on a `TextGenerationService` instance (#40)
+- `DocumentProcessor.create_document_from_upload` no longer raises `NoMethodError` after saving the document; it extracts content from the upload itself instead of assigning a `document.file` attachment that `Ragdoll::Document` does not have (#22)
+- `rake db:console` opens psql (or mysql) on the configured database as the configured user: it read `username` / `database`, but the database config keys are `user` / `name`. The arguments are now passed to `system` as an array. The MySQL branch of `db:drop` uses the same corrected keys (#36)
+- README examples read `Ragdoll.search`, `add_document` and content-quality results in the shapes the API returns: search results come from `response[:results]`, the add result has no `content_preview`, quality comes from `UnifiedDocument#content_quality_score`, and the troubleshooting query names the `ragdoll_unified_contents` table (#55)
+- `TimeframeExtractor` resolves "since X" to a range from the start of X until now, reading X in the past; it handed the whole phrase to Chronic, which ignored "since" and resolved X alone, often in the future (#54)
+- `TextChunker` no longer moves the first letter of the next sentence onto the end of a chunk when it breaks at a sentence boundary; the next chunk now starts at the beginning of the word (#53)
+- A configured OpenAI organization and project now reach ruby_llm: `Config#configure_ruby_llm` sets `openai_organization_id` / `openai_project_id` (the ruby_llm 1.9 names) instead of guarded setters that never existed, which silently dropped both values (#35)
+- `Client#add_directory` (and `Ragdoll.add_directory`) reports files that `add_document` failed to add as `status: "error"` with the error message, and stores the document id rather than the whole result hash in `document_id:` (#33)
+- `Client#add_tags` (and `Ragdoll::Core.add_tags`) no longer raises `ArgumentError`; it passes the document id and tags to `TagService.add_tags_to_document` positionally (#39). `DocumentEnrichmentWorkflow`'s tag step made the same call and raised on every document, so extracted tags were never stored; it is fixed the same way
+
 ## [0.1.12] - 2025-09-23
 
 ### Changed

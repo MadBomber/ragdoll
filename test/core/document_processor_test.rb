@@ -3,7 +3,7 @@
 require_relative "../test_helper"
 require "tempfile"
 
-class DocumentProcessorTest < Minitest::Test
+class CoreDocumentProcessorTest < Minitest::Test
   def setup
     super
     @processor = Ragdoll::DocumentProcessor

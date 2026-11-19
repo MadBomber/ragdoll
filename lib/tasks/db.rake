@@ -135,15 +135,15 @@ namespace :db do
       # Connect without specifying database
       ActiveRecord::Base.establish_connection(
         adapter: 'mysql2',
-        username: config.database[:username],
+        username: config.database[:user],
         password: config.database[:password],
         host: config.database[:host] || 'localhost',
         port: config.database[:port] || 3306
       )
       
       begin
-        ActiveRecord::Base.connection.execute("DROP DATABASE IF EXISTS #{config.database[:database]}")
-        puts "Database '#{config.database[:database]}' dropped successfully"
+        ActiveRecord::Base.connection.execute("DROP DATABASE IF EXISTS #{config.database[:name]}")
+        puts "Database '#{config.database[:name]}' dropped successfully"
       rescue => e
         puts "Error dropping database: #{e.message}"
       end
@@ -267,23 +267,23 @@ namespace :db do
     case config.database[:adapter]
     when "postgresql"
       db_config = config.database
-      psql_cmd = "psql"
-      psql_cmd += " -h #{db_config[:host]}" if db_config[:host]
-      psql_cmd += " -p #{db_config[:port]}" if db_config[:port]
-      psql_cmd += " -U #{db_config[:username]}" if db_config[:username]
-      psql_cmd += " #{db_config[:database]}"
+      psql_args = ["psql"]
+      psql_args += ["-h", db_config[:host].to_s] if db_config[:host]
+      psql_args += ["-p", db_config[:port].to_s] if db_config[:port]
+      psql_args += ["-U", db_config[:user].to_s] if db_config[:user]
+      psql_args << db_config[:name].to_s if db_config[:name]
       puts "Opening PostgreSQL console..."
-      system(psql_cmd)
+      system(*psql_args)
     when "mysql2"
       db_config = config.database
-      mysql_cmd = "mysql"
-      mysql_cmd += " -h #{db_config[:host]}" if db_config[:host]
-      mysql_cmd += " -P #{db_config[:port]}" if db_config[:port]
-      mysql_cmd += " -u #{db_config[:username]}" if db_config[:username]
-      mysql_cmd += " -p" if db_config[:password]
-      mysql_cmd += " #{db_config[:database]}"
+      mysql_args = ["mysql"]
+      mysql_args += ["-h", db_config[:host].to_s] if db_config[:host]
+      mysql_args += ["-P", db_config[:port].to_s] if db_config[:port]
+      mysql_args += ["-u", db_config[:user].to_s] if db_config[:user]
+      mysql_args << "-p" if db_config[:password]
+      mysql_args << db_config[:name].to_s if db_config[:name]
       puts "Opening MySQL console..."
-      system(mysql_cmd)
+      system(*mysql_args)
     else
       puts "Console not supported for adapter: #{config.database[:adapter]}"
     end

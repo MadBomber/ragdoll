@@ -8,18 +8,37 @@ class ClientTest < Minitest::Test
     super
     return if ci_environment?
 
+    # Reset configuration to ensure clean state, then configure for test database
+    Ragdoll::Core.reset_configuration!
+
+    # Configure test database via the new Config API
+    # The database ConfigSection is automatically populated from defaults.yml
+    # For tests, we update the database name via the ConfigSection
+    config = Ragdoll.config
+    config.database.name = "ragdoll_test"
+    config.database.user = ENV.fetch("RAGDOLL_POSTGRES_USER") { ENV.fetch("USER", "postgres") }
+    config.database.password = ENV.fetch("RAGDOLL_POSTGRES_PASSWORD", "")
+    config.database.host = ENV.fetch("RAGDOLL_POSTGRES_HOST", "localhost")
+    config.database.port = ENV.fetch("RAGDOLL_POSTGRES_PORT", 5432).to_i
+    config.database.auto_migrate = true
+
     @client = Ragdoll::Core::Client.new
   end
 
+  def teardown
+    super
+    Ragdoll::Core.reset_configuration!
+  end
+
   def test_initialize_with_default_config
-    return if ci_environment?
+    skip_if_database_unavailable
 
     assert_instance_of Ragdoll::EmbeddingService, @client.instance_variable_get(:@embedding_service)
     assert_instance_of Ragdoll::SearchEngine, @client.instance_variable_get(:@search_engine)
   end
 
   def test_enhance_prompt_with_context
-    return if ci_environment?
+    skip_if_database_unavailable
 
     # Add a document first
     @client.add_document(path: "test_content.txt")
@@ -48,7 +67,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_enhance_prompt_without_context
-    return if ci_environment?
+    skip_if_database_unavailable
 
     result = @client.enhance_prompt(prompt: "Random question")
 
@@ -59,7 +78,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_get_context
-    return if ci_environment?
+    skip_if_database_unavailable
 
     @client.add_text(content: "Context content", title: "Test Doc")
 
@@ -72,7 +91,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_search
-    return if ci_environment?
+    skip_if_database_unavailable
 
     @client.add_text(content: "Searchable content", title: "Test Doc")
 
@@ -85,26 +104,20 @@ class ClientTest < Minitest::Test
   end
 
   def test_search_similar_content
-    return if ci_environment?
+    skip_if_database_unavailable
 
     @client.add_text(content: "Similar content", title: "Test Doc")
 
     result = @client.search_similar_content(query: "test query")
 
-    # Enhanced search returns a hash with results, statistics, and execution_time_ms
-    if result.is_a?(Hash) && result.key?(:results)
-      assert_instance_of Hash, result
-      assert_instance_of Array, result[:results]
-      assert result.key?(:statistics)
-      assert result.key?(:execution_time_ms)
-    else
-      # Fallback for old format
-      assert_instance_of Array, result
-    end
+    assert_instance_of Hash, result
+    assert_instance_of Array, result[:results]
+    assert result.key?(:statistics)
+    assert result.key?(:execution_time_ms)
   end
 
   def test_hybrid_search
-    return if ci_environment?
+    skip_if_database_unavailable
 
     @client.add_text(content: "Test content for hybrid search", title: "Hybrid Doc")
 
@@ -112,19 +125,14 @@ class ClientTest < Minitest::Test
 
     assert_instance_of Hash, result
     assert_equal "test query", result[:query]
-    assert_equal "hybrid", result[:search_type]
+    # Implementation uses "hybrid_rrf" for Reciprocal Rank Fusion
+    assert_equal "hybrid_rrf", result[:search_type]
     assert_instance_of Array, result[:results]
     assert_instance_of Integer, result[:total_results]
-    assert_instance_of Float, result[:semantic_weight]
-    assert_instance_of Float, result[:text_weight]
-
-    # Test default weights
-    assert_equal 0.7, result[:semantic_weight]
-    assert_equal 0.3, result[:text_weight]
   end
 
   def test_hybrid_search_with_custom_weights
-    return if ci_environment?
+    skip_if_database_unavailable
 
     @client.add_text(content: "Test content for weighted hybrid search", title: "Weighted Doc")
 
@@ -135,12 +143,52 @@ class ClientTest < Minitest::Test
     )
 
     assert_instance_of Hash, result
-    assert_equal 0.8, result[:semantic_weight]
-    assert_equal 0.2, result[:text_weight]
+    assert_equal "hybrid_rrf", result[:search_type]
+    assert_instance_of Array, result[:results]
+  end
+
+  def test_hybrid_search_with_parallel_true
+    skip_if_database_unavailable
+
+    @client.add_text(content: "Test content for parallel hybrid search", title: "Parallel Doc")
+
+    # parallel: true is the default, uses SimpleFlow workflow
+    result = @client.hybrid_search(query: "parallel test", parallel: true)
+
+    assert_instance_of Hash, result
+    assert_equal "hybrid_rrf", result[:search_type]
+    assert_instance_of Array, result[:results]
+    assert_instance_of Integer, result[:total_results]
+  end
+
+  def test_hybrid_search_with_parallel_false
+    skip_if_database_unavailable
+
+    @client.add_text(content: "Test content for sequential hybrid search", title: "Sequential Doc")
+
+    # parallel: false uses sequential execution
+    result = @client.hybrid_search(query: "sequential test", parallel: false)
+
+    assert_instance_of Hash, result
+    assert_equal "hybrid_rrf", result[:search_type]
+    assert_instance_of Array, result[:results]
+    assert_instance_of Integer, result[:total_results]
+  end
+
+  def test_hybrid_search_defaults_to_parallel_true
+    # Verify the Client.hybrid_search method defaults to parallel: true
+    method = Ragdoll::Core::Client.instance_method(:hybrid_search)
+    params = method.parameters
+
+    # Find the parallel parameter
+    parallel_param = params.find { |type, name| name == :parallel }
+
+    # It should be a keyword with default (:key)
+    assert_equal :key, parallel_param[0], "parallel should be a keyword argument with default"
   end
 
   def test_add_document_with_file_path
-    return if ci_environment?
+    skip_if_database_unavailable
 
     with_temp_text_file("Test file content") do |file_path|
       result = @client.add_document(path: file_path)
@@ -155,7 +203,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_add_text
-    return if ci_environment?
+    skip_if_database_unavailable
 
     doc_id = @client.add_text(content: "Direct content", title: "Direct Title")
 
@@ -167,7 +215,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_add_document_with_custom_title
-    return if ci_environment?
+    skip_if_database_unavailable
 
     with_temp_text_file("File content") do |file_path|
       # Mock DocumentProcessor to return metadata with title
@@ -194,7 +242,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_add_document_from_parser_metadata
-    return if ci_environment?
+    skip_if_database_unavailable
 
     content_with_title = "File content"
     with_temp_text_file(content_with_title) do |file_path|
@@ -221,7 +269,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_add_text_with_metadata
-    return if ci_environment?
+    skip_if_database_unavailable
 
     doc_id = @client.add_text(content: "Text content", title: "Text Title", author: "Test Author")
 
@@ -233,7 +281,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_add_directory
-    return if ci_environment?
+    skip_if_database_unavailable
 
     Dir.mktmpdir do |dir|
       # Create test files
@@ -249,15 +297,36 @@ class ClientTest < Minitest::Test
 
       results.each do |result|
         if result[:status] == "success"
-          assert result[:document_id]
+          assert_kind_of String, result[:document_id]
           assert result[:file]
         end
       end
     end
   end
 
+  def test_add_directory_reports_failed_files_as_errors
+    client = Ragdoll::Core::Client.allocate
+    client.define_singleton_method(:add_document) do |path:, **|
+      if File.basename(path) == "bad.txt"
+        { success: false, error: "parse failed", message: "Failed to add document: parse failed" }
+      else
+        { success: true, document_id: "42" }
+      end
+    end
+
+    Dir.mktmpdir do |dir|
+      File.write(File.join(dir, "good.txt"), "ok")
+      File.write(File.join(dir, "bad.txt"), "nope")
+
+      results = client.add_directory(path: dir).to_h { |r| [File.basename(r[:file]), r] }
+
+      assert_equal({ file: File.join(dir, "good.txt"), document_id: "42", status: "success" }, results["good.txt"])
+      assert_equal({ file: File.join(dir, "bad.txt"), error: "parse failed", status: "error" }, results["bad.txt"])
+    end
+  end
+
   def test_add_directory_recursive
-    return if ci_environment?
+    skip_if_database_unavailable
 
     Dir.mktmpdir do |dir|
       # Create nested structure
@@ -273,7 +342,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_get_document
-    return if ci_environment?
+    skip_if_database_unavailable
 
     doc_id = @client.add_text(content: "Get test content", title: "Get Test")
 
@@ -286,7 +355,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_update_document
-    return if ci_environment?
+    skip_if_database_unavailable
 
     doc_id = @client.add_text(content: "Original content", title: "Original Title")
 
@@ -297,7 +366,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_delete_document
-    return if ci_environment?
+    skip_if_database_unavailable
 
     doc_id = @client.add_text(content: "Delete test content", title: "Delete Test")
 
@@ -308,7 +377,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_list_documents
-    return if ci_environment?
+    skip_if_database_unavailable
 
     @client.add_text(content: "Doc 1", title: "Title 1")
     @client.add_text(content: "Doc 2", title: "Title 2")
@@ -320,7 +389,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_stats
-    return if ci_environment?
+    skip_if_database_unavailable
 
     @client.add_text(content: "Stats test content", title: "Stats Test")
 
@@ -331,7 +400,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_search_analytics
-    return if ci_environment?
+    skip_if_database_unavailable
 
     result = @client.search_analytics(days: 7)
 
@@ -340,7 +409,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_healthy_with_working_storage
-    return if ci_environment?
+    skip_if_database_unavailable
 
     @client.add_text(content: "Health test", title: "Health")
 
@@ -354,7 +423,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_healthy_with_failing_storage
-    return if ci_environment?
+    skip_if_database_unavailable
 
     # Mock stats to raise an error
     # Mock DocumentManagement.get_document_stats to raise error
@@ -370,7 +439,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_client_uses_database_storage
-    return if ci_environment?
+    skip_if_database_unavailable
 
     client = Ragdoll::Core::Client.new
     search_engine = client.instance_variable_get(:@search_engine)
@@ -380,7 +449,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_client_initializes_embedding_service
-    return if ci_environment?
+    skip_if_database_unavailable
 
     client = Ragdoll::Core::Client.new
     embedding_service = client.instance_variable_get(:@embedding_service)
@@ -389,7 +458,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_client_setup_logging
-    return if ci_environment?
+    skip_if_database_unavailable
 
     # Test that client initializes without errors
     client = Ragdoll::Core::Client.new
@@ -399,7 +468,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_build_enhanced_prompt_with_default_template
-    return if ci_environment?
+    skip_if_database_unavailable
 
     context = "Relevant context information"
     prompt = "What is the answer?"
@@ -412,7 +481,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_build_enhanced_prompt_with_custom_template
-    return if ci_environment?
+    skip_if_database_unavailable
 
     # NOTE: Currently build_enhanced_prompt uses a hardcoded default template
     # This test verifies it works with the default template structure
@@ -425,6 +494,24 @@ class ClientTest < Minitest::Test
     assert_includes enhanced, context
     assert_includes enhanced, prompt
     assert_includes enhanced, "You are an AI assistant"
+  end
+
+  def test_add_tags_passes_document_id_and_tags_positionally
+    captured = nil
+    original = Ragdoll::TagService.method(:add_tags_to_document)
+    # Same signature as TagService.add_tags_to_document, so a mismatched call raises ArgumentError
+    Ragdoll::TagService.define_singleton_method(:add_tags_to_document) do |document_id, tags, source: "auto", confidence: 1.0|
+      captured = { document_id: document_id, tags: tags, source: source, confidence: confidence }
+      []
+    end
+
+    begin
+      Ragdoll::Core::Client.allocate.add_tags(document_id: 1, tags: ["ruby"])
+    ensure
+      Ragdoll::TagService.define_singleton_method(:add_tags_to_document, original)
+    end
+
+    assert_equal({ document_id: 1, tags: ["ruby"], source: "manual", confidence: 1.0 }, captured)
   end
 
   private

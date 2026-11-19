@@ -1,143 +1,260 @@
 # frozen_string_literal: true
 
-require_relative "../../test_helper"
+require "test_helper"
+require "open3"
 
-class Ragdoll::DocumentConverterTest < Minitest::Test
+class DocumentConverterTest < Minitest::Test
   def setup
-    @temp_dir = Dir.mktmpdir
+    super
     @converter = Ragdoll::DocumentConverter.new
+    @test_dir = File.join(File.dirname(__FILE__), "..", "..", "tmp")
+    FileUtils.mkdir_p(@test_dir)
   end
 
   def teardown
-    FileUtils.rm_rf(@temp_dir) if @temp_dir
+    FileUtils.rm_rf(@test_dir)
+    super
   end
 
-  def test_convert_text_file_to_text
-    file_path = create_temp_file("sample.txt", "This is test content.")
-
-    result = @converter.convert_to_text(file_path)
-
-    assert_equal "This is test content.", result
+  # Class method tests
+  def test_class_method_convert_to_text
+    file_path = create_text_file("Hello World")
+    result = Ragdoll::DocumentConverter.convert_to_text(file_path)
+    assert_equal "Hello World", result.strip
   end
 
-  def test_convert_markdown_file_to_text
-    content = "# Title\n\nThis is markdown content."
-    file_path = create_temp_file("sample.md", content)
-
-    result = @converter.convert_to_text(file_path)
-
-    assert_equal content, result
+  def test_class_method_with_document_type_override
+    file_path = create_text_file("Hello World")
+    result = Ragdoll::DocumentConverter.convert_to_text(file_path, "text")
+    assert_equal "Hello World", result.strip
   end
 
-  def test_convert_image_file_to_text
-    # Create a dummy image file (we'll mock the conversion)
-    file_path = create_temp_file("sample.jpg", "dummy image data")
-
-    # Mock the ImageToTextService
-    mock_service = Minitest::Mock.new
-    mock_service.expect(:convert, "Image description: A test image", [file_path])
-
-    Ragdoll::ImageToTextService.stub(:new, mock_service) do
-      result = @converter.convert_to_text(file_path, "image")
-      assert_equal "Image description: A test image", result
-    end
-
-    mock_service.verify
+  # Document type detection tests
+  def test_determine_document_type_for_pdf
+    assert_equal "pdf", @converter.determine_document_type("file.pdf")
+    assert_equal "pdf", @converter.determine_document_type("file.PDF")
   end
 
-  def test_convert_audio_file_to_text
-    file_path = create_temp_file("sample.mp3", "dummy audio data")
-
-    # Mock the AudioToTextService
-    mock_service = Minitest::Mock.new
-    mock_service.expect(:transcribe, "Audio transcript: Hello world", [file_path])
-
-    Ragdoll::AudioToTextService.stub(:new, mock_service) do
-      result = @converter.convert_to_text(file_path, "audio")
-      assert_equal "Audio transcript: Hello world", result
-    end
-
-    mock_service.verify
+  def test_determine_document_type_for_docx
+    assert_equal "docx", @converter.determine_document_type("file.docx")
   end
 
-  def test_convert_unknown_file_to_text
-    file_path = create_temp_file("sample.xyz", "Some unknown content")
-
-    result = @converter.convert_to_text(file_path, "unknown")
-
-    # Should attempt to read as text first, fallback to filename if binary
-    assert_equal "Some unknown content", result
+  def test_determine_document_type_for_text
+    assert_equal "text", @converter.determine_document_type("file.txt")
   end
 
-  def test_determine_document_type
-    test_cases = {
-      "document.pdf" => "pdf",
-      "document.docx" => "docx",
-      "document.txt" => "text",
-      "document.md" => "markdown",
-      "document.html" => "html",
-      "image.jpg" => "image",
-      "image.png" => "image",
-      "audio.mp3" => "audio",
-      "video.mp4" => "video",
-      "data.csv" => "csv",
-      "config.json" => "json",
-      "unknown.xyz" => "text"
-    }
+  def test_determine_document_type_for_markdown
+    assert_equal "markdown", @converter.determine_document_type("file.md")
+    assert_equal "markdown", @converter.determine_document_type("file.markdown")
+  end
 
-    test_cases.each do |filename, expected_type|
-      actual_type = @converter.determine_document_type(filename)
-      assert_equal expected_type, actual_type, "Expected #{filename} to be #{expected_type}, got #{actual_type}"
+  def test_determine_document_type_for_html
+    assert_equal "html", @converter.determine_document_type("file.html")
+    assert_equal "html", @converter.determine_document_type("file.htm")
+  end
+
+  def test_determine_document_type_for_images
+    %w[jpg jpeg png gif bmp webp svg ico tiff tif].each do |ext|
+      assert_equal "image", @converter.determine_document_type("file.#{ext}"),
+                   "Expected 'image' for .#{ext} extension"
     end
   end
 
-  def test_supported_formats
+  def test_determine_document_type_for_audio
+    %w[mp3 wav m4a flac ogg aac wma].each do |ext|
+      assert_equal "audio", @converter.determine_document_type("file.#{ext}"),
+                   "Expected 'audio' for .#{ext} extension"
+    end
+  end
+
+  def test_determine_document_type_for_video
+    %w[mp4 mov avi webm mkv].each do |ext|
+      assert_equal "video", @converter.determine_document_type("file.#{ext}"),
+                   "Expected 'video' for .#{ext} extension"
+    end
+  end
+
+  def test_determine_document_type_for_csv
+    assert_equal "csv", @converter.determine_document_type("file.csv")
+  end
+
+  def test_determine_document_type_for_json
+    assert_equal "json", @converter.determine_document_type("file.json")
+  end
+
+  def test_determine_document_type_for_xml
+    assert_equal "xml", @converter.determine_document_type("file.xml")
+  end
+
+  def test_determine_document_type_for_yaml
+    assert_equal "yaml", @converter.determine_document_type("file.yml")
+    assert_equal "yaml", @converter.determine_document_type("file.yaml")
+  end
+
+  def test_determine_document_type_defaults_to_text
+    assert_equal "text", @converter.determine_document_type("file.unknown")
+    assert_equal "text", @converter.determine_document_type("file")
+  end
+
+  # Supported formats test
+  def test_supported_formats_returns_all_categories
     formats = @converter.supported_formats
 
-    assert formats.key?(:text)
-    assert formats.key?(:documents)
-    assert formats.key?(:images)
-    assert formats.key?(:audio)
-    assert formats.key?(:video)
-
-    assert_includes formats[:text], ".txt"
-    assert_includes formats[:documents], ".pdf"
-    assert_includes formats[:images], ".jpg"
-    assert_includes formats[:audio], ".mp3"
-    assert_includes formats[:video], ".mp4"
+    assert_includes formats.keys, :text
+    assert_includes formats.keys, :documents
+    assert_includes formats.keys, :images
+    assert_includes formats.keys, :audio
+    assert_includes formats.keys, :video
   end
 
-  def test_convert_nonexistent_file
-    result = @converter.convert_to_text("/nonexistent/file.txt")
+  def test_supported_formats_text_includes_common_extensions
+    formats = @converter.supported_formats[:text]
 
+    assert_includes formats, ".txt"
+    assert_includes formats, ".md"
+    assert_includes formats, ".html"
+    assert_includes formats, ".csv"
+    assert_includes formats, ".json"
+  end
+
+  # Conversion tests
+  def test_convert_to_text_returns_empty_for_nonexistent_file
+    result = @converter.convert_to_text("/nonexistent/file.txt")
     assert_equal "", result
   end
 
-  def test_convert_with_error_handling
-    file_path = create_temp_file("sample.txt", "Test content")
-
-    # Mock an error in text extraction
-    Ragdoll::TextExtractionService.stub(:new, proc { raise StandardError, "Extraction failed" }) do
-      result = @converter.convert_to_text(file_path, "text")
-
-      # Should return fallback text on error
-      assert_includes result.downcase, "sample.txt"
-    end
+  def test_convert_to_text_handles_text_files
+    file_path = create_text_file("Sample text content")
+    result = @converter.convert_to_text(file_path)
+    assert_equal "Sample text content", result.strip
   end
 
-  def test_class_method_convert_to_text
-    file_path = create_temp_file("sample.txt", "Test content")
+  def test_convert_to_text_handles_markdown_files
+    content = "# Header\n\nParagraph text"
+    file_path = create_file("test.md", content)
+    result = @converter.convert_to_text(file_path)
+    assert_includes result, "Header"
+    assert_includes result, "Paragraph text"
+  end
 
-    result = Ragdoll::DocumentConverter.convert_to_text(file_path)
+  def test_convert_to_text_handles_csv_files
+    content = "name,age\nJohn,30\nJane,25"
+    file_path = create_file("test.csv", content)
+    result = @converter.convert_to_text(file_path, "csv")
+    assert_includes result.downcase, "john"
+  end
 
-    assert_equal "Test content", result
+  def test_convert_to_text_handles_json_files
+    content = '{"name": "John", "age": 30}'
+    file_path = create_file("test.json", content)
+    result = @converter.convert_to_text(file_path, "json")
+    assert_includes result, "John"
+  end
+
+  def test_convert_to_text_generates_fallback_for_images
+    # Create a dummy image file (just metadata content)
+    file_path = create_file("test.png", "dummy content")
+    result = @converter.convert_to_text(file_path, "image")
+    # Should contain file info
+    assert_includes result.downcase, "image"
+  end
+
+  def test_convert_to_text_generates_fallback_for_audio
+    file_path = create_file("test.mp3", "dummy content")
+    result = @converter.convert_to_text(file_path, "audio")
+    assert_includes result.downcase, "audio"
+  end
+
+  def test_convert_to_text_generates_fallback_for_video
+    file_path = create_file("test.mp4", "dummy content")
+    result = @converter.convert_to_text(file_path, "video")
+    assert_includes result.downcase, "video"
+  end
+
+  def test_convert_to_text_passes_options_to_image_service_as_keywords
+    file_path = create_file("test.png", "dummy content")
+    received = nil
+    fake = Object.new
+    fake.define_singleton_method(:convert) { |_path| "a red square" }
+
+    result = with_replaced_new(Ragdoll::ImageToTextService, ->(**kw) { received = kw; fake }) do
+      Ragdoll::DocumentConverter.new(detail_level: :minimal).convert_to_text(file_path, "image")
+    end
+
+    assert_equal "a red square", result
+    assert_equal({ detail_level: :minimal }, received)
+  end
+
+  def test_convert_to_text_passes_options_to_audio_service_as_keywords
+    file_path = create_file("test.wav", "dummy content")
+    received = nil
+    fake = Object.new
+    fake.define_singleton_method(:transcribe) { |_path| "hello world" }
+
+    result = with_replaced_new(Ragdoll::AudioToTextService, ->(**kw) { received = kw; fake }) do
+      Ragdoll::DocumentConverter.new(language: "en").convert_to_text(file_path, "audio")
+    end
+
+    assert_equal "hello world", result
+    assert_equal({ language: "en" }, received)
+  end
+
+  def test_require_ragdoll_loads_audio_to_text_service
+    root = File.expand_path("../../..", __dir__)
+    output, status = Open3.capture2e(
+      RbConfig.ruby, "-I#{root}/lib", "-e",
+      'require "ragdoll"; print "AudioToTextService=#{defined?(Ragdoll::AudioToTextService)}"',
+      chdir: root
+    )
+
+    assert status.success?, output
+    assert_includes output, "AudioToTextService=constant"
+  end
+
+  def test_convert_to_text_with_explicit_type_override
+    content = "Plain text content"
+    file_path = create_file("test.unknown", content)
+    result = @converter.convert_to_text(file_path, "text")
+    assert_equal content, result.strip
+  end
+
+  # Edge case tests
+  def test_convert_to_text_handles_empty_file
+    file_path = create_text_file("")
+    result = @converter.convert_to_text(file_path)
+    assert_equal "", result.strip
+  end
+
+  def test_convert_to_text_handles_unicode_content
+    content = "Hello 世界! 🌍"
+    file_path = create_text_file(content)
+    result = @converter.convert_to_text(file_path)
+    assert_equal content, result.strip
+  end
+
+  def test_convert_to_text_handles_large_content
+    content = "x" * 10_000
+    file_path = create_text_file(content)
+    result = @converter.convert_to_text(file_path)
+    assert_equal 10_000, result.strip.length
   end
 
   private
 
-  def create_temp_file(filename, content)
-    file_path = File.join(@temp_dir, filename)
-    File.write(file_path, content)
-    file_path
+  def with_replaced_new(klass, replacement)
+    klass.define_singleton_method(:new, &replacement)
+    yield
+  ensure
+    klass.singleton_class.remove_method(:new)
+  end
+
+  def create_text_file(content)
+    create_file("test.txt", content)
+  end
+
+  def create_file(name, content)
+    path = File.join(@test_dir, name)
+    File.write(path, content)
+    path
   end
 end

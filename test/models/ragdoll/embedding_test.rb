@@ -333,6 +333,25 @@ module Ragdoll
           assert_includes embedding.search_results, search_result
           assert_includes embedding.searches, search
         end
+
+        # The keyword filter values are bound, so values carrying SQL-significant
+        # characters are treated as literal data rather than query syntax.
+        def test_search_similar_binds_keyword_filter
+          vector = Array.new(1536, 0.1)
+          Ragdoll::Embedding.create!(
+            embeddable: @text_content,
+            chunk_index: 0,
+            embedding_vector: vector,
+            content: "Test chunk content"
+          )
+
+          weird = "x\"}'::text[]) --"
+
+          assert_silent do
+            Ragdoll::Embedding.search_similar(vector, filters: { keywords: [weird] })
+            Ragdoll::Embedding.search_similar_with_stats(vector, filters: { keywords: [weird] })
+          end
+        end
       end
     end
   end

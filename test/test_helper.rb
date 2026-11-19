@@ -6,6 +6,9 @@ $VERBOSE = nil
 # Set flag to indicate we're running tests
 ENV["RUNNING_TESTS"] = "true"
 
+# Set environment for Ragdoll configuration loading
+ENV["RAGDOLL_ENV"] ||= "test"
+
 require "simplecov"
 
 # Load undercover after SimpleCov to avoid circular requires
@@ -229,10 +232,11 @@ module Minitest
       ActiveRecord::Migration.verbose = false
 
       # Setup test database with PostgreSQL
+      # Default to current user (common for macOS Homebrew PostgreSQL)
       Ragdoll::Core::Database.setup({
                                       adapter: "postgresql",
                                       database: "ragdoll_test",
-                                      username: ENV.fetch("RAGDOLL_POSTGRES_USER", "postgres"),
+                                      username: ENV.fetch("RAGDOLL_POSTGRES_USER") { ENV.fetch("USER", "postgres") },
                                       password: ENV.fetch("RAGDOLL_POSTGRES_PASSWORD", ""),
                                       host: ENV.fetch("RAGDOLL_POSTGRES_HOST", "localhost"),
                                       port: ENV.fetch("RAGDOLL_POSTGRES_PORT", 5432),
@@ -247,6 +251,10 @@ module Minitest
       if !ci_environment? && ActiveRecord::Base.connected?
         # Delete child tables first, then parent tables (using current schema)
         tables_to_clean = %w[
+          ragdoll_propositions
+          ragdoll_embedding_tags
+          ragdoll_document_tags
+          ragdoll_tags
           ragdoll_search_results
           ragdoll_searches
           ragdoll_embeddings
@@ -263,6 +271,57 @@ module Minitest
       end
 
       Ragdoll::Core.reset_configuration!
+    end
+  end
+end
+
+# With database tests turned off (see ci_environment?), report
+# ConnectionNotDefined as a skip rather than an error. Only that class: other
+# connection errors (timeouts, refused) stay errors so regressions surface.
+# capture_exceptions wraps setup, test, and teardown.
+module SkipWithoutDatabase
+  def capture_exceptions
+    super do
+      yield
+    rescue ActiveRecord::ConnectionNotDefined
+      skip_if_database_unavailable
+      raise
+    end
+  end
+end
+
+Minitest::Test.prepend(SkipWithoutDatabase)
+
+# Replaces RubyLLM.chat for the duration of the block with a fake whose #ask
+# returns +reply+. Keywords RubyLLM::Chat#initialize does not accept raise
+# ArgumentError, as the real call does. Yields the RubyLLM.chat keywords and
+# the prompts passed to #ask.
+module StubbedRubyLLMChat
+  def with_stubbed_ruby_llm_chat(reply)
+    chat_options = {}
+    prompts = []
+    chat = fake_ruby_llm_chat(reply, prompts)
+    accepted = RubyLLM::Chat.instance_method(:initialize).parameters.map(&:last)
+    original_chat = RubyLLM.method(:chat)
+    RubyLLM.define_singleton_method(:chat) do |**options|
+      unknown = options.keys - accepted
+      raise ArgumentError, "unknown keyword: #{unknown.first.inspect}" if unknown.any?
+
+      chat_options.merge!(options)
+      chat
+    end
+    yield chat_options, prompts
+  ensure
+    RubyLLM.define_singleton_method(:chat, original_chat)
+  end
+
+  # A chat whose #ask records the prompt and replies with +reply+
+  def fake_ruby_llm_chat(reply, prompts)
+    Object.new.tap do |chat|
+      chat.define_singleton_method(:ask) do |prompt|
+        prompts << prompt
+        Struct.new(:content).new(reply)
+      end
     end
   end
 end

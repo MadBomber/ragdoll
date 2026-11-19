@@ -14,10 +14,7 @@ module Ragdoll
       text_service = Ragdoll::TextGenerationService.new
       keywords_array = text_service.extract_keywords(document.content)
 
-      if keywords_array.present?
-        keywords_string = keywords_array.join(", ")
-        document.update!(keywords: keywords_string)
-      end
+      document.update!(keywords: keywords_array) if keywords_array.present?
     rescue ActiveRecord::RecordNotFound
       # Document was deleted, nothing to do
     rescue StandardError => e

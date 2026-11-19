@@ -1,14 +1,31 @@
 # frozen_string_literal: true
 
 module Ragdoll
-  # Service for generating structured metadata using LLM providers
-  # Leverages structured output capabilities to ensure consistent metadata schemas
+  # LLM-powered structured metadata generation
+  #
+  # Generates structured metadata for documents using LLM providers with
+  # JSON schema support. Handles different document types (text, image,
+  # audio, PDF, mixed) with type-specific analysis prompts.
+  #
+  # @example Generate metadata for a document
+  #   generator = Ragdoll::MetadataGenerator.new
+  #   metadata = generator.generate_for_document(document)
+  #   # => { summary: "...", keywords: [...], sentiment: "positive", ... }
+  #
   class MetadataGenerator
+    # Initialize the metadata generator
+    #
+    # @param llm_client [Object, nil] LLM client (OpenAI, Anthropic, Ollama)
+    #
     def initialize(llm_client: nil)
       @llm_client = llm_client || default_llm_client
     end
 
-    # Generate metadata for a document based on its content and type
+    # Generate metadata for a document based on its content type
+    #
+    # @param document [Ragdoll::Document] Document to analyze
+    # @return [Hash] Generated metadata (summary, keywords, sentiment, etc.)
+    #
     def generate_for_document(document)
       case document.document_type
       when "text", "markdown", "html"
@@ -26,7 +43,11 @@ module Ragdoll
       end
     end
 
-    # Generate metadata for text content
+    # Generate metadata for text documents
+    #
+    # @param document [Ragdoll::Document] Document with text content
+    # @return [Hash] Metadata with summary, keywords, sentiment, reading time
+    #
     def generate_text_metadata(document)
       # Combine all text content from the document
       text_content = document.text_contents.map(&:content).join("\n\n")
@@ -38,7 +59,11 @@ module Ragdoll
       generate_structured_metadata(prompt, schema)
     end
 
-    # Generate metadata for image content
+    # Generate metadata for image documents (requires vision model)
+    #
+    # @param document [Ragdoll::Document] Document with image content
+    # @return [Hash] Metadata with description, objects, colors, mood
+    #
     def generate_image_metadata(document)
       # For images, we need to use vision-capable models
       image_content = document.image_contents.first
@@ -51,7 +76,11 @@ module Ragdoll
       generate_structured_metadata(prompt, schema, content_type: "image", image: image_content.image)
     end
 
-    # Generate metadata for audio content
+    # Generate metadata for audio documents
+    #
+    # @param document [Ragdoll::Document] Document with audio content
+    # @return [Hash] Metadata with content type, speakers, language, mood
+    #
     def generate_audio_metadata(document)
       audio_content = document.audio_contents.first
       return {} unless audio_content
@@ -69,7 +98,11 @@ module Ragdoll
       generate_structured_metadata(prompt, schema)
     end
 
-    # Generate metadata for PDF content
+    # Generate metadata for PDF documents
+    #
+    # @param document [Ragdoll::Document] Document with PDF content
+    # @return [Hash] Metadata with structure analysis, complexity, reading time
+    #
     def generate_pdf_metadata(document)
       text_content = document.text_contents.map(&:content).join("\n\n")
       return {} if text_content.blank?
@@ -80,7 +113,11 @@ module Ragdoll
       generate_structured_metadata(prompt, schema)
     end
 
-    # Generate metadata for mixed/multi-modal content
+    # Generate metadata for multi-modal documents
+    #
+    # @param document [Ragdoll::Document] Document with mixed content types
+    # @return [Hash] Combined metadata across all content types
+    #
     def generate_mixed_metadata(document)
       schema = Ragdoll::MetadataSchemas::MIXED_SCHEMA
 

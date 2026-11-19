@@ -135,7 +135,7 @@ module Ragdoll
       content_parts.join(" ")
     end
 
-    def generate_embeddings!
+    def generate_embeddings!(**chunking)
       return unless should_generate_embeddings?
 
       embedding_content = content_for_embedding
@@ -156,8 +156,7 @@ module Ragdoll
         by_model: group(:embedding_model).count,
         total_embeddings: joins(:embeddings).count,
         with_images: with_images.count,
-        with_descriptions: with_descriptions.count,
-        average_image_size: joins(:image_attachment).average("active_storage_blobs.byte_size")
+        with_descriptions: with_descriptions.count
       }
     end
 

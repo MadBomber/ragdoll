@@ -14,6 +14,10 @@ module Ragdoll
     has_many :search_results, class_name: "Ragdoll::SearchResult", dependent: :destroy
     has_many :searches, through: :search_results
 
+    # Tag associations
+    has_many :embedding_tags, class_name: "Ragdoll::EmbeddingTag", dependent: :destroy
+    has_many :tags, through: :embedding_tags
+
     validates :embeddable_id,    presence: true
     validates :embeddable_type,  presence: true
     validates :chunk_index,      presence: true, uniqueness: { scope: %i[embeddable_id embeddable_type] }
@@ -79,10 +83,8 @@ module Ragdoll
       if filters[:keywords] && filters[:keywords].any?
         normalized_keywords = Array(filters[:keywords]).map(&:to_s).map(&:downcase).reject(&:empty?)
         if normalized_keywords.any?
-          # Use PostgreSQL array overlap operator with proper array literal
-          quoted_keywords = normalized_keywords.map { |k| "\"#{k}\"" }.join(',')
-          array_literal = "'{#{quoted_keywords}}'::text[]"
-          scope = scope.where("ragdoll_documents.keywords && #{array_literal}")
+          # Use PostgreSQL array overlap operator with bound parameters
+          scope = scope.where("ragdoll_documents.keywords && ARRAY[?]::text[]", normalized_keywords)
         end
       end
 
@@ -114,10 +116,8 @@ module Ragdoll
       if filters[:keywords] && filters[:keywords].any?
         normalized_keywords = Array(filters[:keywords]).map(&:to_s).map(&:downcase).reject(&:empty?)
         if normalized_keywords.any?
-          # Use PostgreSQL array overlap operator with proper array literal
-          quoted_keywords = normalized_keywords.map { |k| "\"#{k}\"" }.join(',')
-          array_literal = "'{#{quoted_keywords}}'::text[]"
-          scope = scope.where("ragdoll_documents.keywords && #{array_literal}")
+          # Use PostgreSQL array overlap operator with bound parameters
+          scope = scope.where("ragdoll_documents.keywords && ARRAY[?]::text[]", normalized_keywords)
         end
       end
 

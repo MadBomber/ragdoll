@@ -2,7 +2,7 @@
 
 require_relative "../test_helper"
 
-class TextChunkerTest < Minitest::Test
+class CoreTextChunkerTest < Minitest::Test
   def setup
     super
     @chunker = Ragdoll::TextChunker

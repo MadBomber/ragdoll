@@ -103,9 +103,9 @@ module Ragdoll
 
       return nil unless File.exist?(document.location)
 
-      # Re-convert to text
+      # Re-convert to text, honoring any conversion options
       document_type = @converter.determine_document_type(document.location)
-      text_content = @converter.convert_to_text(document.location, document_type, **options)
+      text_content = Ragdoll::DocumentConverter.convert_to_text(document.location, document_type, **options)
 
       # Update document content
       if document.respond_to?(:unified_contents)

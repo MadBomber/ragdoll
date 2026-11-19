@@ -2,7 +2,7 @@
 
 require_relative "../test_helper"
 
-class ErrorsTest < Minitest::Test
+class CoreErrorsTest < Minitest::Test
   def test_base_error_class
     error = Ragdoll::Core::Error.new("test message")
 

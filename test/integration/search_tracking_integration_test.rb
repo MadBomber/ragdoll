@@ -31,12 +31,6 @@ class SearchTrackingIntegrationTest < Minitest::Test
     @client = Ragdoll::Core::Client.new
   end
 
-  private
-
-  def ci_environment?
-    ENV["CI"] == "true" || ENV["RAGDOLL_SKIP_DATABASE_TESTS"] == "true"
-  end
-
   def test_client_search_creates_search_record
     # Verify no searches exist initially
     assert_equal 0, Ragdoll::Search.count
@@ -65,16 +59,17 @@ class SearchTrackingIntegrationTest < Minitest::Test
     assert_equal 0, Ragdoll::Search.count
     
     # Perform a hybrid search through the client
-    result = @client.hybrid_search(query: "test content", session_id: "hybrid_session", user_id: "hybrid_user")
+    @client.hybrid_search(query: "test content", limit: 3, session_id: "hybrid_session", user_id: "hybrid_user")
     
     # Verify search was recorded
     assert_equal 1, Ragdoll::Search.count
     
     search = Ragdoll::Search.first
     assert_equal "test content", search.query
-    assert_equal "hybrid", search.search_type
+    assert_equal "hybrid_rrf", search.search_type
     assert_equal "hybrid_session", search.session_id
     assert_equal "hybrid_user", search.user_id
+    assert_equal 3, search.search_options["limit"]
     assert search.execution_time_ms > 0
   end
 
@@ -114,6 +109,30 @@ class SearchTrackingIntegrationTest < Minitest::Test
     queries = Ragdoll::Search.pluck(:query)
     assert_includes queries, "first search"
     assert_includes queries, "second search"
+  end
+
+  def test_records_search_types_without_query_embedding
+    %w[hybrid_rrf text_fallback semantic_with_keywords].each do |search_type|
+      search = Ragdoll::Search.record_search(query: "q #{search_type}", query_embedding: nil,
+                                             results: [], search_type: search_type)
+
+      assert search.persisted?, "expected a #{search_type} search to be recorded"
+      assert_nil search.reload.query_embedding
+    end
+  end
+
+  def test_text_fallback_search_is_recorded_without_result_rows
+    @document.update!(summary: "fallback summary about widgets")
+    embedding_service = Object.new
+    embedding_service.define_singleton_method(:generate_embedding) { |_text| nil }
+
+    response = Ragdoll::SearchEngine.new(embedding_service).search_similar_content("widgets", session_id: "fallback")
+
+    assert_equal 1, response[:results].length
+    search = Ragdoll::Search.find_by!(session_id: "fallback")
+    assert_equal "text_fallback", search.search_type
+    assert_equal 1, search.results_count
+    assert_equal 0, search.search_results.count
   end
 
   def test_search_error_does_not_break_search_functionality

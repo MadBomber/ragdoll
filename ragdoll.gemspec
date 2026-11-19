@@ -14,7 +14,7 @@ Gem::Specification.new do |spec|
   spec.description = "Under development.  Contributors welcome."
   spec.homepage    = "https://github.com/MadBomber/ragdoll"
   spec.license     = "MIT"
-  spec.required_ruby_version = ">= 3.2.0"
+  spec.required_ruby_version = ">= 4.0"
 
   spec.metadata["allowed_push_host"] = "https://rubygems.org"
 
@@ -31,30 +31,31 @@ Gem::Specification.new do |spec|
     "MIT-LICENSE",
     "Rakefile",
     "README.md",
-    "CHANGELOG.md",
-    "Thorfile"
+    "CHANGELOG.md"
   ]
   spec.require_paths = ["lib", "app/models"]
 
   # Runtime dependencies
-  spec.add_dependency "activerecord"
+  spec.add_dependency "activerecord", ">= 7.1"
+  spec.add_dependency "ostruct"
   spec.add_dependency "activejob"
+  spec.add_dependency "anyway_config", "~> 2.0"
+  spec.add_dependency "chronic"
   spec.add_dependency "debug_me"
   spec.add_dependency "docx"
   spec.add_dependency "neighbor"
-  spec.add_dependency "opensearch-ruby"
   spec.add_dependency "pdf-reader"
   spec.add_dependency "pg"
   spec.add_dependency "pgvector"
   spec.add_dependency "rmagick"
-  spec.add_dependency "ruby-progressbar"
   spec.add_dependency "ruby_llm"
   spec.add_dependency "rubyzip"
-  spec.add_dependency "searchkick"
   spec.add_dependency "shrine"
+  spec.add_dependency "simple_flow"
+  # simple_flow requires tsort without declaring it; tsort leaves the default gems in Ruby 4.1
+  spec.add_dependency "tsort"
 
   # Development dependencies
-  spec.add_development_dependency "annotate"
   spec.add_development_dependency "bundler"
   spec.add_development_dependency "database_cleaner-active_record"
   spec.add_development_dependency "minitest"

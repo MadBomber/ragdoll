@@ -37,6 +37,19 @@ module Ragdoll
     has_many :image_embeddings, through: :image_contents, source: :embeddings
     has_many :audio_embeddings, through: :audio_contents, source: :embeddings
 
+    # Tag associations
+    has_many :document_tags,
+             class_name: "Ragdoll::DocumentTag",
+             foreign_key: "document_id",
+             dependent: :destroy
+    has_many :tags, through: :document_tags
+
+    # Proposition associations
+    has_many :propositions,
+             class_name: "Ragdoll::Proposition",
+             foreign_key: "document_id",
+             dependent: :destroy
+
     validates :location, presence: true
     validates :title, presence: true
     validates :document_type, presence: true,
@@ -237,8 +250,6 @@ module Ragdoll
 
     # Generate structured metadata using LLM
     def generate_metadata!
-      require_relative "../../lib/ragdoll/core/services/metadata_generator"
-
       generator = Ragdoll::MetadataGenerator.new
       generated_metadata = generator.generate_for_document(self)
 
@@ -317,7 +328,7 @@ module Ragdoll
       
       # Add status filter (default to processed unless overridden)
       status = options[:status] || 'processed'
-      conditions << "#{table_name}.status = '#{status}'"
+      conditions << sanitize_sql_array(["#{table_name}.status = ?", status])
       
       # Add document type filter if specified
       if options[:document_type].present?
@@ -350,11 +361,9 @@ module Ragdoll
       return where("1 = 0") if normalized_keywords.empty?
 
       limit = options[:limit] || 20
-      
-      # Use PostgreSQL array overlap operator with proper array literal
-      quoted_keywords = normalized_keywords.map { |k| "\"#{k}\"" }.join(',')
-      array_literal = "'{#{quoted_keywords}}'::text[]"
-      where("keywords && #{array_literal}")
+
+      # Use PostgreSQL array overlap operator with bound parameters
+      where("keywords && ARRAY[?]::text[]", normalized_keywords)
         .order("created_at DESC")
         .limit(limit)
     end
@@ -367,11 +376,9 @@ module Ragdoll
       return where("1 = 0") if normalized_keywords.empty?
 
       limit = options[:limit] || 20
-      
-      # Use PostgreSQL array contains operator with proper array literal
-      quoted_keywords = normalized_keywords.map { |k| "\"#{k}\"" }.join(',')
-      array_literal = "'{#{quoted_keywords}}'::text[]"
-      where("keywords @> #{array_literal}")
+
+      # Use PostgreSQL array contains operator with bound parameters
+      where("keywords @> ARRAY[?]::text[]", normalized_keywords)
         .order("created_at DESC")
         .limit(limit)
     end

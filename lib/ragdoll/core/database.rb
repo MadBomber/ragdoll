@@ -7,6 +7,8 @@ module Ragdoll
   module Core
     class Database
       def self.setup(config = {})
+        # Convert ConfigSection to Hash if needed
+        config = config.to_h if config.respond_to?(:to_h) && !config.is_a?(Hash)
         database_config = default_config.merge(config)
 
         # Set up ActiveRecord connection
@@ -22,13 +24,6 @@ module Ragdoll
       end
 
       def self.migrate!
-        # Get the path to the gem root directory
-        # Current file is lib/ragdoll/core/database.rb, so go up 3 levels to get to gem root
-        gem_root = File.expand_path(File.join(File.dirname(__FILE__), "..", "..", ".."))
-        migration_paths = [
-          File.join(gem_root, "db", "migrate")
-        ]
-
         ActiveRecord::Migration.verbose = true
 
         # Ensure schema_migrations table exists first
@@ -90,9 +85,14 @@ module Ragdoll
         # Drop all tables in correct order (respecting foreign key constraints)
         # Order: dependent tables first, then parent tables
         tables_to_drop = %w[
+          ragdoll_propositions
+          ragdoll_embedding_tags
+          ragdoll_document_tags
+          ragdoll_tags
           ragdoll_search_results
           ragdoll_searches
           ragdoll_embeddings
+          ragdoll_unified_contents
           ragdoll_contents
           ragdoll_documents
           schema_migrations
@@ -118,18 +118,18 @@ module Ragdoll
       end
 
       def self.connected?
-        ActiveRecord::Base.connected?
+        !!ActiveRecord::Base.connected?
       end
 
       def self.disconnect!
-        ActiveRecord::Base.clear_all_connections!
+        ActiveRecord::Base.connection_handler.clear_all_connections!
       end
 
       def self.default_config
         {
           adapter: "postgresql",
           database: "ragdoll_development",
-          username: "ragdoll",
+          username: ENV.fetch("RAGDOLL_POSTGRES_USER") { ENV.fetch("USER", "ragdoll") },
           password: ENV.fetch("RAGDOLL_DATABASE_PASSWORD", nil),
           host: "localhost",
           port: 5432,
@@ -139,7 +139,8 @@ module Ragdoll
       end
 
       def self.migration_paths
-        [File.join(File.dirname(__FILE__), "..", "..", "..", "..", "db", "migrate")]
+        # lib/ragdoll/core/database.rb is three levels below the gem root
+        [File.expand_path("../../../db/migrate", __dir__)]
       end
     end
   end

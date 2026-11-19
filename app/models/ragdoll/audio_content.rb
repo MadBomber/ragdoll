@@ -103,7 +103,7 @@ module Ragdoll
       transcript.presence || "Audio content without transcript"
     end
 
-    def generate_embeddings!
+    def generate_embeddings!(**chunking)
       return unless should_generate_embeddings?
 
       embedding_content = content_for_embedding
@@ -126,8 +126,7 @@ module Ragdoll
         with_audio: with_audio.count,
         with_transcripts: with_transcripts.count,
         total_duration: sum(:duration),
-        average_duration: average(:duration),
-        average_audio_size: joins(:audio_attachment).average("active_storage_blobs.byte_size")
+        average_duration: average(:duration)
       }
     end
 
